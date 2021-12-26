@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="canonical" href="https://html5-templates.com/">
+    <title>Responsive HTML5 Page Layout Template</title>
+    <meta name="description" content="Simple HTML5 Page layout template with header, footer, sidebar etc.">
+    <link rel="stylesheet" href="static/style.css">
+    <script src="static/script.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <div id="logo"><img src="static/ioccc.png">Welcome to the
+        International Obfuscated C Code Contest Contestant Page</div>
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </nav>
+    </header>
+    <section>
+      <strong>
+{% if user %}
+Welcome, {{ user }}!<br>
+{% endif %}
+        <br>
+        Use this page to upload or update your IOTCC entries.<br>
+      </strong> </section>
+    <section id="pageContent">
+      <main role="main">
+        <article>
+          <h2>Select entry to update/modify:</h2>
+          <form name="upload" action="upload" method="post" enctype="multipart/form-data"><br>
+            <p>
+	      <table>
+		<tr>
+		  <th>Entry Number</th>
+		  <th>Create/Update?</th>
+		  <th>Hash</th>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en1">1</label>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry1"
+			   onclick="show_sub();" type="radio">
+		  </td>
+		  <td>{%print(etable['1'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en2">2</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry2"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['2'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en3">3</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry3"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['3'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en4">4</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry4"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['4'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en5">5</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry5"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['5'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en6">6</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry6"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['6'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en7">7</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry7"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['7'])%}</td>
+		</tr>
+		<tr>
+		  <td>
+		    <label for="en8">8</label><br>
+		  </td>
+		  <td>
+		    <input name="entry_no" id="entry8"
+			   onclick="show_sub();"
+			   type="radio">
+		  </td>
+		  <td>{%print(etable['8'])%}</td>
+		</tr>
+	      </table>
+            <br>
+            <input name="update_file" id="update_file" required="" type="file">
+            <br>
+            <br>
+            <button type="reset" onclick="hide_sub()">Reset </button> <button
+              type="submit"
+              style="display: none"
+              id="sub_button">
+              Submit</button> </form>
+          <p><br>
+          </p>
+        </article>
+      </main>
+      <aside>
+        <div>Submissions may be updated at any time prior to 12 February 2022
+          00:00:00 GMT. </div>
+      </aside>
+    </section>
+    <footer>
+      <p>© You can copy, edit and publish this template but please leave a link
+        to our website | <a href="https://html5-templates.com/" target="_blank"
+          rel="nofollow">HTML5
+          Templates</a></p>
+      <address> Contact: <a href="mailto:iotcc@iotcc.org">Mail me</a> </address>
+    </footer>
+  </body>
+</html>
