@@ -8,8 +8,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from iocccpasswd import adduser,deluser
 
 application = Flask(__name__)
-application.config['MAX_CONTENT_LENGTH']=4000000
-application.secret_key="30459613049857023478502348563345394856746"
+# BTW: max uncompressed tar 4e6 bytes
+#      so we set the max bip2 compressed tar is the larest prime < 4e6 bytes
+application.config['MAX_CONTENT_LENGTH']=3999971
+# XXX - flask requires application.secret_key to be set, change before delpoyment
+application.secret_key="CHANGE_THIS_STRING_DURING_DEPLOYMENT"
 auth = HTTPBasicAuth()
 
 with application.test_request_context('/'):
@@ -49,7 +52,7 @@ def get_entries(user):
         entries_fp=open(entries_file,"r",encoding="utf-8")
         entries=json.load(entries_fp)
     except IOError:
-        entries = { 
+        entries = {
             1: "No entry",
             2: "No entry",
             3: "No entry",
@@ -103,7 +106,7 @@ def verify_password(username, password):
     if username in users and \
             check_password_hash(users.get(username), password):
         return username
-    
+
 
 @application.route('/',methods=["GET"])
 @auth.login_required
