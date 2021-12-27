@@ -53,6 +53,7 @@ def get_entries(user):
         entries=json.load(entries_fp)
     except IOError:
         entries = {
+            0: "No entry"
             1: "No entry",
             2: "No entry",
             3: "No entry",
@@ -60,7 +61,6 @@ def get_entries(user):
             5: "No entry",
             6: "No entry",
             7: "No entry",
-            8: "No entry"
         }
         if not write_entries(entries_file,entries):
             return None
