@@ -1,6 +1,6 @@
-# Initial IOTCC Upload page
+# Initial IOCCC Upload page
 
-This is the mechanism to upload IOTCC entries.
+This is the mechanism to upload IOCCC entries.
 
 ## Installation
 
