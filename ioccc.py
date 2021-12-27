@@ -12,7 +12,7 @@ application = Flask(__name__)
 #      so we set the max bip2 compressed tar is the larest prime < 4e6 bytes
 application.config['MAX_CONTENT_LENGTH']=3999971
 # XXX - flask requires application.secret_key to be set, change before delpoyment
-application.secret_key="CHANGE_THIS_STRING_DURING_DEPLOYMENT"
+application.secret_key="CHANGE_ME"
 auth = HTTPBasicAuth()
 
 with application.test_request_context('/'):
@@ -53,7 +53,7 @@ def get_entries(user):
         entries=json.load(entries_fp)
     except IOError:
         entries = {
-            0: "No entry"
+            0: "No entry",
             1: "No entry",
             2: "No entry",
             3: "No entry",
@@ -115,6 +115,10 @@ def index():
     entries=get_entries(username)
     if not entries:
         return Response(response="Configuration error",status=400)
+    oc=readpwfile(statefile)
+    if oc:
+        if oc[0] == 'closed':
+            return render_template("closed.html")
     return render_template("index.html",user=username,etable=entries)
 
 @application.route('/admin',methods=["GET"])
