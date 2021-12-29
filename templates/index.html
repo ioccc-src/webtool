@@ -22,6 +22,18 @@ Welcome, {{ user }}!<br>
         <br>
         Use this page to upload or update your IOCCC entries.<br>
       </strong> </section>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <section>
+      <strong>Error(s):</strong>
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+    </section>
+    {% endif %}
+    {% endwith %}
     <section id="pageContent">
       <main role="main">
         <article>
