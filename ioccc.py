@@ -2,6 +2,8 @@ import re
 import json
 import hashlib
 from os import makedirs,umask
+from datetime import datetime, date, timezone
+from zoneinfo import ZoneInfo
 from flask import Flask,Response,url_for,render_template,flash,redirect,request
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -92,13 +94,26 @@ def readpwfile(pwfile):
     except FileNotFoundError:
         return []
 
-def setcontest(state):
+def set_state(opdate,cldate):
     try:
         with open(statefile,'w',encoding='utf-8') as sf:
-            sf.write(f' [ "{state}" ]')
+            sf.write(f'{{ "opendate" : "{opdate}", "closedate" : "{cldate}" }}')
             sf.close()
     except e as OSError:
         print("couldn't write statefile: " + str(e))
+
+def check_state():
+    oc=readpwfile(statefile)
+    if oc:
+        t=datetime.fromisoformat(oc['opendate'])
+        opdate=datetime(t.year,t.month,t.day,tzinfo=ZoneInfo("GMT"))
+        t=datetime.fromisoformat(oc['closedate'])
+        cldate=datetime(t.year,t.month,t.day,tzinfo=ZoneInfo("GMT"))
+    else:
+        opdate=datetime(2019,1,1,tzinfo=ZoneInfo("GMT"))
+        cldate=datetime(2025,12,31,tzinfo=ZoneInfo("GMT"))
+    now=datetime.now(timezone.utc)
+    return opdate,cldate,now
 
 @auth.verify_password
 def verify_password(username, password):
@@ -115,11 +130,10 @@ def index():
     entries=get_entries(username)
     if not entries:
         return Response(response="Configuration error",status=400)
-    oc=readpwfile(statefile)
-    if oc:
-        if oc[0] == 'closed':
-            return render_template("closed.html")
-    return render_template("index.html",user=username,etable=entries)
+    opdate,cldate,now=check_state()
+    if now < opdate or now > cldate:
+        return render_template("closed.html")
+    return render_template("index.html",user=username,etable=entries,date=str(cldate))
 
 @application.route('/admin',methods=["GET"])
 @auth.login_required
@@ -131,7 +145,15 @@ def admin():
         return Response(response="Permission denied.",status=404)
     if not users:
         return Response(response="Configuration error",status=400)
-    return render_template("admin.html",contestants=users,user=username)
+    oc=readpwfile(statefile)
+    if oc:
+        opdate=oc['opendate']
+        cldate=oc['closedate']
+    else:
+        opdate=str(date.today())
+        cldate=opdate
+    return render_template("admin.html",contestants=users,user=username,
+                           opdate=opdate,cldate=cldate)
 
 @application.route('/update',methods=["POST"])
 @auth.login_required
@@ -140,6 +162,10 @@ def upload():
     entries=get_entries(username)
     user_dir=ioccc_dir + "/users/" + username
 
+    opdate,cldate,now=check_state()
+    if now < opdate or now > cldate:
+        flash("Contest Closed.")
+        return redirect(ioccc_root)
     if not 'entry_no' in request.form:
         flash("No entry selected")
         return redirect(ioccc_root)
@@ -165,11 +191,18 @@ def admin_update():
     admins=readpwfile(admfile)
     if not username in admins:
         return Response(response="Permission denied.",status=404)
-    if "openclose" in request.form:
-        if request.form['openclose'] == "open":
-            setcontest("open")
-        elif request.form['openclose'] == "closed":
-            setcontest("closed")
+    oc=readpwfile(statefile)
+    if oc:
+        opdate=oc['opendate']
+        cldate=oc['closedate']
+    else:
+        opdate=str(date.today())
+        cldate=opdate
+    if "opendate" in request.form and not request.form['opendate'] == '':
+        opdate=request.form['opendate']
+    if "closedate" in request.form and not request.form['closedate'] == '':
+        cldate=request.form['closedate']
+    set_state(opdate,cldate)
     if "newuser" in request.form:
         newuser=request.form['newuser']
         if not newuser == "":

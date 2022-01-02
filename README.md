@@ -12,10 +12,17 @@ contestants to submit files created by the mkiocccentry tool.
 That IOCCC submission container will deploy something based on,
 but NOT identical, to this submit-tool.
 
+## Requirements
+
+This code requires cryptography and uwsgi, both of which can bloat a
+container.What really bloats the container right now, however, is
+a requirement for python3.9 or later (Ubuntu containers run with earlier
+versions by default).
+
 ## Installation
 
 % git clone {this distribution} /usr/lib/ioccc
-% pip install flask flask_httpauth hashlib werkzeug
+% pip install -r requirements.txt
 
 Create /var/lib/ioccc and make sure that it is writable to you web
 server.  Generate a password file with iocccpasswd.py.  Be sure to
