@@ -40,13 +40,12 @@ Welcome, {{ user }}!<br>
           <form name="contestants" action="admin-update" method="post"><br>
         <article>
 	  <h2>Contest State</h2>
-	    The contest is<br>
-	    <input id="open" type="radio" name="openclose"
-	    value="open" onclick="show_sub()">open for
-	    entries<br>
-	    <input id="close" type="radio" name="openclose"
-	    value="closed" onclick="show_sub()">closed
-	    for entries
+	    The contest opens on 
+  	  <input id="opendate" type="date" name="opendate"
+		 value="{{opdate}}" onclick="show_sub()">
+	  and closes on 
+  	  <input id="closedate" type="date" name="closedate"
+		 value="{{cldate}}" onclick="show_sub()">
             <h2>Select entry to update/modify:</h2>
             <p>
 	      <table>
@@ -83,10 +82,6 @@ Welcome, {{ user }}!<br>
           </p>
         </article>
       </main>
-      <aside>
-        <div>Submissions may be updated at any time prior to 12 February 2022
-          00:00:00 GMT. </div>
-      </aside>
     </section>
     <footer>
       <p>© IOTCC 2022, | powered by | <a href="https://html5-templates.com/" target="_blank"

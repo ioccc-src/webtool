@@ -1,8 +1,6 @@
-FROM ubuntu:latest
+FROM python:latest
 
 MAINTAINER Eliot Lear "lear@lear.ch"
-
-RUN apt-get update -y && apt-get install -y python3-pip python3-dev
 
 COPY ./requirements.txt /app/requirements.txt
 
