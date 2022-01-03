@@ -1,16 +1,23 @@
+"""
+Functions to implement adding and deleting of IOCCC contestants.
+"""
+
 import json
 import argparse
 from os import listdir,remove, rmdir
 from werkzeug.security import generate_password_hash
 from passwordgenerator import pwgenerator
 
-passwdfile='iocccpasswd'
-ioccc_dir="/app"
+PWD_FILE='iocccpasswd'
+IOCCC_DIR="/app"
 
-def readpwfile(failonnotexist=True):
+def readpwfile(pwfile,failonnotexist=True):
+    """
+    read the password file.  return json.
+    """
     try:
-        with open(passwdfile,"r",encoding="utf-8") as fp:
-            passjson=json.load(fp)
+        with open(pwfile,"r",encoding="utf-8") as pw_fp:
+            passjson=json.load(pw_fp)
     except FileNotFoundError:
         if failonnotexist:
             print("file not found")
@@ -21,11 +28,14 @@ def readpwfile(failonnotexist=True):
         exit(-1)
     return passjson
 
-def writepwfile(pw_json):
+def writepwfile(pwfile,pw_json):
+    """
+    Write out passwd file.
+    """
     try:
-        with open(passwdfile,"w",encoding="utf-8") as fp:
-            fp.write(json.dumps(pw_json))
-            fp.close()
+        with open(pwfile,"w",encoding="utf-8") as pw_fp:
+            pw_fp.write(json.dumps(pw_json))
+            pw_fp.close()
     except FileNotFoundError:
         print("file not found")
         exit(-1)
@@ -35,48 +45,57 @@ def writepwfile(pw_json):
 
     return True
 
-def deluser(username,ioccc_dir):
+def deluser(username,ioccc_dir,pwfile):
+    """
+    delete a user.
+    """
     user_dir=ioccc_dir + "/users/" + username
-    json=readpwfile(False)
-    if not json:
+    pw_json=readpwfile(pwfile,False)
+    if not pw_json:
         return None
-    if username in json:
-        del json[username]
+    if username in pw_json:
+        del pw_json[username]
         try:
             userfiles = listdir(user_dir)
-        except OSError as e:
+        except OSError:
             userfiles= None
         if userfiles:
             for userfile in userfiles:
                 try:
                     remove(user_dir + "/" + userfile)
-                except OSError as e:
-                    print("Unable to remove files: " + str(e))
-                    return None
+                except OSError as e_code:
+                    print("Unable to remove files: " + str(e_code))
+                    return False
             try:
                 rmdir(user_dir)
-            except OSError as e:
-                print("Unable to remove user dir: " + str(e))
-        return(writepwfile(json))
+            except OSError as e_code:
+                print("Unable to remove user dir: " + str(e_code))
+        return writepwfile(pwfile,pw_json)
     print(username + " not in passwd file")
-    return None
+    return False
 
-def adduser(user):
-    json=readpwfile(False)
-    if not json:
-        json={}
-        if not writepwfile(json):
+def adduser(user,pwfile):
+    """
+    Add a user.
+    """
+    pw_json=readpwfile(pwfile,False)
+    if not pw_json:
+        pw_json={}
+        if not writepwfile(pwfile,pw_json):
             print("failed to create passwd file")
             return None
-    if user in json:
+    if user in pw_json:
         print(user + " already in passwd file")
         return None
-    pw=pwgenerator.generate()
-    json[user]=generate_password_hash(pw)
-    writepwfile(json)
-    return user,pw
+    pword=pwgenerator.generate()
+    pw_json[user]=generate_password_hash(pword)
+    writepwfile(pwfile,pw_json)
+    return user,pword
 
 def main():
+    """
+    Main routine when run as a program.
+    """
     parser=argparse.ArgumentParser(description="manage ioccc passwds")
     parser.add_argument('-a','--add',help="Add a user", nargs='+')
     parser.add_argument('-d','--delete',help="Delete a user", nargs='+')
@@ -85,19 +104,19 @@ def main():
 
     if args.pwdfile:
         passwdfile=args.pwdfile[0]
-
+    else:
+        passwdfile=PWD_FILE
     if args.add:
         for add in args.add:
-            ret=adduser(add)
+            ret=adduser(add,passwdfile)
             if ret:
-                (user,pw) = ret
-                print(f"user: {user} password: {pw}")
+                (user,pword) = ret
+                print(f"user: {user} password: {pword}")
 
     if args.delete:
-        for remove in args.delete:
-            deluser(remove,ioccc_dir)
+        for rem_user in args.delete:
+            deluser(rem_user,IOCCC_DIR,passwdfile)
 
-    return
 
 if __name__ == '__main__':
     main()

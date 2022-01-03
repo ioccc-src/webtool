@@ -1,3 +1,7 @@
+#!python
+"""
+Routines to implement IOCCC registration functions.
+"""
 import re
 import json
 import hashlib
@@ -6,7 +10,7 @@ from datetime import datetime, date, timezone
 from zoneinfo import ZoneInfo
 from flask import Flask,Response,url_for,render_template,flash,redirect,request
 from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
 from iocccpasswd import adduser,deluser
 
 application = Flask(__name__)
@@ -23,36 +27,41 @@ with application.test_request_context('/'):
     url_for('static',filename='ioccc.png')
 
 # ioccc_dir="/var/lib/ioccc"
-ioccc_dir="/app"
-ioccc_root="/"
-pwfile= ioccc_dir + "/iocccpasswd"
-statefile= ioccc_dir + "/state"
-admfile = ioccc_dir + "/admins"
-
+IOCCC_DIR="/app"
+IOCCC_ROOT="/"
+PW_FILE= IOCCC_DIR + "/iocccpasswd"
+STATE_FILE= IOCCC_DIR + "/state"
+ADM_FILE = IOCCC_DIR + "/admins"
 
 
 def write_entries(entry_file,entries):
+    """
+    Write out an index of entries for the user.
+    """
     try:
-        entries_fp=open(entry_file,mode="w",encoding="utf-8")
-        entries_fp.write(json.dumps(entries))
-        entries_fp.close()
-    except IOError as e:
-        print(str(e))
+        with open(entry_file,mode="w",encoding="utf-8") as entries_fp:
+            entries_fp.write(json.dumps(entries))
+            entries_fp.close()
+    except IOError as excpt:
+        print(str(excpt))
         return None
     return True
 
 def get_entries(user):
-    user_dir=ioccc_dir + "/users/" + user
+    """
+    read in the entry list for a given user.
+    """
+    user_dir=IOCCC_DIR + "/users/" + user
     entries_file=user_dir + "/entries.json"
     umask(0o022)
     try:
         makedirs(user_dir,exist_ok=True)
-    except OSError as e:
-        print(str(e))
+    except OSError as excpt:
+        print(str(excpt))
         return None
     try:
-        entries_fp=open(entries_file,"r",encoding="utf-8")
-        entries=json.load(entries_fp)
+        with open(entries_file,"r",encoding="utf-8") as entries_fp:
+            entries=json.load(entries_fp)
     except IOError:
         entries = {
             0: "No entry",
@@ -69,17 +78,20 @@ def get_entries(user):
     return entries
 
 def update_entries(username,entry_no,filename):
+    """
+    Update a given entry for a given user.
+    """
     entries=get_entries(username)
-    user_dir=ioccc_dir + "/users/" + username
+    user_dir=IOCCC_DIR + "/users/" + username
     entries_file=user_dir + "/entries.json"
     if not entries:
         return None
     try:
-        file_fp=open(filename,"rb")
-    except IOError as e:
-        print(str(e))
+        with open(filename,"rb") as file_fp:
+            result=hashlib.md5(file_fp.read())
+    except IOError as excpt:
+        print(str(excpt))
         return None
-    result=hashlib.md5(file_fp.read())
     entries[entry_no]=result.hexdigest()
     print("entry_no = " + entry_no + " hash = " + entries[entry_no])
     if not write_entries(entries_file,entries):
@@ -87,28 +99,37 @@ def update_entries(username,entry_no,filename):
     return True
 
 
-def readpwfile(pwfile):
+def readjfile(pwfile):
+    """
+    read a password (or really any JSON) file.
+    """
     try:
-        with open(pwfile,'r',encoding="utf-8") as pw:
-            return json.load(pw)
+        with open(pwfile,'r',encoding="utf-8") as pw_fp:
+            return json.load(pw_fp)
     except FileNotFoundError:
         return []
 
 def set_state(opdate,cldate):
+    """
+    Set contest dates.
+    """
     try:
-        with open(statefile,'w',encoding='utf-8') as sf:
-            sf.write(f'{{ "opendate" : "{opdate}", "closedate" : "{cldate}" }}')
-            sf.close()
-    except e as OSError:
-        print("couldn't write statefile: " + str(e))
+        with open(STATE_FILE,'w',encoding='utf-8') as sf_fp:
+            sf_fp.write(f'{{ "opendate" : "{opdate}", "closedate" : "{cldate}" }}')
+            sf_fp.close()
+    except OSError as excpt:
+        print("couldn't write STATE_FILE: " + str(excpt))
 
 def check_state():
-    oc=readpwfile(statefile)
-    if oc:
-        t=datetime.fromisoformat(oc['opendate'])
-        opdate=datetime(t.year,t.month,t.day,tzinfo=ZoneInfo("GMT"))
-        t=datetime.fromisoformat(oc['closedate'])
-        cldate=datetime(t.year,t.month,t.day,tzinfo=ZoneInfo("GMT"))
+    """
+    See if the contest is opened.
+    """
+    st_info=readjfile(STATE_FILE)
+    if st_info:
+        the_time=datetime.fromisoformat(st_info['opendate'])
+        opdate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("GMT"))
+        the_time=datetime.fromisoformat(st_info['closedate'])
+        cldate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("GMT"))
     else:
         opdate=datetime(2019,1,1,tzinfo=ZoneInfo("GMT"))
         cldate=datetime(2025,12,31,tzinfo=ZoneInfo("GMT"))
@@ -117,15 +138,21 @@ def check_state():
 
 @auth.verify_password
 def verify_password(username, password):
-    users = readpwfile(pwfile)
+    """
+    Standard Password Validation.
+    """
+    users = readjfile(PW_FILE)
     if username in users and \
             check_password_hash(users.get(username), password):
         return username
-
+    return False
 
 @application.route('/',methods=["GET"])
 @auth.login_required
 def index():
+    """
+    Basic User Interface.
+    """
     username=auth.current_user()
     entries=get_entries(username)
     if not entries:
@@ -138,17 +165,20 @@ def index():
 @application.route('/admin',methods=["GET"])
 @auth.login_required
 def admin():
-    users = readpwfile(pwfile)
+    """
+    Present administrative page.
+    """
+    users = readjfile(PW_FILE)
     username=auth.current_user()
-    admins=readpwfile(admfile)
+    admins=readjfile(ADM_FILE)
     if not username in admins:
         return Response(response="Permission denied.",status=404)
     if not users:
         return Response(response="Configuration error",status=400)
-    oc=readpwfile(statefile)
-    if oc:
-        opdate=oc['opendate']
-        cldate=oc['closedate']
+    st_info=readjfile(STATE_FILE)
+    if st_info:
+        opdate=st_info['opendate']
+        cldate=st_info['closedate']
     else:
         opdate=str(date.today())
         cldate=opdate
@@ -158,43 +188,48 @@ def admin():
 @application.route('/update',methods=["POST"])
 @auth.login_required
 def upload():
+    """
+    Upload Entries
+    """
     username=auth.current_user()
-    entries=get_entries(username)
-    user_dir=ioccc_dir + "/users/" + username
+    user_dir=IOCCC_DIR + "/users/" + username
 
     opdate,cldate,now=check_state()
     if now < opdate or now > cldate:
         flash("Contest Closed.")
-        return redirect(ioccc_root)
+        return redirect(IOCCC_ROOT)
     if not 'entry_no' in request.form:
         flash("No entry selected")
-        return redirect(ioccc_root)
+        return redirect(IOCCC_ROOT)
     entry_no=request.form['entry_no']
     entryfile= user_dir + "/" + "entry-" + entry_no
     if 'file' not in request.files:
         flash('No file part')
-        return redirect(ioccc_root)
+        return redirect(IOCCC_ROOT)
     file=request.files['file']
     if file.filename == '':
         flash('No selected file')
-        return redirect(ioccc_root)
+        return redirect(IOCCC_ROOT)
     file.save(entryfile)
     if not update_entries(username,entry_no,entryfile):
         flash('Failure updating entries')
-    return redirect(ioccc_root)
+    return redirect(IOCCC_ROOT)
 
 @application.route('/admin-update',methods=["POST"])
 @auth.login_required
 def admin_update():
-    users=readpwfile(pwfile)
+    """
+    Backend admin update process.
+    """
+    users=readjfile(PW_FILE)
     username=auth.current_user()
-    admins=readpwfile(admfile)
+    admins=readjfile(ADM_FILE)
     if not username in admins:
         return Response(response="Permission denied.",status=404)
-    oc=readpwfile(statefile)
-    if oc:
-        opdate=oc['opendate']
-        cldate=oc['closedate']
+    st_info=readjfile(STATE_FILE)
+    if st_info:
+        opdate=st_info['opendate']
+        cldate=st_info['closedate']
     else:
         opdate=str(date.today())
         cldate=opdate
@@ -206,22 +241,22 @@ def admin_update():
     if "newuser" in request.form:
         newuser=request.form['newuser']
         if not newuser == "":
-            if not re.match("[a-zA-Z0-9.@_\-+]+",newuser):
+            if not re.match("[a-zA-Z0-9.@_+-]+",newuser):
                 flash('bad username for new user.')
                 return redirect("/admin")
             if newuser in users:
                 flash('username already in use.')
                 return redirect('/admin')
-            ret=adduser(newuser)
+            ret=adduser(newuser,PW_FILE)
             if ret:
-                (user,pw) = ret
-                flash(f"user: {user} password: {pw}")
+                (user,password) = ret
+                flash(f"user: {user} password: {password}")
     for key in request.form:
         if request.form[key] in admins:
             flash(request.form[key] + ' is an admin and cannot be deleted.')
             return redirect('/admin')
         if re.match('^contest.*',key):
-            deluser(request.form[key],ioccc_dir)
+            deluser(request.form[key],IOCCC_DIR,PW_FILE)
     return redirect("/admin")
 
 
