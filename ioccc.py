@@ -224,6 +224,26 @@ def admin_update():
             deluser(request.form[key],ioccc_dir)
     return redirect("/admin")
 
+@application.route('/register',methods=["GET"])
+def register():
+    opdate,cldate,now=check_state()
+    return render_template("register.html",date=cldate)
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0')
+
+@application.route('/reg',methods=["POST"])
+def reg():
+    if not ("firstname" in request.form and "lastname" in request.form 
+            and "email" in request.form and "rules" in request.form ):
+        flash("Form not complete")
+        return(redirect(ioccc_root + "/register"))
+    email=request.form['email']
+    if (len(request.form['firstname']) < 1 or len(request.form['lastname']) < 1
+        or not re.match("[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$",email)):
+        flash("Form not properly complete.")
+        return(redirect(ioccc_root + "/register"))
+    if (not request.form['rules']):
+        flash("Rules not agreed.")
+        return(redirect(ioccc_root + "/register"))
+    return render_template("re-confirm.html")

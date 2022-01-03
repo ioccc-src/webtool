@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank you for registering for the IOCCC Contest</title>
+    <meta name="description" content="Contestant Registration Confirmation">
+    <link rel="stylesheet" href="static/ioccc.css">
+    <script src="static/ioccc.js" defer="defer"></script>
+  </head>
+  <body>
+    <header>
+      <div id="logo"><img src="static/ioccc.png"> International
+        Obfuscated C Code Contest Registration</div>
+    </header>
+    <section> <strong> Register here for the IOCCC. </strong> </section>
+    <section><strong>
+	    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <section>
+      <strong>Error(s):</strong>
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+      </ul>
+      </strong>
+    </section>
+    {% endif %}
+    {% endwith %}
+    <section id="pageContent">
+      <main role="main">
+        <article>
+	  Thank you for registering.  Eventually a confirmation email
+	  will appear in your inbox with further instructions.
+        </article>
+      </main>
+      <aside>
+        <div>Submissions may be updated at any time prior to {{date}} GMT. </div>
+      </aside>
+    </section>
+    <footer>
+      <p>© IOCCC 2022, | powered by | <a href="https://html5-templates.com/" target="_blank"
+          rel="nofollow">HTML5
+          Templates</a></p>
+      <address> Contact: <a href="mailto:ioccc@ioccc.org">Mail me</a> </address>
+    </footer>
+  </body>
+</html>

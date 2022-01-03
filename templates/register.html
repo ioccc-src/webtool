@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register for the IOCCC Contest</title>
+    <meta name="description" content="Contestant Registration Page">
+    <link rel="stylesheet" href="static/ioccc.css">
+    <script src="static/ioccc.js" defer="defer"></script>
+  </head>
+  <body>
+    <header>
+      <div id="logo"><img src="static/ioccc.png"> International
+        Obfuscated C Code Contest Registration</div>
+    </header>
+    <section> <strong> Register here for the IOCCC. </strong> </section>
+    <section><strong>
+	    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <section>
+      <strong>Error(s):</strong>
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+      </ul>
+      </strong>
+    </section>
+    {% endif %}
+    {% endwith %}
+    <section id="pageContent">
+      <main role="main">
+        <article>
+          <form name="register" action="reg" method="post"><br>
+            First Name&nbsp;<input id="firstname" name="firstname" size="20" required="yes"
+              type="text">
+            &nbsp;Last Name&nbsp;<input id="lastname" name="lastname" size="20"
+              required="yes"
+              type="text">
+            <br>
+            EMail Address&nbsp;<input id="email" name="email" required="yes" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$"
+              type="text">
+            <br>
+            I agree to all the rules.&nbsp;&nbsp;<input name="rules" 
+              type="checkbox" id="rules" onclick="chcheck()">
+	    <br><br>
+            <button type="reset" onclick="hide_sub()">Reset</button> <button type="submit"
+              style="display: none"
+              id="sub_button">
+              Submit</button> </form>
+        </article>
+      </main>
+      <aside>
+        <div>Submissions may be updated at any time prior to {{date}} GMT. </div>
+      </aside>
+    </section>
+    <footer>
+      <p>© IOCCC 2022, | powered by | <a href="https://html5-templates.com/" target="_blank"
+          rel="nofollow">HTML5
+          Templates</a></p>
+      <address> Contact: <a href="mailto:ioccc@ioccc.org">Mail me</a> </address>
+    </footer>
+  </body>
+</html>
