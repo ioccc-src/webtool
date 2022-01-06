@@ -264,9 +264,6 @@ def register():
     opdate,cldate,now=check_state()
     return render_template("register.html",date=cldate)
 
-if __name__ == '__main__':
-    application.run(host='0.0.0.0')
-
 @application.route('/reg',methods=["POST"])
 def reg():
     if not ("firstname" in request.form and "lastname" in request.form 
@@ -282,3 +279,7 @@ def reg():
         flash("Rules not agreed.")
         return(redirect(ioccc_root + "/register"))
     return render_template("re-confirm.html")
+
+if __name__ == '__main__':
+    application.run(host='0.0.0.0')
+
