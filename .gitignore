@@ -1,3 +1,4 @@
 # We sort the list below via: sort -d -u
 iocccpasswd
-venv
+iocccpasswd.safe
+venv/
