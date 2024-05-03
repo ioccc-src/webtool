@@ -21,8 +21,10 @@ versions by default).
 
 ## Installation
 
-% git clone {this distribution} /usr/lib/ioccc
-% pip install -r requirements.txt
+```sh
+    git clone https://github.com/ioccc-src/submit-tool.git /usr/lib/ioccc
+    pip3 install -r requirements.txt
+```
 
 Create /var/lib/ioccc and make sure that it is writable to you web
 server.  Generate a password file with iocccpasswd.py.  Be sure to
@@ -33,8 +35,11 @@ install and enable mod-wsgi.
 
 Add these lines in an appropriate apache config:
 
-   WSGIScriptAlias /ioccc /usr/lib/ioccc/ioccc.py
-   WSGIPassAuthorization On
+
+```
+    WSGIScriptAlias /ioccc /usr/lib/ioccc/ioccc.py
+    WSGIPassAuthorization On
+```
 
 ## Using
 
