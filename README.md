@@ -2,6 +2,7 @@
 
 This is the mechanism to upload IOCCC entries.
 
+
 ## Disclaimer
 
 This is concept code, originally written by Eliot Lear (@elear) in late 2021.
@@ -12,12 +13,14 @@ contestants to submit files created by the mkiocccentry tool.
 That IOCCC submission container will deploy something based on,
 but NOT identical, to this submit-tool.
 
+
 ## Requirements
 
 This code requires cryptography and uwsgi, both of which can bloat a
 container.What really bloats the container right now, however, is
 a requirement for python3.9 or later (Ubuntu containers run with earlier
 versions by default).
+
 
 ## Installation
 
@@ -40,6 +43,7 @@ Add these lines in an appropriate apache config:
     WSGIScriptAlias /ioccc /usr/lib/ioccc/ioccc.py
     WSGIPassAuthorization On
 ```
+
 
 ## Using
 
