@@ -1,4 +1,4 @@
-# Initial IOCCC Upload page
+# IOCCC submit tool
 
 This is the mechanism to upload IOCCC entries.
 
@@ -18,8 +18,8 @@ directory and then:
     docker run -p 5001:5001 testimg:latest
 ```
 
-When the above `doctor` command is running,
-launch a browser and visit: [submit tool](http://127.0.0.1:5001)
+When the ru `docker` command is running, launch a browser and visit:
+[submit tool](http://127.0.0.1:5001)
 
 Login using a username and password referenced in the `iocccpasswd` file.
 
@@ -83,38 +83,7 @@ but NOT identical, to this submit-tool.
 
 ## Requirements
 
-This code requires cryptography and uwsgi, both of which can bloat a
-container.What really bloats the container right now, however, is
-a requirement for python3.9 or later (Ubuntu containers run with earlier
-versions by default).
-
-
-## Using
-
-Files are uploaded to the users' directories in /var/lib/ioccc.  They
-can update their entries at any time prior to you disabling the page.
-
-
-### old installation notes
-
-These notes seem to be out of date:
-
-```sh
-    git clone https://github.com/ioccc-src/submit-tool.git /usr/lib/ioccc
-    pip3 install -r requirements.txt
-```
-
-Create /var/lib/ioccc and make sure that it is writable to you web
-server.  Generate a password file with iocccpasswd.py.  Be sure to
-save the passwords.
-
-Enable werkzeug.  Apache has appropriate machinery.  Be sure to
-install and enable mod-wsgi.
-
-Add these lines in an appropriate apache config:
-
-
-```
-    WSGIScriptAlias /ioccc /usr/lib/ioccc/ioccc.py
-    WSGIPassAuthorization On
-```
+This code requires cryptography and uwsgi, both of which can bloat
+a container.  What really bloats the container right now, however,
+is a requirement for python3.9 or later (Ubuntu containers run with
+earlier versions by default).
