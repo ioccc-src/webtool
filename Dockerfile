@@ -14,5 +14,5 @@ COPY . /app
 
 ENTRYPOINT [ "uwsgi" ]
 
-CMD ["--http-socket",":5000","--plugin","python","uwsgi.ini"]
+CMD ["--http-socket",":8191","--plugin","python","uwsgi.ini"]
 
