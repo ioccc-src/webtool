@@ -9,19 +9,23 @@ On a macOS host with the docker app, cd to the top of the repo
 directory and then:
 
 ```sh
+    # launch/run the docker app
+
     rm -rf venv && python3 -m venv venv
 
     . ./venv/bin/activate
 
     python3 -m pip install -r requirements.txt
 
+    docker image rm ioccc-submit	# if it exists already
+
     docker buildx build -t ioccc-submit:latest .
 
-    docker run -p 5001:5001 ioccc-submit:latest
+    docker run -p 8191:8191 ioccc-submit:latest
 ```
 
 When the ru `docker` command is running, launch a browser and visit:
-[submit tool](http://127.0.0.1:5001)
+[submit tool](http://127.0.0.1:8191)
 
 Login using a username and password referenced in the `iocccpasswd` file.
 
