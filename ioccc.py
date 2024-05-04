@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python3
 """
 Routines to implement IOCCC registration functions.
 """
@@ -15,9 +15,9 @@ from iocccpasswd import adduser,deluser
 
 application = Flask(__name__)
 # BTW: max uncompressed tar 4e6 bytes
-#      so we set the max bip2 compressed tar is the larest prime < 4e6 bytes
+#      so we set the max bip2 compressed tar is the largest prime < 4e6 bytes
 application.config['MAX_CONTENT_LENGTH']=3999971
-# XXX - flask requires application.secret_key to be set, change before delpoyment
+# XXX - flask requires application.secret_key to be set, change before deployment
 application.secret_key="CHANGE_ME"
 auth = HTTPBasicAuth()
 

@@ -15,7 +15,9 @@ directory and then:
 
     python3 -m pip install -r requirements.txt
 
-    docker run -p 5001:5001 testimg:latest
+    docker buildx build -t ioccc-submit:latest .
+
+    docker run -p 5001:5001 ioccc-submit:latest
 ```
 
 When the ru `docker` command is running, launch a browser and visit:

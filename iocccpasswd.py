@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Functions to implement adding and deleting of IOCCC contestants.
 """
@@ -34,7 +35,7 @@ def writepwfile(pwfile,pw_json):
     """
     try:
         with open(pwfile,"w",encoding="utf-8") as pw_fp:
-            pw_fp.write(json.dumps(pw_json))
+            pw_fp.write(json.dumps(pw_json, sort_keys=True, indent=4))
             pw_fp.close()
     except FileNotFoundError:
         print("file not found")
