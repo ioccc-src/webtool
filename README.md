@@ -19,12 +19,12 @@ directory and then:
 
     docker image rm ioccc-submit	# if it exists already
 
-    docker buildx build -t ioccc-submit:latest .
+    docker build -t ioccc-submit:latest .
 
     docker run -p 8191:8191 ioccc-submit:latest
 ```
 
-When the ru `docker` command is running, launch a browser and visit:
+When the `docker` command is running, launch a browser and visit:
 [submit tool](http://127.0.0.1:8191)
 
 Login using a username and password referenced in the `iocccpasswd` file.
