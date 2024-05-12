@@ -5,12 +5,12 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="2024-05-12"
+LABEL VERSION="0.3 2024-05-12"
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
 LABEL org.ioccc.image.version="$VERSION"
-LABEL org.ioccc.image.authors="IOCCC Judges"
+LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
 # Create, if needed the /app tree in the image
