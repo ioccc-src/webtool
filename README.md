@@ -11,17 +11,44 @@ directory and then:
 ```sh
     # launch/run the docker app
 
+    # nice to build under an equivalent python activated environment
+    #
     rm -rf venv && python3 -m venv venv
-
     . ./venv/bin/activate
-
     python3 -m pip install -r requirements.txt
 
-    docker image rm ioccc-submit	# if it exists already
+    # to remove all stopped containers
+    #
+    docker container prune -f
 
+    # remove old ioccc-submit image
+    #
+    docker image rm ioccc-submit
+
+    # build new ioccc-submit image
+    #
     docker build -t ioccc-submit:latest .
 
-    docker run -p 8191:8191 ioccc-submit:latest
+	# update scout-cli and review results
+	#
+	curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s --
+
+	# optional: scan contaiers for issues
+	#
+	docker scout quickview
+
+	# detail issue scan of ioccc-submit
+	#
+	docker scout cves local://ioccc-submit:latest
+
+    # run the ioccc-submit:latest in the backgroud
+    #
+    # NOTE: To run in foreground with diagnostic to the terminal,
+    #	    execute the following instead of "docker run -it -d ...".
+    #
+    #	docker run -p 8191:8191 ioccc-submit:latest
+    #
+    docker run -it -d -p 8191:8191 ioccc-submit:latest
 ```
 
 When the `docker` command is running, launch a browser and visit:
@@ -29,6 +56,13 @@ When the `docker` command is running, launch a browser and visit:
 
 Login using a username and password referenced in the `iocccpasswd` file.
 
+To build and run as a single command under a python activated environment:
+
+```sh
+    docker container prune -f ; \
+    docker image rm ioccc-submit ; \
+    docker build -t ioccc-submit:latest . && docker run -p 8191:8191 ioccc-submit:latest
+```
 
 ## iocccpasswd.py user management
 
