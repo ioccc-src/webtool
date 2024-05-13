@@ -15,7 +15,7 @@ hr{display:block;height:1px;border:0;border-top:1px solid #ccc;margin:1em 0;padd
 input,select{vertical-align:middle}
 
 body,html {
-	background-color: #FFF;
+    background-color: #FFF;
 }
 header {
     background: #AEC6CF;
@@ -36,7 +36,7 @@ nav ul li a {
     border-radius: 10px;
 }
 nav ul li a:hover {
-	background: #FFF;
+    background: #FFF;
 }
 nav ul li {
     display: inline-block;
@@ -51,12 +51,12 @@ nav ul {
     border: none;
 }
 main {
-	float: left;
-	width: 60%;
+    float: left;
+    width: 60%;
 }
 aside {
-	float: right;
-	width: 30%;
+    float: right;
+    width: 30%;
 }
 article {
     border-bottom: 2px dotted #999;
@@ -68,28 +68,28 @@ article h2 {
     margin-bottom: 12px;
 }
 article p {
-	
+
 }
 main section {
-	
+
 }
 footer {
-	background: #AEC6CF;
-	max-width: 1000px;
-	margin: auto;
-	clear: both;
-	text-align: right;
+    background: #AEC6CF;
+    max-width: 1000px;
+    margin: auto;
+    clear: both;
+    text-align: left;
 }
 footer p {
-	padding: 20px;
+    padding: 10px 20px;
 }
-address {
-    padding: 10px 20px 30px 10px;
+footer ul {
+    padding: 10px 40px;
 }
 aside > div {
-	margin: 10px auto;
-	background: #AEC6CF;
-	min-height: 100px;
+    margin: 10px auto;
+    background: #AEC6CF;
+    min-height: 100px;
 }
 #logo {
     display: inline-block;
@@ -112,33 +112,32 @@ body > section {
 }
 
 @media screen and (max-width: 1000px) {
-	body > section {
-		padding: 30px 20px;
-	}
+    body > section {
+	padding: 30px 20px;
+    }
 }
 @media screen and (max-width: 600px) {
-	main {
-		float: none;
-		width: 100%;
-	}
-	aside {
-		float: none;
-		width: 100%;
-	}
-
+    main {
+	float: none;
+	width: 100%;
+    }
+    aside {
+	float: none;
+	width: 100%;
+    }
 }
 table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
 }
 
 td, th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
 }
 
 tr:nth-child(even) {
-  background-color: #dddddd;
+    background-color: #dddddd;
 }

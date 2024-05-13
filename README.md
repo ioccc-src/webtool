@@ -51,8 +51,8 @@ directory and then:
     docker run -it -d -p 8191:8191 ioccc-submit:latest
 ```
 
-When the `docker` command is running, launch a browser and visit:
-[submit tool](http://127.0.0.1:8191)
+When the `docker` command is running, launch a browser and visit
+the local submit tool URL: [http://127.0.0.1:8191](http://127.0.0.1:8191).
 
 Login using a username and password referenced in the `iocccpasswd` file.
 

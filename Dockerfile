@@ -26,11 +26,12 @@ COPY ./requirements.txt /app/requirements.txt
 #
 WORKDIR /app
 
-# Setup the pythin enviroment needed by this image.
+# Setup the pythin enviroment needed by this image
 #
-RUN apk add python3 uwsgi-cgi py3-cryptography py3-pip py3-werkzeug \
-	    py3-flask py3-authlib uwsgi-http uwsgi uwsgi-python3 tzdata && \
-    python3 -m pip install --break-system-packages -r requirements.txt
+RUN apk add tzdata
+RUN apk add python3 py3-cryptography py3-pip py3-werkzeug py3-flask py3-authlib
+RUN apk add uwsgi uwsgi-http uwsgi-cgi uwsgi-python3
+RUN python3 -m pip install --break-system-packages -r requirements.txt
 
 # Copy everying from . into /app except for things mentioned in .dockerignore
 #
@@ -49,7 +50,7 @@ RUN chown -R uwsgi:uwsgi users
 
 # Indicates a port the image would like to expose
 #
-EXPOSE 8191
+EXPOSE 8191/tcp
 
 # Sets the default user for all subsequent instructions
 #
