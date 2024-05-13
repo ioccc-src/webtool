@@ -73,6 +73,31 @@ article p {
 main section {
 
 }
+#labelFont {
+    font-size: 21px;
+}
+
+.button {
+    border: none;
+    border-radius: 8px;
+    padding: 2px 2px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 4px 2px;
+    cursor: pointer;
+    background-color: #AEC6CF;
+    border: 2px solid #2B3133;
+    color: black;
+}
+
+.button:hover {
+    background-color: white;
+    color: black;
+}
+
 footer {
     background: #AEC6CF;
     max-width: 1000px;

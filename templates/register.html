@@ -31,6 +31,10 @@
     <section id="pageContent">
       <main role="main">
         <article>
+	  <form action="/logout" method="get" target="_self">
+	      <button type="submit" formmethod="get" class="button">Logout</button>
+	  </form>
+	  <br>
           <form name="register" action="reg" method="post"><br>
             First Name&nbsp;<input id="firstname" name="firstname" size="20" required="yes"
               type="text">
@@ -41,13 +45,11 @@
             EMail Address&nbsp;<input id="email" name="email" required="yes" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$"
               type="text">
             <br>
-            I agree to all the rules.&nbsp;&nbsp;<input name="rules" 
+            I agree to all the rules.&nbsp;&nbsp;<input name="rules"
               type="checkbox" id="rules" onclick="chcheck()">
 	    <br><br>
-            <button type="reset" onclick="hide_sub()">Reset</button> <button type="submit"
-              style="display: none"
-              id="sub_button">
-              Submit</button> </form>
+            <button type="reset" onclick="hide_sub()" class="button">Reset</button>
+	    <button type="submit" style="display: none" id="sub_button" class="button">Submit</button> </form>
         </article>
       </main>
       <aside>

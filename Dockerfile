@@ -5,7 +5,7 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="0.3.1 2024-05-12"
+LABEL VERSION="0.3.2 2024-05-13"
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"

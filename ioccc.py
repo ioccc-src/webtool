@@ -19,6 +19,7 @@ application = Flask(__name__)
 application.config['MAX_CONTENT_LENGTH']=3999971
 # XXX - flask requires application.secret_key to be set, change before deployment
 application.secret_key="CHANGE_ME"
+application.config['BASIC_AUTH_FORCE'] = True
 auth = HTTPBasicAuth()
 
 with application.test_request_context('/'):
@@ -26,13 +27,14 @@ with application.test_request_context('/'):
     url_for('static',filename='script.js')
     url_for('static',filename='ioccc.png')
 
-# ioccc_dir="/var/lib/ioccc"
-IOCCC_DIR="/app"
-IOCCC_ROOT="/"
-PW_FILE= IOCCC_DIR + "/iocccpasswd"
-STATE_FILE= IOCCC_DIR + "/state"
-ADM_FILE = IOCCC_DIR + "/admins"
+HOST_NAME = "127.0.0.1"
+TCP_PORT = "8191"
 
+IOCCC_DIR = "/app"
+IOCCC_ROOT = "/"
+PW_FILE = IOCCC_DIR + "/iocccpasswd"
+STATE_FILE = IOCCC_DIR + "/state"
+ADM_FILE = IOCCC_DIR + "/admins"
 
 def write_entries(entry_file,entries):
     """
@@ -132,8 +134,8 @@ def check_state():
         the_time=datetime.fromisoformat(st_info['closedate'])
         cldate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("UTC"))
     else:
-        opdate=datetime(2019,1,1,tzinfo=ZoneInfo("UTC"))
-        cldate=datetime(2025,12,31,tzinfo=ZoneInfo("UTC"))
+        opdate=datetime(2024,1,2,3,4,5,tzinfo=ZoneInfo("UTC"))
+        cldate=datetime(2025,12,31,23,59,59,tzinfo=ZoneInfo("UTC"))
     now=datetime.now(timezone.utc)
     return opdate,cldate,now
 
@@ -260,26 +262,36 @@ def admin_update():
             deluser(request.form[key],IOCCC_DIR,PW_FILE)
     return redirect("/admin")
 
-@application.route('/register',methods=["GET"])
-def register():
-    opdate,cldate,now=check_state()
-    return render_template("register.html",date=cldate)
+@application.route('/logout')
+@auth.login_required
+def logout():
+    """
+    Gross hack to invalidate the BasicAuth session
 
-@application.route('/reg',methods=["POST"])
-def reg():
-    if not ("firstname" in request.form and "lastname" in request.form 
-            and "email" in request.form and "rules" in request.form ):
-        flash("Form not complete")
-        return(redirect(ioccc_root + "/register"))
-    email=request.form['email']
-    if (len(request.form['firstname']) < 1 or len(request.form['lastname']) < 1
-        or not re.match("[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$",email)):
-        flash("Form not properly complete.")
-        return(redirect(ioccc_root + "/register"))
-    if (not request.form['rules']):
-        flash("Rules not agreed.")
-        return(redirect(ioccc_root + "/register"))
-    return render_template("re-confirm.html")
+    See https://stackoverflow.com/questions/233507/how-to-log-out-user-from-web-site-using-basic-authentication
+    """
+    return redirect("http://logout:@" + HOST_NAME + ":" + TCP_PORT + "/")
+
+#skip# @application.route('/register',methods=["GET"])
+#skip# def register():
+#skip#     opdate,cldate,now=check_state()
+#skip#     return render_template("register.html",date=cldate)
+#skip#
+#skip# @application.route('/reg',methods=["POST"])
+#skip# def reg():
+#skip#     if not ("firstname" in request.form and "lastname" in request.form
+#skip#             and "email" in request.form and "rules" in request.form ):
+#skip#         flash("Form not complete")
+#skip#         return(redirect(ioccc_root + "/register"))
+#skip#     email=request.form['email']
+#skip#     if (len(request.form['firstname']) < 1 or len(request.form['lastname']) < 1
+#skip#         or not re.match("[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$",email)):
+#skip#         flash("Form not properly complete.")
+#skip#         return(redirect(ioccc_root + "/register"))
+#skip#     if (not request.form['rules']):
+#skip#         flash("Rules not agreed.")
+#skip#         return(redirect(ioccc_root + "/register"))
+#skip#     return render_template("re-confirm.html")
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0')

@@ -11,7 +11,7 @@
   </head>
   <body>
     <header>
-      <div id="logo"><img src="static/ioccc.png"> Upload submissions to the IOCCC</div>
+      <div id="logo"><img src="static/ioccc.png"> Upload your submission(s) to the IOCCC</div>
     </header>
     <section>
       <strong>
@@ -36,13 +36,13 @@ Welcome, {{ user }}!<br>
     <section id="pageContent">
       <main role="main">
         <article>
-          <h2>Select entry to update/modify:</h2>
+          <p id="labelFont"><b>First:</b> Select An Entry:</p>
           <form name="upload" action="update" method="post" enctype="multipart/form-data"><br>
             <p>
 	      <table>
 		<tr>
-		  <th>Entry Number</th>
-		  <th>Create/Update?</th>
+		  <th>Entry</th>
+		  <th>Select</th>
 		  <th>Hash</th>
 		</tr>
 		{% for key in etable %}
@@ -59,17 +59,22 @@ Welcome, {{ user }}!<br>
 		</tr>
 		{% endfor %}
 	      </table>
+	      </p>
             <br>
-            <input name="file" id="file" required="" type="file">
-            <br>
-            <br>
-            <button type="reset" onclick="hide_sub()">Reset </button> <button
-              type="submit"
-              style="display: none"
-              id="sub_button">
-              Submit</button> </form>
-          <p><br>
-          </p>
+	    <p id="labelFont"><label for="file"><b>Second:</b></label>
+	    <input name="file" id="file" required="" type="file" class="button"></p>
+	    <br>
+	    <p id="labelFont"><label><b>Third:</b> Click:</label>
+	    <button type="submit" style="display: none" id="sub_button" class="button">Submit</button></p>
+	    <br>
+	    <p id="labelFont"><label><b>Else:</b> Click:</label>
+            <button type="reset" onclick="hide_sub()" class="button">Reset</button></p>
+	  </form>
+	  <br>
+	  <form action="/logout" method="get" target="_self">
+	      <p id="labelFont"><label><b>Last:</b> Click:</label>
+	      <button type="submit" formmethod="get" class="button">Logout</button></p>
+	  </form>
         </article>
       </main>
       <aside>
