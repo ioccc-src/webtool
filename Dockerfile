@@ -5,7 +5,7 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="0.3 2024-05-12"
+LABEL VERSION="0.3.1 2024-05-12"
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
@@ -47,6 +47,10 @@ RUN chown uwsgi:uwsgi iocccpasswd
 RUN mkdir -p users
 RUN chmod 2770 users
 RUN chown -R uwsgi:uwsgi users
+
+# Set permissions for admins
+#
+RUN chmod 0444 admins
 
 # Indicates a port the image would like to expose
 #

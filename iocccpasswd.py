@@ -35,7 +35,8 @@ def writepwfile(pwfile,pw_json):
     """
     try:
         with open(pwfile,"w",encoding="utf-8") as pw_fp:
-            pw_fp.write(json.dumps(pw_json, sort_keys=True, indent=4))
+            pw_fp.write(json.dumps(pw_json, ensure_ascii=True, sort_keys=True, indent=4))
+            pw_fp.write('\n')
             pw_fp.close()
     except FileNotFoundError:
         print("file not found")

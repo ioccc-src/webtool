@@ -40,7 +40,8 @@ def write_entries(entry_file,entries):
     """
     try:
         with open(entry_file,mode="w",encoding="utf-8") as entries_fp:
-            entries_fp.write(json.dumps(entries))
+            entries_fp.write(json.dumps(entries, ensure_ascii=True, sort_keys=True, indent=4))
+            entries_fp.write('\n')
             entries_fp.close()
     except IOError as excpt:
         print(str(excpt))
@@ -127,12 +128,12 @@ def check_state():
     st_info=readjfile(STATE_FILE)
     if st_info:
         the_time=datetime.fromisoformat(st_info['opendate'])
-        opdate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("GMT"))
+        opdate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("UTC"))
         the_time=datetime.fromisoformat(st_info['closedate'])
-        cldate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("GMT"))
+        cldate=datetime(the_time.year,the_time.month,the_time.day,tzinfo=ZoneInfo("UTC"))
     else:
-        opdate=datetime(2019,1,1,tzinfo=ZoneInfo("GMT"))
-        cldate=datetime(2025,12,31,tzinfo=ZoneInfo("GMT"))
+        opdate=datetime(2019,1,1,tzinfo=ZoneInfo("UTC"))
+        cldate=datetime(2025,12,31,tzinfo=ZoneInfo("UTC"))
     now=datetime.now(timezone.utc)
     return opdate,cldate,now
 
