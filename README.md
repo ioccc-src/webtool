@@ -11,12 +11,6 @@ directory and then:
 ```sh
     # launch/run the docker app
 
-    # nice to build under an equivalent python activated environment
-    #
-    rm -rf venv && python3 -m venv venv
-    . ./venv/bin/activate
-    python3 -m pip install -r requirements.txt
-
     # to remove all stopped containers
     #
     docker container prune -f
@@ -108,6 +102,29 @@ modify a file other than `iocccpasswd`.
 
 One may add `-p pwd.filename` to the command line to form and/or
 modify a file other than `iocccpasswd`.
+
+
+### To test tools outside of the docker container
+
+To setup a test outside of the docker container, create and
+activate a python environment:
+
+```sh
+    rm -rf venv && python3 -m venv venv
+    . ./venv/bin/activate
+    python3 -m pip install -r etc/requirements.txt
+```
+
+**IMPORTANT NOTE:** You may find problems testing tools such as
+`ioccc.py` due to things such as the tcp port being unavailable or
+certain files not being ready.  Testing outside of a docker container
+is **NOT supported and may fail**!
+
+To deactivate the above python environment:
+
+```sh
+    deactivate
+```
 
 
 ## Disclaimer

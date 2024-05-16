@@ -1,3 +1,7 @@
-.git
+# We sort the list below via: sort -d -u
+?
 NOTES.submit-tool
+.git
+__pycache__/
 .*.swp
+venv

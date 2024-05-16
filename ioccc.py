@@ -30,8 +30,8 @@ with application.test_request_context('/'):
 HOST_NAME = "127.0.0.1"
 TCP_PORT = "8191"
 
-IOCCC_DIR = "/app"
 IOCCC_ROOT = "/"
+IOCCC_DIR = "/app"
 PW_FILE = IOCCC_DIR + "/etc/iocccpasswd"
 STATE_FILE = IOCCC_DIR + "/state"
 ADM_FILE = IOCCC_DIR + "/etc/admins"

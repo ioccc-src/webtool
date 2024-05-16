@@ -5,7 +5,7 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="0.3.3 2024-05-15"
+LABEL VERSION="0.3.4 2024-05-15"
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
@@ -17,41 +17,66 @@ LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 #
 RUN mkdir -p /app
 
-# Copy files from the host and put them into the container image
+# Copy everying from . into /app except for things mentioned in .dockerignore
 #
-COPY ./requirements.txt /app/requirements.txt
+COPY . /app
+
+# Set permissions for /app
+#
+RUN chmod 0555 /app
+RUN chown root:root /app
 
 # Specifies the "working directory" in the image where files will
 # be copied and commands will be executed.
 #
 WORKDIR /app
 
+# Create etc sub-directory
+#
+RUN mkdir -p etc
+RUN chmod 0555 etc
+RUN chown root:root etc
+
+# Copy files from the host and put them into the container image
+#
+COPY ./etc/requirements.txt etc/requirements.txt
+
 # Setup the pythin enviroment needed by this image
 #
 RUN apk add tzdata
 RUN apk add python3 py3-cryptography py3-pip py3-werkzeug py3-flask py3-authlib
 RUN apk add uwsgi uwsgi-http uwsgi-cgi uwsgi-python3
-RUN python3 -m pip install --break-system-packages -r requirements.txt
+RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 
-# Copy everying from . into /app except for things mentioned in .dockerignore
+# Set permissions in top level files
 #
-COPY . /app
+RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md ioccc.py iocccpasswd.py uwsgi.ini
+RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md ioccc.py iocccpasswd.py uwsgi.ini
 
-# Create etc sub-directory
+# Set permissions for etc/admins
 #
-RUN mkdir -p /app/etc
-RUN chmod 755 /app/etc
-RUN chown root:root /app/etc
+RUN chmod 0444 etc/admins
+RUN chown root:root etc/admins
 
-# Set permissions for iocccpasswd
+# Set permissions for etc/iocccpasswd
 #
 RUN chmod 0660 etc/iocccpasswd
 RUN chown uwsgi:uwsgi etc/iocccpasswd
 
-# Set permissions for admins
+# Set permissions for etc/requirements.txt
 #
-RUN chmod 0444 etc/admins
-RUN chown root:root etc/admins
+RUN chmod 0440 etc/requirements.txt
+RUN chown root:root etc/requirements.txt
+
+# Set permission for static
+#
+RUN chmod 0555 static
+RUN chmod 0444 static/*
+
+# Set permission for templates
+#
+RUN chmod 0555 templates
+RUN chmod 0444 templates/*
 
 # Create the IOCCC users directory with permissions
 #
