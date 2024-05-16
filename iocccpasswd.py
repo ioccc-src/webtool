@@ -9,7 +9,7 @@ from os import listdir,remove, rmdir
 from werkzeug.security import generate_password_hash
 from passwordgenerator import pwgenerator
 
-PWD_FILE='iocccpasswd'
+PWD_FILE='etc/iocccpasswd'
 IOCCC_DIR="/app"
 
 def readpwfile(pwfile,failonnotexist=True):

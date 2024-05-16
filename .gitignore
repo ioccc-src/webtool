@@ -1,5 +1,4 @@
 # We sort the list below via: sort -d -u
 NOTES.submit-tool/
-iocccpasswd
-iocccpasswd.safe
+etc/iocccpasswd
 venv/

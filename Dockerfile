@@ -5,7 +5,7 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="0.3.2 2024-05-13"
+LABEL VERSION="0.3.3 2024-05-15"
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
@@ -37,20 +37,27 @@ RUN python3 -m pip install --break-system-packages -r requirements.txt
 #
 COPY . /app
 
+# Create etc sub-directory
+#
+RUN mkdir -p /app/etc
+RUN chmod 755 /app/etc
+RUN chown root:root /app/etc
+
 # Set permissions for iocccpasswd
 #
-RUN chmod 0660 iocccpasswd
-RUN chown uwsgi:uwsgi iocccpasswd
+RUN chmod 0660 etc/iocccpasswd
+RUN chown uwsgi:uwsgi etc/iocccpasswd
+
+# Set permissions for admins
+#
+RUN chmod 0444 etc/admins
+RUN chown root:root etc/admins
 
 # Create the IOCCC users directory with permissions
 #
 RUN mkdir -p users
 RUN chmod 2770 users
 RUN chown -R uwsgi:uwsgi users
-
-# Set permissions for admins
-#
-RUN chmod 0444 admins
 
 # Indicates a port the image would like to expose
 #

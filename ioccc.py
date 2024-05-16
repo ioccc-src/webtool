@@ -32,9 +32,9 @@ TCP_PORT = "8191"
 
 IOCCC_DIR = "/app"
 IOCCC_ROOT = "/"
-PW_FILE = IOCCC_DIR + "/iocccpasswd"
+PW_FILE = IOCCC_DIR + "/etc/iocccpasswd"
 STATE_FILE = IOCCC_DIR + "/state"
-ADM_FILE = IOCCC_DIR + "/admins"
+ADM_FILE = IOCCC_DIR + "/etc/admins"
 
 def write_entries(entry_file,entries):
     """
