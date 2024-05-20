@@ -110,20 +110,22 @@ To setup a test outside of the docker container, create and
 activate a python environment:
 
 ```sh
-    rm -rf venv && python3 -m venv venv
+    rm -rf venv __pycache__ && python3 -m venv venv
     . ./venv/bin/activate
     python3 -m pip install -r etc/requirements.txt
 ```
 
-**IMPORTANT NOTE:** You may find problems testing tools such as
-`ioccc.py` due to things such as the tcp port being unavailable or
-certain files not being ready.  Testing outside of a docker container
-is **NOT supported and may fail**!
+**IMPORTANT NOTE:** You may find problems running `ioccc.py` due
+to various things such as the tcp port being unavailable, certain
+files not being ready, or the development server having issues.
+Testing outside of a docker container is **NOT supported and may
+fail**!
 
 To deactivate the above python environment:
 
 ```sh
     deactivate
+    rm -rf __pycache__ venv
 ```
 
 

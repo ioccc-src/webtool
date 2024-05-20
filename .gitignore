@@ -1,6 +1,6 @@
 # We sort the list below via: sort -d -u
 ?
-NOTES.submit-tool/
+NOTES/
 etc/iocccpasswd
 __pycache__/
 venv/

@@ -1,7 +1,7 @@
 # We sort the list below via: sort -d -u
 ?
-NOTES.submit-tool
+NOTES
 .git
-__pycache__/
+__pycache__
 .*.swp
 venv

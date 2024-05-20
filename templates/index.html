@@ -36,14 +36,14 @@ Welcome, {{ user }}!<br>
     <section id="pageContent">
       <main role="main">
         <article>
-          <p id="labelFont"><b>First:</b> Select An Entry:</p>
+          <p id="labelFont"><b>First:</b> Select a slot:</p>
           <form name="upload" action="update" method="post" enctype="multipart/form-data"><br>
             <p>
 	      <table>
 		<tr>
-		  <th>Entry</th>
+		  <th>Slot</th>
 		  <th>Select</th>
-		  <th>Hash</th>
+		  <th>SHA256 Hash</th>
 		</tr>
 		{% for key in etable %}
 		<tr>
@@ -61,6 +61,21 @@ Welcome, {{ user }}!<br>
 	      </table>
 	      </p>
             <br>
+            <br>
+	    <p><b>IMPORTANT:</b> Upload <b>only XZ compressed tarballs</b> whose <b>filename is</b>:</p>
+	    <br>
+	    <p><code><b>&nbsp;&nbsp;&nbsp;&nbsp;submit.{{user}}-<i>SLOT</i>.<i>TIMESTAMP</i>.txz</b></code></p>
+	    <br>
+	    <p>where <code><b><i>SLOT</i></b></code> is a slot number, and <code><b><i>TIMESTAMP</i></b></code>
+	    is the build time as a <a href="https://unixtime.org">Unix timestamp</a>.</p>
+	    <br>
+	    <p>We <b>highly recommend</b> that you use
+	    <a href="https://github.com/ioccc-src/mkiocccentry">mkiocccentry(1)</a>
+	    to create your submit file as it <b>must pass</b> the
+	    <a href="https://github.com/ioccc-src/mkiocccentry">txzchk(1)</a> sanity check,
+	    and when the uncompressed tarball is untarred, the resulting directory <b>must pass</b>
+	    <a href="https://github.com/ioccc-src/mkiocccentry">chkentry(1)</a>.</p>
+	    <br>
 	    <p id="labelFont"><label for="file"><b>Second:</b></label>
 	    <input name="file" id="file" required="" type="file" class="button"></p>
 	    <br>
