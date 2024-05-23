@@ -2,3 +2,4 @@ Authlib>=0.14.3
 Flask-Auth>=0.85
 Flask-HTTPAuth>=4.5.0
 passwordgenerator>=1.4
+filelock

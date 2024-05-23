@@ -1,6 +1,6 @@
 # IOCCC submit tool
 
-This is the mechanism to upload IOCCC entries.
+This is the mechanism to upload submissions to an open IOCCC
 
 
 ## To use:
