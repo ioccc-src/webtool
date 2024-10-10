@@ -19,8 +19,8 @@ body,html {
 }
 header {
     background: #AEC6CF;
-    padding: 20px 30px;
-    max-width: 940px;
+    padding: 20px 20px;
+    max-width: 960px;
     margin: auto;
 }
 nav {
@@ -52,7 +52,7 @@ nav ul {
 }
 main {
     float: left;
-    width: 60%;
+    width: 100%;
 }
 aside {
     float: right;
@@ -138,7 +138,7 @@ body > section {
 
 @media screen and (max-width: 1000px) {
     body > section {
-	padding: 30px 20px;
+	padding: 20px 20px;
     }
 }
 @media screen and (max-width: 600px) {

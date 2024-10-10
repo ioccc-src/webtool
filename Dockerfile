@@ -5,11 +5,9 @@ FROM alpine:latest
 
 # Docker container labels
 #
-LABEL VERSION="0.4.1 2024-05-22"
-#
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="$VERSION"
+LABEL org.ioccc.image.version="0.4.3 2024-10-06"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -34,7 +32,7 @@ WORKDIR /app
 # Create etc sub-directory
 #
 RUN mkdir -p etc
-RUN chmod 0555 etc
+RUN chmod 0755 etc
 RUN chown root:root etc
 
 # Copy files from the host and put them into the container image
@@ -53,20 +51,46 @@ RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md ioccc.py iocccpasswd.py uwsgi.ini
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md ioccc.py iocccpasswd.py uwsgi.ini
 
-# Set permissions for etc/admins
+# Set permissions for etc/admins.json
 #
-RUN chmod 0444 etc/admins
-RUN chown root:root etc/admins
+RUN chmod 0664 etc/admins.json
+RUN chown root:root etc/admins.json
 
-# Set permissions for etc/iocccpasswd
+# Set permissions for etc/iocccpasswd.json
 #
-RUN chmod 0660 etc/iocccpasswd
-RUN chown uwsgi:uwsgi etc/iocccpasswd
+RUN chmod 0664 etc/iocccpasswd.json
+RUN chown uwsgi:uwsgi etc/iocccpasswd.json
+
+# Create an empty the etc/state.json if missing
+#
+RUN <<EOT
+    if [[ ! -f etc/state.json ]]; then
+	touch etc/state.json
+    fi
+EOT
+
+# Set permissions for etc/state.json
+#
+RUN chmod 0664 etc/state.json
+RUN chown uwsgi:uwsgi etc/state.json
 
 # Set permissions for etc/requirements.txt
 #
 RUN chmod 0440 etc/requirements.txt
 RUN chown root:root etc/requirements.txt
+
+# Generate etc/.secret if not found of if empty
+#
+RUN <<EOT
+    if [[ ! -s etc/.secret ]]; then
+	./genflaskkey
+    fi
+EOT
+
+# Set permissions for etc/.secret
+#
+RUN chmod 0440 etc/.secret
+RUN chown uwsgi:uwsgi etc/.secret
 
 # Set permission for static
 #

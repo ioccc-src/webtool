@@ -1,6 +1,8 @@
 # We sort the list below via: sort -d -u
 ?
 NOTES/
-etc/iocccpasswd
+etc/iocccpasswd.json
+etc/.secret
+etc/state.json
 __pycache__/
 venv/

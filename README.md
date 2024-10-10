@@ -2,11 +2,14 @@
 
 This is the mechanism to upload submissions to an open IOCCC
 
+**IMPORTANT NOTE:**
+
+The examples below assume you have cd-ed into the top directory for the repo.
+
 
 ## To use:
 
-On a macOS host with the docker app, cd to the top of the repo
-directory and then:
+On a macOS host with the docker app installed:
 
 ```sh
     # launch/run the docker app
@@ -31,7 +34,7 @@ directory and then:
 	#
 	docker scout quickview
 
-	# detail issue scan of ioccc-submit
+	# optional: detail issue scan of ioccc-submit
 	#
 	docker scout cves local://ioccc-submit:latest
 
@@ -48,7 +51,7 @@ directory and then:
 When the `docker` command is running, launch a browser and visit
 the local submit tool URL: [http://127.0.0.1:8191](http://127.0.0.1:8191).
 
-Login using a username and password referenced in the `iocccpasswd` file.
+Login using a username and password referenced in the `NOTES/INFO/pw.txt` file.
 
 To build and run as a single command under a python activated environment:
 
@@ -115,6 +118,24 @@ activate a python environment:
     python3 -m pip install -r etc/requirements.txt
 ```
 
+Then run:
+
+```sh
+    python3 -i ./ioccc.py
+```
+
+While that is running, open a browser at (this works under macOS):
+
+```
+    open http://127.0.0.1:8191
+```
+
+.. or do whatever the equivalent on your to enter this URL into a browser:
+
+```
+    http://127.0.0.1:8191
+```
+
 **IMPORTANT NOTE:** You may find problems running `ioccc.py` due
 to various things such as the tcp port being unavailable, certain
 files not being ready, or the development server having issues.
@@ -126,6 +147,29 @@ To deactivate the above python environment:
 ```sh
     deactivate
     rm -rf __pycache__ venv
+```
+
+
+## pylint
+
+To use pylint on the code:
+
+```sh
+    rm -rf venv __pycache__ && python3 -m venv venv
+    . ./venv/bin/activate
+    PYTHONPATH=$PWD/venv/lib/python3.12 pylint ./ioccc.py
+```
+
+FYI: Under macOS we installed pylint via pipx:
+
+```sh
+    sudo pipx --global install pylint
+```
+
+In case you don't have pipx, we installed pipx via HomeBrew on macOS:
+
+```sh
+    brew install pipx
 ```
 
 

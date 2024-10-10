@@ -24,7 +24,7 @@ Welcome, {{ user }}!<br>
     {% with messages = get_flashed_messages() %}
     {% if messages %}
     <section>
-      <strong>Error(s):</strong>
+      <strong>Message(s):</strong>
     <ul class=flashes>
     {% for message in messages %}
       <li>{{ message }}</li>
@@ -38,24 +38,34 @@ Welcome, {{ user }}!<br>
         <article>
           <p id="labelFont"><b>First:</b> Select a slot:</p>
           <form name="upload" action="update" method="post" enctype="multipart/form-data"><br>
-            <p>
 	      <table>
 		<tr>
-		  <th>Slot</th>
-		  <th>Select</th>
-		  <th>SHA256 Hash</th>
+		  <th style="width:5%">Select</th>
+		  <th>Slot Information</th>
 		</tr>
-		{% for key in etable %}
+		{% for slot in etable %}
 		<tr>
 		  <td>
-		    <label for="en{{key}}">{{key}}</label>
+		      <label for="en{{slot.slot}}"><b>{{slot.slot}}:</b>&nbsp;</label>
+			<input name="slot_num" id="slots{{slot.slot}}"
+			       onclick="show_sub();" type="radio"
+			       value="{{slot.slot}}">
 		  </td>
 		  <td>
-		    <input name="slot_num" id="slots{{key}}"
-			   onclick="show_sub();" type="radio"
-			   value="{{key}}">
+		      <b>Status</b>: {{slot.status}}<br>
+		      {% if slot.filename %}
+		      <br><b>Filename</b>: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{slot.filename}}<br>
+		      {% endif %}
+		      {% if slot.length %}
+		      <b>File length</b>: &nbsp;&nbsp;&nbsp; {{slot.length}}<br>
+		      {% endif %}
+		      {% if slot.date %}
+		      <b>Upload date</b>: &nbsp; {{slot.date}}<br>
+		      {% endif %}
+		      {% if slot.sha256 %}
+		      <br><b>SHA256</b>: {{slot.sha256}}<br>
+		      {% endif %}
 		  </td>
-		  <td>{{etable[key]}}</td>
 		</tr>
 		{% endfor %}
 	      </table>
@@ -77,10 +87,12 @@ Welcome, {{ user }}!<br>
 	    <a href="https://github.com/ioccc-src/mkiocccentry">chkentry(1)</a>.</p>
 	    <br>
 	    <p id="labelFont"><label for="file"><b>Second:</b></label>
-	    <input name="file" id="file" required="" type="file" class="button"></p>
+	    <input name="file" id="file" required="" type="file" class="button" style="min-width: 700px;"></p>
 	    <br>
 	    <p id="labelFont"><label><b>Third:</b> Click:</label>
-	    <button type="submit" style="display: none" id="sub_button" class="button">Submit</button></p>
+	    <button type="submit" style="display: none" id="sub_button" class="button">Submit</button>
+	    <div font="-2">(Submit button will appear once a slot is selected)</div>
+	    </p>
 	    <br>
 	    <p id="labelFont"><label><b>Else:</b> Click:</label>
             <button type="reset" onclick="hide_sub()" class="button">Reset</button></p>
@@ -90,11 +102,11 @@ Welcome, {{ user }}!<br>
 	      <p id="labelFont"><label><b>Last:</b> Click:</label>
 	      <button type="submit" formmethod="get" class="button">Logout</button></p>
 	  </form>
+	  <p>
+	  <br><b>IMPORTANT</b>: Submissions may be updated at any time prior to <b>{{date}} UTC</b>.<br>
+	  <p>
         </article>
       </main>
-      <aside>
-        <div>Submissions may be updated at any time prior to {{date}} UTC.</div>
-      </aside>
     </section>
     <footer>
       <div id="resources"><h3>Recommended IOCCC resources</h3>
