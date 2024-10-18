@@ -1,6 +1,7 @@
 # We sort the list below via: sort -d -u
 ?
 NOTES
+etc/.secret
 .git
 __pycache__
 .*.swp

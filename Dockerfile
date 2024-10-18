@@ -43,6 +43,7 @@ COPY ./etc/requirements.txt etc/requirements.txt
 #
 RUN apk add tzdata
 RUN apk add python3 py3-cryptography py3-pip py3-werkzeug py3-flask py3-authlib
+RUN apk add py3-flask-login
 RUN apk add uwsgi uwsgi-http uwsgi-cgi uwsgi-python3
 RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 
@@ -83,7 +84,7 @@ RUN chown root:root etc/requirements.txt
 #
 RUN <<EOT
     if [[ ! -s etc/.secret ]]; then
-	./genflaskkey
+	/bin/sh ./genflaskkey
     fi
 EOT
 
@@ -91,6 +92,14 @@ EOT
 #
 RUN chmod 0440 etc/.secret
 RUN chown uwsgi:uwsgi etc/.secret
+
+# Create an empty the etc/lock.iocccpasswd.json if missing
+#
+RUN <<EOT
+    if [[ ! -f etc/lock.iocccpasswd.json ]]; then
+	touch etc/lock.iocccpasswd.json
+    fi
+EOT
 
 # Set permission for static
 #

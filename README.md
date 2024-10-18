@@ -157,7 +157,8 @@ To use pylint on the code:
 ```sh
     rm -rf venv __pycache__ && python3 -m venv venv
     . ./venv/bin/activate
-    PYTHONPATH=$PWD/venv/lib/python3.12 pylint ./ioccc.py
+    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_common.py
+    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc.py
 ```
 
 FYI: Under macOS we installed pylint via pipx:
