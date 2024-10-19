@@ -22,7 +22,6 @@ from flask import Flask, Response, url_for, render_template, flash, redirect, re
 from flask_httpauth import HTTPBasicAuth
 from flask_login import LoginManager
 from werkzeug.security import check_password_hash
-from iocccpasswd import adduser, deluser
 
 
 # import the ioccc python utility code
@@ -36,7 +35,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "0.5.1 2024-10-18"
+VERSION = "0.5.2 2024-10-19"
 
 
 # Configure the app
@@ -389,16 +388,20 @@ def admin_update():
     if "newuser" in request.form:
         newuser = request.form['newuser']
         if not newuser == "":
-            if not re.match("[a-zA-Z0-9][a-zA-Z0-9.@_+-]+", newuser):
+            if not re.match(POSIX_SAFE_RE, newuser):
                 flash('bad username for new user.')
                 return redirect("/admin")
-            if newuser in users:
+            if lookup_username(newuser):
                 flash('username already in use.')
                 return redirect('/admin')
-            ret = adduser(newuser, PW_FILE)
+
+            password = generate_password()
+            pwhash = hash_password(password)
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            pw_change_by = now + FORCE_PW_GRACE_SECS
+            ret = update_username(newuser, pwhash, True, pw_change_by, False)
             if ret:
-                (user, password) = ret
-                flash(f"user: {user} password: {password}")
+                flash(f"added user: {newuser} password: {password}")
 
     # case: attempting to delete a user
     #
@@ -407,7 +410,9 @@ def admin_update():
             flash(request.form[key] + ' is an admin and cannot be deleted.')
             return redirect('/admin')
         if re.match('^contest.*', key):
-            deluser(request.form[key], IOCCC_DIR, PW_FILE)
+            if not delete_username(request.form[key]):
+                flash(global_errmsg)
+                return redirect(IOCCC_ROOT)
 
     # return to admin user page
     #

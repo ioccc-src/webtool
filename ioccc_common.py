@@ -44,6 +44,12 @@ from pathlib import Path
 from filelock import Timeout, FileLock
 
 
+# 3rd party imports
+#
+from werkzeug.security import generate_password_hash
+from passwordgenerator import pwgenerator
+
+
 ##################
 # Global constants
 ##################
@@ -52,7 +58,7 @@ from filelock import Timeout, FileLock
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.0.1 2024-10-18"
+VERSION_IOCCC_COMMON = "1.0.2 2024-10-19"
 
 # default content open and close date if there is no STATE_FILE
 #
@@ -687,6 +693,31 @@ def delete_username(username):
     # return the user that was deleted, if they were found
     #
     return deleted_user
+
+
+def generate_password():
+    """
+    Generate a random password.
+
+    Returns:
+        random password as a string
+    """
+
+    return pwgenerator.generate()
+
+
+def hash_password(password):
+    """
+    Convert a password into a hashed password.
+
+    Given:
+        password    password as a string
+
+    Returns:
+        hashed password string
+    """
+
+    return generate_password_hash(password)
 
 
 def is_user_login_disabled(username):

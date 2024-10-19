@@ -69,25 +69,27 @@ go to the `/app` directory.
 The usage message of the `iocccpasswd.py` is as follows:
 
 ```
-    usage: iocccpasswd.py [-h] [-a ADD [ADD ...]] [-d DELETE [DELETE ...]] [-p PWDFILE]
+    usage: iocccpasswd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c ] [-g SECS] [-n ]
 
-    manage ioccc passwds
+    Manage IOCCC submit server password file
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      -a ADD [ADD ...], --add ADD [ADD ...]
-			    Add a user
-      -d DELETE [DELETE ...], --delete DELETE [DELETE ...]
-			    Delete a user
-      -p PWDFILE, --pwdfile PWDFILE
-			    the file to access
+    options:
+      -h, --help         show this help message and exit
+      -a, --add USER     add a new user
+      -u, --update USER  update a user or add if not a user
+      -d, --delete USER  delete an exist user
+      -p, --password PW  specify the password (def: generate random password)
+      -c, --change       force a password change at next login
+      -g, --grace SECS   grace time in sec
+
+    Version: 1.1 2024-10-19
 ```
 
 
 ### Add a new user
 
 ```sh
-    python3 ./iocccpasswd.py -a username [username ..]
+    python3 ./iocccpasswd.py -a username
 ```
 
 The command will output the password in plain-text.
@@ -100,7 +102,7 @@ modify a file other than `iocccpasswd`.
 
 
 ```sh
-    python3 ./iocccpasswd.py -d username [username ..]
+    python3 ./iocccpasswd.py -d username
 ```
 
 One may add `-p pwd.filename` to the command line to form and/or
@@ -159,6 +161,7 @@ To use pylint on the code:
     . ./venv/bin/activate
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_common.py
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc.py
+    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./iocccpasswd.py
 ```
 
 FYI: Under macOS we installed pylint via pipx:
