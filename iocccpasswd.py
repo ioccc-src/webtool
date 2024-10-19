@@ -1,16 +1,38 @@
 #!/usr/bin/env python3
+# pylint: disable=import-error
+# pylint: disable=wildcard-import
+# pylint: disable=unused-wildcard-import
 """
 Functions to implement adding and deleting of IOCCC contestants.
 """
 
+# system imports
+#
 import json
 import argparse
 from os import listdir, remove, rmdir
+import sys
+
+
+# 3rd party imports
+#
 from werkzeug.security import generate_password_hash
 from passwordgenerator import pwgenerator
 
-PWD_FILE = 'etc/iocccpasswd'
-IOCCC_DIR = "/app"
+
+# import the ioccc python utility code
+#
+# NOTE: This in turn imports a lot of other stuff, and sets global constants.
+#
+from ioccc_common import *
+
+
+# iocccpassword version
+#
+# NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
+#
+VERSION = "1.0.2 2024-10-18"
+
 
 def readpwfile(pwfile, failonnotexist = True):
     """
@@ -22,11 +44,11 @@ def readpwfile(pwfile, failonnotexist = True):
     except FileNotFoundError:
         if failonnotexist:
             print("file not found")
-            exit(-1)
+            sys.exit(1)
         return None
     except PermissionError:
         print("Permission Denied.")
-        exit(-1)
+        sys.exit(2)
     return passjson
 
 def writepwfile(pwfile, pw_json):
@@ -40,10 +62,10 @@ def writepwfile(pwfile, pw_json):
             pw_fp.close()
     except FileNotFoundError:
         print("file not found")
-        exit(-1)
+        sys.exit(3)
     except PermissionError:
         print("Permission Denied.")
-        exit(-1)
+        sys.exit(4)
 
     return True
 
@@ -107,7 +129,7 @@ def main():
     if args.pwdfile:
         passwdfile = args.pwdfile[0]
     else:
-        passwdfile = PWD_FILE
+        passwdfile = PW_FILE
     if args.add:
         for add in args.add:
             ret = adduser(add, passwdfile)
