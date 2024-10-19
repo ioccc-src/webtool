@@ -36,7 +36,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "0.5 2024-10-18"
+VERSION = "0.5.1 2024-10-18"
 
 
 # Configure the app

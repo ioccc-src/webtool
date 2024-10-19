@@ -52,7 +52,7 @@ from filelock import Timeout, FileLock
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.0 2024-10-18"
+VERSION_IOCCC_COMMON = "1.0.1 2024-10-18"
 
 # default content open and close date if there is no STATE_FILE
 #
@@ -190,11 +190,14 @@ def return_user_dir_path(username):
     global global_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # paranoia - username must be a POSIX safe filename
+    # paranoia - username must be a POSIX safe filename string
     #
     # This also prevents username with /, and prevents it from being empty string,
     # thus one cannot create a username with system cracking "funny business".
     #
+    if not isinstance(username, str):
+        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return None
     if not re.match(POSIX_SAFE_RE, username):
         global_errmsg = "ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>"
         return None
@@ -324,9 +327,9 @@ def load_pwfile():
     return pw_file_json
 
 
-def update_pwfile(pw_file_json):
+def replace_pwfile(pw_file_json):
     """
-    Return the JSON contents of the password file
+    Replace the contents of the password file
 
     Obtain a lock for password file before opening and writing JSON to the password file.
     We release the lock for the password file afterwards.
@@ -352,7 +355,7 @@ def update_pwfile(pw_file_json):
         global_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return False
 
-    # rewrite the password file with the pw_file_json
+    # rewrite the password file with the pw_file_json and unlock
     #
     try:
         with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
@@ -364,10 +367,10 @@ def update_pwfile(pw_file_json):
             j_pw.close()
             pw_lock_fd.release(force=True)
     except OSError:
-        global_errmsg = "ERROR: in " + me + ": unable to write password file"
 
         # unlock the password file
         #
+        global_errmsg = "ERROR: in " + me + ": unable to write password file"
         pw_lock_fd.release(force=True)
         return False
 
@@ -384,7 +387,7 @@ def lookup_username(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> no such username, or username does not match POSIX_SAFE_RE
+        None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
         != None ==> JSON information about username
 
     NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
@@ -396,8 +399,11 @@ def lookup_username(username):
     global global_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # paranoia - username must be a POSIX safe filename
+    # paranoia - username must be a POSIX safe filename string
     #
+    if not isinstance(username, str):
+        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return None
     if not re.match(POSIX_SAFE_RE, username):
         global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return None
@@ -419,25 +425,34 @@ def lookup_username(username):
         global_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
         return None
 
-    # verify JSON information for user
+    # sanity check the JSON information for user
     #
-    if user_json[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-        global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0"
+    if not isinstance(user_json['username'], str):
+        global_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_json['username']) + ">>"
         return None
-    if slots[slot_num]["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
-        global_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version #0"
+    if user_json["no_comment"] != NO_COMMENT_VALUE:
+        global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + username + ">>"
+        return None
+    if user_json["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
+        global_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + username + ">>"
         return None
     if not user_json['pwhash']:
         global_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + username + ">>"
         return None
-    if not user_json['force_pw_change']:
-        global_errmsg = "ERROR: in " + me + ": no force_pw_change for username : <<" + username + ">>"
+    if not isinstance(user_json['pwhash'], str):
+        global_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
+        return None
+    if not is_boolean(user_json['force_pw_change']):
+        global_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
         return None
     if not user_json['pw_change_by']:
         global_errmsg = "ERROR: in " + me + ": no pw_change_by for username : <<" + username + ">>"
         return None
-    if not user_json['disable_login']:
-        global_errmsg = "ERROR: in " + me + ": no diable_login for username : <<" + username + ">>"
+    if not is_numeric(user_json['pw_change_by']):
+        global_errmsg = "ERROR: in " + me + ": pw_change_by is not a number for username : <<" + username + ">>"
+        return None
+    if not is_boolean(user_json['disable_login']):
+        global_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
         return None
 
     # return JSON information for user
@@ -471,17 +486,62 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
     global global_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # paranoia - username must be a POSIX safe filename
+    # paranoia - username must be a POSIX safe filename string
     #
+    if not isinstance(username, str):
+        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return None
     if not re.match(POSIX_SAFE_RE, username):
         global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return False
 
-    # load JSON from the password file
+    # paranoia - pwhash must be a string
     #
-    pw_file_json = load_pwfile()
-    if not pw_file_json:
-        return False
+    if not isinstance(pwhash, str):
+        global_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
+        return None
+
+    # paranoia - force_pw_change must be a boolean
+    #
+    if not is_boolean(force_pw_change):
+        global_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
+        return None
+
+    # paranoia - pw_change_by must be a number
+    if not is_numeric(pw_change_by):
+        global_errmsg = "ERROR: in " + me + ": pw_change_by is not a number for username : <<" + username + ">>"
+        return None
+
+    # paranoia - disable_login must be a boolean
+    #
+    if not is_boolean(disable_login):
+        global_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
+        return None
+
+    # Lock the password file
+    #
+    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    if not pw_lock_fd:
+        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        return None
+
+    # load the password file and unlock
+    #
+    try:
+        with open(PW_FILE, 'r', encoding="utf-8") as j_pw:
+            pw_file_json = json.load(j_pw)
+
+            # close the password file
+            #
+            j_pw.close()
+    except OSError as exception:
+
+        # unlock the password file
+        #
+        global_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+                        " exception: " + str(exception)
+        pw_lock_fd.release(force=True)
+        return None
 
     # scan through the password file, looking for the user
     #
@@ -509,14 +569,124 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
                               "pw_change_by" : pw_change_by, \
                               "disable_login" : disable_login })
 
-    # update the password file
+    # rewrite the password file with the pw_file_json and unlock
     #
-    if not update_pwfile(pw_file_json):
-        return False
+    try:
+        with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
+            j_pw.write(json.dumps(pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write('\n')
+
+            # close and unlock the password file
+            #
+            j_pw.close()
+            pw_lock_fd.release(force=True)
+    except OSError as exception:
+        global_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+                        " exception: " + str(exception)
+
+        # unlock the password file
+        #
+        pw_lock_fd.release(force=True)
+        return None
 
     # password updated with new username information
     #
     return True
+
+
+def delete_username(username):
+    """
+    Remove a username from the password file
+
+    Given:
+        username    IOCCC submit server username to remove
+
+    Returns:
+        None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
+        != None ==> JSON information about username that was removed
+
+    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global global_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    if not isinstance(username, str):
+        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return None
+    if not re.match(POSIX_SAFE_RE, username):
+        global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        return None
+
+    # Lock the password file
+    #
+    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    if not pw_lock_fd:
+        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        return None
+
+    # load the password file and unlock
+    #
+    try:
+        with open(PW_FILE, 'r', encoding="utf-8") as j_pw:
+            pw_file_json = json.load(j_pw)
+
+            # close the password file
+            #
+            j_pw.close()
+    except OSError as exception:
+
+        # unlock the password file
+        #
+        global_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+                        " exception: " + str(exception)
+        pw_lock_fd.release(force=True)
+        return None
+
+    # scan through the password file, looking for the user
+    #
+    deleted_user = None
+    new_pw_file_json = []
+    for i in pw_file_json:
+
+        # set aside the username we are deleting
+        #
+        if i['username'] == username:
+            deleted_user = i
+
+        # otherwise save other users
+        #
+        else:
+            new_pw_file_json.append(i)
+
+    # rewrite the password file with the pw_file_json and unlock
+    #
+    try:
+        with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
+            j_pw.write(json.dumps(pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write('\n')
+
+            # close and unlock the password file
+            #
+            j_pw.close()
+            pw_lock_fd.release(force=True)
+    except OSError as exception:
+
+        # unlock the password file
+        #
+        global_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+                        " exception: " + str(exception)
+        pw_lock_fd.release(force=True)
+        return None
+
+    # return the user that was deleted, if they were found
+    #
+    return deleted_user
 
 
 def is_user_login_disabled(username):
@@ -542,8 +712,11 @@ def is_user_login_disabled(username):
     global global_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # paranoia - username must be a POSIX safe filename
+    # paranoia - username must be a POSIX safe filename string
     #
+    if not isinstance(username, str):
+        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return None
     if not re.match(POSIX_SAFE_RE, username):
         global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return True
@@ -884,7 +1057,8 @@ def initialize_user_tree(username):
                 slots[slot_num] = json.load(slot_file_fp)
                 slot_file_fp.close()
                 if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                    global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1"
+                    global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
+                                    username + ">> for slot: " + slot_num_str
                     unlock_slot()
                     return None
                 if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
@@ -897,7 +1071,8 @@ def initialize_user_tree(username):
                                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
                                                          'slot_num': slot_num_str } ))
             if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                global_errmsg = "ERROR: in " + me + ": 2nvalid JSON no_comment #2"
+                global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1 username : <<" + \
+                                username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
             if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
@@ -983,7 +1158,8 @@ def get_json_slot(username, slot_num):
             slot = json.load(slot_file_fp)
             slot_file_fp.close()
             if slot["no_comment"] != NO_COMMENT_VALUE:
-                global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #3"
+                global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #2 username : <<" + \
+                                username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
             if slot.slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
@@ -999,7 +1175,8 @@ def get_json_slot(username, slot_num):
                                           'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
                                           'slot_num': slot_num_str } ))
         if slot["no_comment"] != NO_COMMENT_VALUE:
-            global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #4"
+            global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #3 username : <<" + \
+                            username + ">> for slot: " + slot_num_str
             unlock_slot()
             return None
         if slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
