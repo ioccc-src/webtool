@@ -1,0 +1,32 @@
+[
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "eliot",
+        "pwhash": "scrypt:32768:8:1$fUzmBruGALYSg9jO$85fc2473f35d77f48081bd8fd91609db269f91ba388154a5e0ee5d54436183c7d3ddf3b6ed9a39eeed5215a83ad30a2044abc3c10028c95e42b390c4644b932c",
+        "admin": true,
+        "force_pw_change": false,
+        "pw_change_by": null,
+        "disable_login": false
+    },
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "chongo",
+        "pwhash": "scrypt:32768:8:1$KdPSxY7OMRUZRt5T$815ba04cefd1b8a003f1e5725b841507e10530b4e6f75d429e45f3b2979bc0f2eb829ce6cb5ae070fdbd33bd6eaef88f7a30e5a0c367e59c31b786ebe2f0d8db",
+        "admin": true,
+        "force_pw_change": false,
+        "pw_change_by": null,
+        "disable_login": false
+    },
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "leob",
+        "pwhash": "scrypt:32768:8:1$0DOKtiuADVENQaQ0$af5c17a275ac8940ba1431d9dfaac69681895aae16939ce2bc7864d79a05f5805931ed558eb72635f9016279c875787f0daedfcee60f425da3e973bf24221369",
+        "admin": true,
+        "force_pw_change": false,
+        "pw_change_by": null,
+        "disable_login": false
+    }
+]

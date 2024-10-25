@@ -15,6 +15,7 @@ import json
 import argparse
 from os import listdir, remove, rmdir
 import sys
+import uuid
 
 
 # import the ioccc python utility code
@@ -28,7 +29,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.1 2024-10-19"
+VERSION = "1.1.1 2024-10-25"
 
 
 def main():
@@ -38,15 +39,13 @@ def main():
 
     # setup
     #
-    # pylint: disable-next=global-statement
-    global global_errmsg
-    global_errmsg = ""
+    now = datetime.now(timezone.utc)
     force_pw_change = False
     password = None
     disable_login = False
-    pw_change_by = -1
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    pw_change_by = None
     program = os.path.basename(__file__)
+    admin = False
 
     # parse args
     #
@@ -71,36 +70,56 @@ def main():
                         nargs=1)
     parser.add_argument('-c', '--change',
                         help='force a password change at next login',
-                        metavar='')
+                        action='store_true')
     parser.add_argument('-g', '--grace',
-                        help='grace time in seconds from to change the password',
+                        help='grace time in seconds from to change the password' + \
+                             f'(def: {DEFAULT_GRACE_PERIOD} seconds):',
                         metavar='SECS',
                         type=int,
                         nargs=1)
     parser.add_argument('-n', '--nologin',
-                        help='disable login',
-                        metavar='')
+                        help='disable login (def: login not explicitly disabled)',
+                        action='store_true')
+    parser.add_argument('-A', '--admin',
+                        help='user is an admin (def: not an admin)',
+                        action='store_true')
+    parser.add_argument('-U', '--UUID',
+                        help='generate a new UUID username and password',
+                        action='store_true')
     args = parser.parse_args()
 
     # -c - force user to change their password at the next login
     #
     if args.change:
+
+        # require the password to change at first login
+        #
         force_pw_change = True
 
-    # -g secs - set the grace time to change in seconds from now
-    #
-    if args.grace:
-        pw_change_by = args.grace + now
+        # -g secs - set the grace time to change in seconds from now
+        #
+        if args.grace:
+            pw_change_by = str(now + timedelta(seconds=args.grace[0]))
+
+        # otherwise set the grace time using the default grace period
+        #
+        else:
+            pw_change_by = str(now + timedelta(seconds=DEFAULT_GRACE_PERIOD))
 
     # -p password - use password supplied in the command line
     #
     if args.password:
-        password = args.password
+        password = args.password[0]
 
     # -n - disable login of user
     #
     if args.nologin:
         disable_login = True
+
+    # -A - disable login of user
+    #
+    if args.admin:
+        admin = True
 
     # -a user - add user if they do not already exist
     #
@@ -114,25 +133,29 @@ def main():
         # we store the hash of the password only
         #
         pwhash = hash_password(password)
+        if not pwhash:
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(3)
 
         # determine the username to add
         #
-        username = args.add
+        username = args.add[0]
 
         # the user must not already exist
         #
         if lookup_username(username):
-            print(f"ERROR: username already exists: {username}")
-            sys.exit(7)
+            print("ERROR: username already exists: <<" + username + ">>")
+            sys.exit(4)
 
         # add the user
         #
-        if update_username(username, pwhash, force_pw_change, pw_change_by, disable_login):
-            print(f"added username: {username} password: {password}")
+        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+            print("Notice: added username: " + username + " password: " + password)
+            sys.exit(0)
         else:
-            print(f"ERROR: cannot add added username: {username} password: {password}")
-            print(global_errmsg)
-            sys.exit(8)
+            print("ERROR: failed to add username: <<" + username + ">> password: <<" + password + ">>")
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(5)
 
     # -u user - update if they exit, or add user if they do not already exist
     #
@@ -146,20 +169,23 @@ def main():
         # we store the hash of the password only
         #
         pwhash = hash_password(password)
+        if not pwhash:
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(6)
 
         # determine the username to update
         #
-        username = args.update
+        username = args.update[0]
 
         # update the user
         #
-        if update_username(username, pwhash, force_pw_change, pw_change_by, disable_login):
-            print(f"Updated username: {username} password: {password}")
+        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+            print("Notice: updated username: " + username + " password: " + password)
             sys.exit(0)
         else:
-            print(f"ERROR: cannot add added username: {username} password: {password}")
-            print(global_errmsg)
-            sys.exit(9)
+            print("ERROR: failed to update username: <<" + username + ">> password: <<" + password + ">>")
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(7)
 
     # -d user - delete user
     #
@@ -167,23 +193,88 @@ def main():
 
         # determine the username to delete
         #
-        username = args.update
+        username = args.delete[0]
 
         # the user must already exist
         #
         if not lookup_username(username):
-            print(f"ERROR: username does not exist: {username}")
-            sys.exit(10)
+            print("ERROR: username does not exist: <<" + username + ">>")
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(8)
 
         # remove the user
         #
         if delete_username(username):
-            print(f"username: {username} deleted")
+            print("Notice: deleted username: " + username)
             sys.exit(0)
         else:
-            print(f"unable to delete username: {username}")
-            print(global_errmsg)
+            print("ERROR: failed to delete username: <<" + username + ">>")
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(9)
+
+    # -a user - add user if they do not already exist
+    #
+    if args.UUID:
+
+        # add with random password unless we used -p password
+        #
+        if not password:
+            password = generate_password()
+
+        # we store the hash of the password only
+        #
+        pwhash = hash_password(password)
+        if not pwhash:
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
             sys.exit(10)
+
+        # generate an random UUID of type that is not an existing user
+        #
+        # We try a number of times until we find a new username, or
+        # we give up trying.  More likely this loop will run only once
+        # because the change of a duplicate UUID being found it nil.
+        #
+        username = None
+        try_limit = 10
+        for i in range(0, try_limit, 1):
+
+            # try a new UUID
+            #
+            username = str(uuid.uuid4())
+
+            # the user must not already exist
+            #
+            if not lookup_username(username):
+
+                # new user was found
+                #
+                break
+
+            # super rare case that we found an existing UUID, so try again
+            #
+            print("Notice: rare: UUID retry " + str(i+1) + " of " + str(try_limit))
+            username = None
+
+        # paranoia - no unique username was found
+        #
+        if not username:
+            print("ERROR: SUPER RARE: failed to found a new UUID after " + str(try_limit) + " attempts!!!")
+            sys.exit(11)
+
+        # add the user
+        #
+        if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
+            print("Notice: UUID username: " + username + " password: " + password)
+            sys.exit(0)
+        else:
+            print("ERROR: failed to add UUID username: <<" + username + ">> password: <<" + password + ">>")
+            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+            sys.exit(12)
+
+        # no option selected
+        #
+        print("ERROR: command line must use one of: -a USER or -u USER or -d USER or -U")
+        sys.exit(13)
 
 if __name__ == '__main__':
     main()

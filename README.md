@@ -69,7 +69,7 @@ go to the `/app` directory.
 The usage message of the `iocccpasswd.py` is as follows:
 
 ```
-    usage: iocccpasswd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c ] [-g SECS] [-n ]
+    usage: iocccpasswd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A] [-U]
 
     Manage IOCCC submit server password file
 
@@ -80,9 +80,12 @@ The usage message of the `iocccpasswd.py` is as follows:
       -d, --delete USER  delete an exist user
       -p, --password PW  specify the password (def: generate random password)
       -c, --change       force a password change at next login
-      -g, --grace SECS   grace time in sec
+      -g, --grace SECS   grace time in seconds from to change the password
+      -n, --nologin      disable login (def: login not explicitly disabled)
+      -A, --admin        user is an admin (def: not an admin)
+      -U, --UUID         generate a new UUID username and password
 
-    Version: 1.1 2024-10-19
+    iocccpasswd.py version: 1.1.1 2024-10-25
 ```
 
 

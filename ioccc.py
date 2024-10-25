@@ -21,7 +21,6 @@ import inspect
 from flask import Flask, Response, url_for, render_template, flash, redirect, request
 from flask_httpauth import HTTPBasicAuth
 from flask_login import LoginManager
-from werkzeug.security import check_password_hash
 
 
 # import the ioccc python utility code
@@ -35,7 +34,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "0.5.2 2024-10-19"
+VERSION = "0.5.3 2024-10-25"
 
 
 # Configure the app
@@ -89,35 +88,21 @@ def verify_password(username, password):
     Standard Password Validation.
     """
 
-    # setup
+    # Return False if:
     #
-    # pylint: disable-next=global-statement
-    global global_errmsg
-    global_errmsg = ""
-    me = inspect.currentframe().f_code.co_name
-
-    # paranoia - username must be a POSIX safe filename
+    # if the username is not valid, or
+    # if the username is not in the password file, or
+    # if the username is not allowed to login, or
+    # if the password is not the correct password for the username
     #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
+    # Otherwise return True:
     #
-    if not re.match(POSIX_SAFE_RE, username):
-        flash("ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>")
-        return False
-
-    # setup
+    # if the username is valid, and
+    # if the username is in the password file, and
+    # if the username is allowed to login, and
+    # if the password is the correct password for the username
     #
-    users = readjfile(PW_FILE)
-    if not users:
-        flash(global_errmsg)
-        flash("unable to read IOCCC password file")
-        return False
-
-    # verify password
-    #
-    if username in users and check_password_hash(users.get(username), password):
-        return username
-    return False
+    return verify_user_password(username, password)
 
 
 @app.route('/', methods=["GET"])
@@ -159,66 +144,12 @@ def index():
     return render_template("index.html", user=username, etable=slots, date=str(cldate).replace('+00:00', ''))
 
 
-@app.route('/admin', methods=["GET"])
-@auth.login_required
-def admin():
-    """
-    Present administrative page.
-    """
-
-    # setup
-    #
-    # pylint: disable-next=global-statement
-    global global_errmsg
-    global_errmsg = ""
-
-    # obtain information - firewall
-    #
-    users = readjfile(PW_FILE)
-    if not users:
-        flash(global_errmsg)
-        return Response(response="Configuration error #1.1", status=400)
-    admins = readjfile(ADM_FILE)
-    if not admins:
-        flash(global_errmsg)
-        return Response(response="Configuration error #1.2", status=400)
-    username = auth.current_user()
-    if not re.match(POSIX_SAFE_RE, username):
-        return Response(response="Configuration error #1.0", status=400)
-
-    # verify user is an admin
-    #
-    if not username in admins:
-        return Response(response="Permission denied.", status=404)
-
-    # read state file
-    #
-    st_info = readjfile(STATE_FILE)
-    if st_info:
-        opdate = st_info['opendate']
-        cldate = st_info['closedate']
-    else:
-        opdate = DEF_OPDATE
-        cldate = DEF_CLDATE
-
-    # return admin interface page
-    #
-    return render_template("admin.html", contestants=users, user=username,
-                           opdate=opdate, cldate=cldate)
-
-
 @app.route('/update', methods=["POST"])
 @auth.login_required
 def upload():
     """
     Upload slot file
     """
-
-    # setup
-    #
-    # pylint: disable-next=global-statement
-    global global_errmsg
-    global_errmsg = ""
 
     # verify that the contest is still open
     #
@@ -235,7 +166,7 @@ def upload():
     #
     user_dir = return_user_dir_path(username)
     if not user_dir:
-        flash(global_errmsg)
+        flash("ERROR: " + return_last_errmsg())
         return redirect(IOCCC_ROOT)
 
     # verify they selected a slot number to upload
@@ -255,7 +186,7 @@ def upload():
     #
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
-        flash(global_errmsg)
+        flash("ERROR: " + return_last_errmsg())
         return redirect(IOCCC_ROOT)
 
     # verify they selected a file to upload
@@ -279,7 +210,7 @@ def upload():
     #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
-        flash(global_errmsg)
+        flash("ERROR: " + return_last_errmsg())
         return redirect(IOCCC_ROOT)
 
     # save the file in the slot
@@ -287,13 +218,13 @@ def upload():
     upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
     file.save(upload_file)
     if not update_slot(username, slot_num, upload_file):
-        flash(global_errmsg)
+        flash("ERROR: " + return_last_errmsg())
         # fallthru to unlock_slot()
 
     # unlock the slot
     #
     if not unlock_slot():
-        flash(global_errmsg)
+        flash("ERROR: " + return_last_errmsg())
         # fallthru to redirect(IOCCC_ROOT)
 
     # report on the successful upload
@@ -303,120 +234,6 @@ def upload():
     # return to the main user page
     #
     return redirect(IOCCC_ROOT)
-
-
-@app.route('/admin-update', methods=["POST"])
-@auth.login_required
-def admin_update():
-    """
-    Backend admin update process.
-    """
-
-    # setup
-    #
-    # pylint: disable-next=global-statement
-    global global_errmsg
-    global_errmsg = ""
-    umask(0o022)
-
-    # get users
-    #
-    users = readjfile(PW_FILE)
-    if not users:
-        flash(global_errmsg)
-        return Response(response="Configuration error #2.0", status=400)
-
-    # get username
-    #
-    username = auth.current_user()
-    if not username:
-        return Response(response="Configuration error #2.1", status=400)
-
-    # paranoia - username must be a POSIX safe filename
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        return Response(response="Configuration error #2.2", status=400)
-
-    # get admins
-    #
-    admins = readjfile(ADM_FILE)
-    if not admins:
-        flash(global_errmsg)
-        return Response(response="Configuration error #2.3", status=400)
-
-    # firewall
-    #
-    if not username in admins:
-        return Response(response="Permission denied!", status=404)
-
-    # setup for user
-    #
-    user_dir = return_user_dir_path(username)
-    if not user_dir:
-        flash(global_errmsg)
-        return redirect(IOCCC_ROOT)
-
-    # read the state file
-    #
-    st_info = readjfile(STATE_FILE)
-    if st_info:
-        opdate = st_info['opendate']
-        cldate = st_info['closedate']
-    else:
-        # No state file, so use default open and close dates
-        opdate = DEF_OPDATE
-        cldate = DEF_CLDATE
-
-    # obtain open and close date/time from form if available
-    #
-    if "opendate" in request.form and not request.form['opendate'] == '':
-        opdate = request.form['opendate']
-    if "closedate" in request.form and not request.form['closedate'] == '':
-        cldate = request.form['closedate']
-
-    # store the open and close date/time in the state file
-    #
-    if not set_state(opdate, cldate):
-        flash(global_errmsg)
-        return redirect(IOCCC_ROOT)
-
-    # obtain the new username from form if available
-    #
-    if "newuser" in request.form:
-        newuser = request.form['newuser']
-        if not newuser == "":
-            if not re.match(POSIX_SAFE_RE, newuser):
-                flash('bad username for new user.')
-                return redirect("/admin")
-            if lookup_username(newuser):
-                flash('username already in use.')
-                return redirect('/admin')
-
-            password = generate_password()
-            pwhash = hash_password(password)
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
-            pw_change_by = now + FORCE_PW_GRACE_SECS
-            ret = update_username(newuser, pwhash, True, pw_change_by, False)
-            if ret:
-                flash(f"added user: {newuser} password: {password}")
-
-    # case: attempting to delete a user
-    #
-    for key in request.form:
-        if request.form[key] in admins:
-            flash(request.form[key] + ' is an admin and cannot be deleted.')
-            return redirect('/admin')
-        if re.match('^contest.*', key):
-            if not delete_username(request.form[key]):
-                flash(global_errmsg)
-                return redirect(IOCCC_ROOT)
-
-    # return to admin user page
-    #
-    return redirect("/admin")
 
 
 @app.route('/logout')
@@ -432,29 +249,6 @@ def logout():
     #
     print("http://log:out@" + HOST_NAME + ":" + TCP_PORT + "/" + " with code=401")
     return redirect("http://log:out@" + HOST_NAME + ":" + TCP_PORT + "/", code=401)
-
-
-#skip# @app.route('/register', methods=["GET"])
-#skip# def register():
-#skip#     opdate, cldate, now = check_state()
-#skip#     return render_template("register.html", date=cldate)
-#skip#
-#skip#
-#skip# @app.route('/reg', methods=["POST"])
-#skip# def reg():
-#skip#     if not ("firstname" in request.form and "lastname" in request.form
-#skip#             and "email" in request.form and "rules" in request.form ):
-#skip#         flash("Form not complete")
-#skip#         return(redirect(ioccc_root + "/register"))
-#skip#     email = request.form['email']
-#skip#     if (len(request.form['firstname']) < 1 or len(request.form['lastname']) < 1
-#skip#         or not re.match("[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$", email)):
-#skip#         flash("Form not properly complete.")
-#skip#         return(redirect(ioccc_root + "/register"))
-#skip#     if (not request.form['rules']):
-#skip#         flash("Rules not agreed.")
-#skip#         return(redirect(ioccc_root + "/register"))
-#skip#     return render_template("re-confirm.html")
 
 
 # case: debugging via direct execution

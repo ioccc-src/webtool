@@ -15,7 +15,7 @@ IMPORTANT NOTE: This code must NOT assume the use of Flask, nor call
                 into utility functions that are command line and not
                 web app related.
 
-IMPORTANT NOTE: To return an error message to a caller, set: global_errmsg
+IMPORTANT NOTE: To return an error message to a caller, set: last_errmsg
 """
 
 # import modules
@@ -23,13 +23,17 @@ IMPORTANT NOTE: To return an error message to a caller, set: global_errmsg
 import re
 import json
 import os
+import inspect
+import string
+import secrets
+import random
 
 
 # import from modules
 #
 from string import Template
 from os import makedirs, umask
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -46,8 +50,7 @@ from filelock import Timeout, FileLock
 
 # 3rd party imports
 #
-from werkzeug.security import generate_password_hash
-from passwordgenerator import pwgenerator
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 ##################
@@ -58,7 +61,7 @@ from passwordgenerator import pwgenerator
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.0.2 2024-10-19"
+VERSION_IOCCC_COMMON = "1.0.3 2024-10-25"
 
 # default content open and close date if there is no STATE_FILE
 #
@@ -68,10 +71,21 @@ DEF_CLDATE = datetime(2025, 12, 31, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
 # force password change grace time
 #
 # Time in seconds from when force_pw_change is set to true that the
-# user must login and change their password.  If "pw_change_by" >= 0, and
-# if "force_pw_change" is "true", then login is denied if now > "pw_change_by".
+# user must login and change their password.
 #
-FORCE_PW_GRACE_SECS = 72*3600
+# If "force_pw_change" is "true", then login is denied if now > pw_change_by.
+#
+DEFAULT_GRACE_PERIOD = 72*3600
+
+# standard date string in strptime format
+#
+# The string produced by:
+#
+#   datetime.now(timezone.utc)
+#
+# my be converted back into a datetime object by this strptime format string.
+#
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f%z"
 
 # default IP and port
 #
@@ -163,13 +177,38 @@ LOCK_TIMEOUT = 13
 # will force that previous lock to be unlocked.
 #
 # pylint: disable-next=global-statement,invalid-name
-global_slot_lock = None         # lock file descriptor or None
+last_slot_lock = None         # lock file descriptor or None
 # pylint: disable-next=global-statement,invalid-name
-global_lock_user = None         # username whose slot is locked or None
+last_lock_user = None         # username whose slot is locked or None
 # pylint: disable-next=global-statement,invalid-name
-global_lock_slot_num = None     # slot number that is locked or None
+last_lock_slot_num = None     # slot number that is locked or None
 # pylint: disable-next=global-statement,invalid-name
-global_errmsg = ""            # recent error message or None
+last_errmsg = ""            # recent error message or empty string
+# pylint: disable-next=global-statement,invalid-name
+words = []
+
+
+def return_last_errmsg():
+    """
+    Return the recent error message or empty string
+
+    Returns:
+        last_errmsg as a string
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+
+    # paranoia - if last_errmsg is not a string, return as string version
+    #
+    if not isinstance(last_errmsg, str):
+        last_errmsg = str(last_errmsg)
+
+    # return string
+    #
+    return last_errmsg
 
 
 def return_user_dir_path(username):
@@ -193,7 +232,7 @@ def return_user_dir_path(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
@@ -202,10 +241,10 @@ def return_user_dir_path(username):
     # thus one cannot create a username with system cracking "funny business".
     #
     if not isinstance(username, str):
-        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        global_errmsg = "ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>"
         return None
 
     # return user directory path
@@ -232,7 +271,7 @@ def return_slot_dir_path(username, slot_num):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - must make a user_dir value
@@ -244,7 +283,7 @@ def return_slot_dir_path(username, slot_num):
     # paranoia - must be a valid slot number
     #
     if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
-        global_errmsg = "ERROR: in " + me + ": invalid slot number: " + str(slot_num) + \
+        last_errmsg = "ERROR: in " + me + ": invalid slot number: " + str(slot_num) + \
                         " for username: <<" + username + ">>"
         return None
 
@@ -286,27 +325,27 @@ def return_slot_json_filename(username, slot_num):
 
 def load_pwfile():
     """
-    Return the JSON contents of the password file
+    Return the JSON contents of the password file as a python dictionary
 
     Obtain a lock for password file before opening and reading the password file.
     We release the lock for the password file afterwards.
 
     Returns:
         None ==> unable to read the JSON in the password file
-        != None ==> JSON from the password file
+        != None ==> JSON from the password file as a python dictionary
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the password file
     #
     pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
     if not pw_lock_fd:
-        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
 
     # load the password file and unlock
@@ -320,7 +359,7 @@ def load_pwfile():
             j_pw.close()
             pw_lock_fd.release(force=True)
     except OSError as exception:
-        global_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
 
         # unlock the password file
@@ -328,7 +367,7 @@ def load_pwfile():
         pw_lock_fd.release(force=True)
         return None
 
-    # return the password JSON data
+    # return the password JSON data as a python dictionary
     #
     return pw_file_json
 
@@ -341,7 +380,7 @@ def replace_pwfile(pw_file_json):
     We release the lock for the password file afterwards.
 
     Given:
-        pw_file_json    JSON to write into the password file
+        pw_file_json    JSON to write into the password file as a python dictionary
 
     Returns:
         False ==> unable to write JSON into the password file
@@ -351,14 +390,14 @@ def replace_pwfile(pw_file_json):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the password file
     #
     pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
     if not pw_lock_fd:
-        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return False
 
     # rewrite the password file with the pw_file_json and unlock
@@ -376,7 +415,7 @@ def replace_pwfile(pw_file_json):
 
         # unlock the password file
         #
-        global_errmsg = "ERROR: in " + me + ": unable to write password file"
+        last_errmsg = "ERROR: in " + me + ": unable to write password file"
         pw_lock_fd.release(force=True)
         return False
 
@@ -385,16 +424,79 @@ def replace_pwfile(pw_file_json):
     return True
 
 
+def validate_user_info(user_info):
+    """
+    Perform sanity checks on user information for username from password file
+
+    Given:
+        user_info    user information for username as a python dictionary
+
+    Returns:
+        True ==> no error in user information
+        False ==> a problem was found with user JSON information
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # sanity check argument
+    #
+    if not isinstance(user_info, dict):
+        last_errmsg = "ERROR: in " + me + ": user_info arg is not a python dictionary"
+        return False
+
+    # obtain the username
+    #
+    if not isinstance(user_info['username'], str):
+        last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_info['username']) + ">>"
+        return False
+    username = user_info['username']
+
+    # sanity check the information for user
+    #
+    if user_info["no_comment"] != NO_COMMENT_VALUE:
+        last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + username + ">>"
+        return False
+    if user_info["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
+        last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + username + ">>"
+        return False
+    if not user_info['pwhash']:
+        last_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + username + ">>"
+        return False
+    if not isinstance(user_info['pwhash'], str):
+        last_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
+        return False
+    if not isinstance(user_info['admin'], bool):
+        last_errmsg = "ERROR: in " + me + ": admin is not a boolean for username : <<" + username + ">>"
+        return False
+    if not isinstance(user_info['force_pw_change'], bool):
+        last_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
+        return False
+    if user_info['pw_change_by'] and not isinstance(user_info['pw_change_by'], str):
+        last_errmsg = "ERROR: in " + me + ": pw_change_by is not string nor None for username : <<" + username + ">>"
+        return False
+    if not isinstance(user_info['disable_login'], bool):
+        last_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
+        return False
+
+    # user information passed the sanity checks
+    #
+    return True
+
+
 def lookup_username(username):
     """
-    Return JSON information for username from password file
+    Return JSON information for username from password file as a python dictionary
 
     Given:
         username    IOCCC submit server username
 
     Returns:
         None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
-        != None ==> JSON information about username
+        != None ==> user information as a python dictionary
 
     NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
@@ -402,19 +504,19 @@ def lookup_username(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return None
 
-    # load JSON from the password file
+    # load JSON from the password file as a python dictionary
     #
     pw_file_json = load_pwfile()
     if not pw_file_json:
@@ -422,61 +524,38 @@ def lookup_username(username):
 
     # search the password file for the user
     #
-    user_json = None
+    user_info = None
     for i in pw_file_json:
         if i['username'] == username:
-            user_json = i
+            user_info = i
             break
-    if not user_json:
-        global_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
+    if not user_info:
+        last_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
         return None
 
-    # sanity check the JSON information for user
+    # sanity check the user information for user
     #
-    if not isinstance(user_json['username'], str):
-        global_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_json['username']) + ">>"
-        return None
-    if user_json["no_comment"] != NO_COMMENT_VALUE:
-        global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + username + ">>"
-        return None
-    if user_json["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
-        global_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + username + ">>"
-        return None
-    if not user_json['pwhash']:
-        global_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + username + ">>"
-        return None
-    if not isinstance(user_json['pwhash'], str):
-        global_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
-        return None
-    if not is_boolean(user_json['force_pw_change']):
-        global_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
-        return None
-    if not user_json['pw_change_by']:
-        global_errmsg = "ERROR: in " + me + ": no pw_change_by for username : <<" + username + ">>"
-        return None
-    if not is_numeric(user_json['pw_change_by']):
-        global_errmsg = "ERROR: in " + me + ": pw_change_by is not a number for username : <<" + username + ">>"
-        return None
-    if not is_boolean(user_json['disable_login']):
-        global_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
+    if not validate_user_info(user_info):
         return None
 
-    # return JSON information for user
+    # return user information for user in the form of a python dictionary
     #
-    return user_json
+    return user_info
 
 
-def update_username(username, pwhash, force_pw_change, pw_change_by, disable_login):
+# pylint: disable-next=too-many-arguments,too-many-positional-arguments
+def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
     """
     Update a username entry in the password file, or add the entry
     if the username is not already in the password file.
 
     Given:
         username            IOCCC submit server username
-        pwhash              SHA256 hash of the password (i.e., a string of the form: pbkdf2:sha256:...)
+        pwhash              hashed password as generated by werkzeug.security.generate_password_hash
+        admin               boolean indicating if the user is an admin
         force_pw_change     boolean indicating if the user will be forced to change their password on next login
-        pw_change_by        pw_change_by >= 0 and force_pw_change and now > pw_change_by ==> deny login
-                            pw_change_by < 0 ==> no deadline for changing password
+        pw_change_by        date and time string in DATETIME_FORMAT by which password must be changed, or
+                            None ==> no deadline for changing password
         disable_login       boolean indicating if the user is banned from login
 
     Returns:
@@ -489,46 +568,61 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        last_errmsg = "ERROR: in " + me + \
+                        ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + \
+                        ": username is not POSIX safe: <<" + username + ">>"
         return False
 
     # paranoia - pwhash must be a string
     #
     if not isinstance(pwhash, str):
-        global_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + \
+                        ": pwhash arg is not a string for username : <<" + username + ">>"
+        return None
+
+    # paranoia - admin must be a boolean
+    #
+    if not isinstance(admin, bool):
+        last_errmsg = "ERROR: in " + me + \
+                        ": admin arg is not a boolean for username : <<" + username + ">>"
         return None
 
     # paranoia - force_pw_change must be a boolean
     #
-    if not is_boolean(force_pw_change):
-        global_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
+    if not isinstance(force_pw_change, bool):
+        last_errmsg = "ERROR: in " + me + \
+                        ": force_pw_change arg is not a boolean for username : <<" + username + ">>"
         return None
 
-    # paranoia - pw_change_by must be a number
-    if not is_numeric(pw_change_by):
-        global_errmsg = "ERROR: in " + me + ": pw_change_by is not a number for username : <<" + username + ">>"
+    # paranoia - pw_change_by must None or must be be string
+    #
+    if not isinstance(pw_change_by, str) and pw_change_by is not None:
+        last_errmsg = "ERROR: in " + me + \
+                        ": pw_change_by arg is not a string nor None for username : <<" + username + ">>"
         return None
 
     # paranoia - disable_login must be a boolean
     #
-    if not is_boolean(disable_login):
-        global_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
+    if not isinstance(disable_login, bool):
+        last_errmsg = "ERROR: in " + me + \
+                        ": disable_login arg is not a boolean for username : <<" + username + ">>"
         return None
 
     # Lock the password file
     #
     pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
     if not pw_lock_fd:
-        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        last_errmsg = "ERROR: in " + me + \
+                        ": unable to lock password file"
         return None
 
     # load the password file and unlock
@@ -544,7 +638,7 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
 
         # unlock the password file
         #
-        global_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
         pw_lock_fd.release(force=True)
         return None
@@ -558,6 +652,7 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
             # user found, update user info
             #
             i['pwhash'] = pwhash
+            i['admin'] = admin
             i['force_pw_change'] = force_pw_change
             i['pw_change_by'] = pw_change_by
             i['disable_login'] = disable_login
@@ -567,10 +662,14 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
     # the user is new, add the user to the JSON from the password file
     #
     if not found_username:
+
+        # append the new user to the password file
+        #
         pw_file_json.append({ "no_comment" : NO_COMMENT_VALUE, \
                               "iocccpasswd_format_version" : PASSWORD_VERSION_VALUE, \
                               "username" : username, \
                               "pwhash" : pwhash, \
+                              "admin" : admin, \
                               "force_pw_change" : force_pw_change, \
                               "pw_change_by" : pw_change_by, \
                               "disable_login" : disable_login })
@@ -587,7 +686,7 @@ def update_username(username, pwhash, force_pw_change, pw_change_by, disable_log
             j_pw.close()
             pw_lock_fd.release(force=True)
     except OSError as exception:
-        global_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+        last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
 
         # unlock the password file
@@ -609,7 +708,7 @@ def delete_username(username):
 
     Returns:
         None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
-        != None ==> JSON information about username that was removed
+        != None ==> user information about the removed username as a python dictionary
 
     NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
@@ -617,23 +716,23 @@ def delete_username(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return None
 
     # Lock the password file
     #
     pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
     if not pw_lock_fd:
-        global_errmsg = "ERROR: in " + me + ": unable to lock password file"
+        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
 
     # load the password file and unlock
@@ -649,7 +748,7 @@ def delete_username(username):
 
         # unlock the password file
         #
-        global_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
         pw_lock_fd.release(force=True)
         return None
@@ -674,7 +773,7 @@ def delete_username(username):
     #
     try:
         with open(PW_FILE, mode="w", encoding="utf-8") as j_pw:
-            j_pw.write(json.dumps(pw_file_json, ensure_ascii=True, indent=4))
+            j_pw.write(json.dumps(new_pw_file_json, ensure_ascii=True, indent=4))
             j_pw.write('\n')
 
             # close and unlock the password file
@@ -685,7 +784,7 @@ def delete_username(username):
 
         # unlock the password file
         #
-        global_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+        last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
         pw_lock_fd.release(force=True)
         return None
@@ -703,7 +802,33 @@ def generate_password():
         random password as a string
     """
 
-    return pwgenerator.generate()
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global words
+    blacklist = set('`"\\')
+    punct = ''.join( c for c in string.punctuation if c not in blacklist )
+
+    # load the word dictionary if it is empty
+    #
+    if not words:
+        with open('/usr/share/dict/words', "r", encoding="utf-8") as f:
+            words = [word.strip() for word in f]
+        f.close()
+
+    # generate a 3-word password with random separators
+    #
+    # Our dictionary as between 103494 and 123679 words in it.
+    # Our selected punctuation list as 30 characters.
+    #
+    # Randomly selected, a 3-word password with random separators
+    # can provide between 59.8 and 60.6 bits.  That good enough
+    # for an initial password.
+    #
+    password = secrets.choice(words)
+    password = password + random.choice(punct) + secrets.choice(words)
+    password = password + random.choice(punct) + secrets.choice(words)
+    return password
 
 
 def hash_password(password):
@@ -717,70 +842,203 @@ def hash_password(password):
         hashed password string
     """
 
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(password, str):
+        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        return None
+
     return generate_password_hash(password)
 
 
-def is_user_login_disabled(username):
+def verify_hashed_password(password, pwhash):
     """
-    Determine if the user has been disabled.
+    Verify that password matches the hashed patches
 
-    NOTE: If the user is not in the password file, we cannot state that the
-          user has been disabled.   So in that case we return False.
+    Given:
+        password    plaintext password
+        pwhash      hashed password
+
+    Returns:
+        True ==> password matches the hashed password
+        False ==> password does NOT match the hashed password or arg not a string
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(password, str):
+        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        return False
+
+    # firewall - pwhash must be a string
+    #
+    if not isinstance(pwhash, str):
+        last_errmsg = "ERROR: in " + me + ": pwhash arg is not a string"
+        return False
+
+    # return if the pwhash matches the password
+    #
+    return check_password_hash(pwhash, password)
+
+
+def verify_user_password(username, password):
+    """
+    Verify a password for a given user
+
+    Given:
+        username    IOCCC submit server username
+        password    plaintext password
+
+    Returns:
+        True ==> password matches the hashed password
+        False ==> password does NOT match the hashed password or arg not a string
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(username, str):
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string"
+        return False
+
+    # firewall - pwhash must be a string
+    #
+    if not isinstance(password, str):
+        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        return False
+
+    # fail if user login is disabled or missing from the password file
+    #
+    user_info = lookup_username(username)
+    if not user_info:
+
+        # user is not in the password file, so we cannot state they have been disabled
+        #
+        return False
+
+    # fail is the user is not allowed to login
+    #
+    if not user_allowed_to_login(user_info):
+
+        # user is not allowed to login
+        #
+        return False
+
+    # return the result of the hashed password check for this user
+    #
+    return verify_hashed_password(password, user_info['pwhash'])
+
+
+def user_allowed_to_login(user_info):
+    """
+    Determine if the user has been disabled based on the username
+
+    Given:
+        user_info    user information for username as a python dictionary
+
+    Returns:
+        True ==> user is allowed to login
+        False ==> login is not allowed for the user, or
+                  user_info failed sanity checks, or
+                  user did not change their password in time
+    """
+
+    # sanity check the user information
+    #
+    if not validate_user_info(user_info):
+        return False
+
+    # deny login if disable_login is true
+    #
+    if user_info['disable_login']:
+
+        # login disabled
+        #
+        return False
+
+    # deny login is the force_pw_change and we are beyond the pw_change_by time limit
+    #
+    if user_info['force_pw_change'] and user_info['pw_change_by']:
+
+        # Convert pw_change_by into a datetime string
+        #
+        pw_change_by = datetime.strptime(user_info['pw_change_by'], DATETIME_FORMAT)
+
+        # determine the datetime of now
+        #
+        now = datetime.now(timezone.utc)
+
+        # failed to change the password in time
+        #
+        if now > pw_change_by:
+            return False
+
+    # user login attempt is allowed
+    #
+    return True
+
+
+def username_login_allowed(username):
+    """
+    Determine if the user has been disabled based on the username
 
     Given:
         username    IOCCC submit server username
 
     Returns:
-        True        username has been disabled in the password file, or username is invalid
-        False       username login attempt is allowed
+        True        username logins are is allowed
+        False       username has been disabled in the password file, or
+                    user did not change their password in time, or
+                    username is invalid
 
+    NOTE: If the user is not in the password file, we return False.
     NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        global_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
-        return None
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        return False
     if not re.match(POSIX_SAFE_RE, username):
-        global_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
-        return True
+        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        return False
 
     # fail if user login is disabled or missing from the password file
     #
-    user_json = lookup_username(username)
-    if not user_json:
+    user_info = lookup_username(username)
+    if not user_info:
 
         # user is not in the password file, so we cannot state they have been disabled
         #
-        return True
+        return False
 
-    # deny login if disable_login is true
+    # determine, based on the user information, if the user is allowed to login
     #
-    if user_json['disable_login']:
-
-        # login disabled
-        #
-        return True
-
-    # deny login is the force_pw_change and we are beyond the window to change
-    #
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if user_json['force_pw_change'] and user_json['pw_change_by'] >= 0 and now > user_json['pw_change_by']:
-
-        # failed to change the password in time
-        #
-        return True
-
-    # user login attempt is allowed
-    #
-    return False
+    return user_allowed_to_login(user_info)
 
 
 def lock_slot(username, slot_num):
@@ -815,19 +1073,19 @@ def lock_slot(username, slot_num):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_slot_lock
+    global last_slot_lock
     # pylint: disable-next=global-statement
-    global global_lock_user
+    global last_lock_user
     # pylint: disable-next=global-statement
-    global global_lock_slot_num
+    global last_lock_slot_num
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
     umask(0o022)
 
     # validate username and slot
     #
-    if is_user_login_disabled(username):
+    if not username_login_allowed(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -842,7 +1100,7 @@ def lock_slot(username, slot_num):
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
     except OSError:
-        global_errmsg = "ERROR: in " + me + ": failed to create for username: <<" + username + ">>"
+        last_errmsg = "ERROR: in " + me + ": failed to create for username: <<" + username + ">>"
         return None
 
     # be sure the slot directory exits
@@ -850,7 +1108,7 @@ def lock_slot(username, slot_num):
     try:
         makedirs(slot_dir, mode=0o2770, exist_ok=True)
     except OSError:
-        global_errmsg = "ERROR: in " + me + ": failed to create slot: " + slot_num_str + \
+        last_errmsg = "ERROR: in " + me + ": failed to create slot: " + slot_num_str + \
                         "for username: <<" + username + ">>"
         return None
 
@@ -861,35 +1119,35 @@ def lock_slot(username, slot_num):
 
     # Force any stale slot lock to become unlocked
     #
-    if global_slot_lock:
+    if last_slot_lock:
         # Carp
         #
-        if not global_lock_user:
-            global_lock_user = "((no-username))"
-        if not global_lock_slot_num:
-            global_lock_slot_num = "((no-slot))"
-        global_errmsg = "Warning: forcing stale slot unlock for username: <<" + global_lock_user + ">> slot: " + \
-               str(global_lock_slot_num)
+        if not last_lock_user:
+            last_lock_user = "((no-username))"
+        if not last_lock_slot_num:
+            last_lock_slot_num = "((no-slot))"
+        last_errmsg = "Warning: forcing stale slot unlock for username: <<" + last_lock_user + ">> slot: " + \
+               str(last_lock_slot_num)
 
         # Force previous stale slot lock to become unlocked
         #
         try:
-            global_slot_lock.release(force=True)
+            last_slot_lock.release(force=True)
         except OSError:
             # We give up as we cannot force the unlock
             #
-            global_errmsg = "ERROR: failed to force stale slot unlock for username: <<" + global_lock_user + \
-                            ">> slot: " + str(global_lock_slot_num)
-            global_slot_lock = None
-            global_lock_user = None
-            global_lock_slot_num = None
+            last_errmsg = "ERROR: failed to force stale slot unlock for username: <<" + last_lock_user + \
+                            ">> slot: " + str(last_lock_slot_num)
+            last_slot_lock = None
+            last_lock_user = None
+            last_lock_slot_num = None
             return None
 
         # clear the global lock information
         #
-        global_slot_lock = None
-        global_lock_user = None
-        global_lock_slot_num = None
+        last_slot_lock = None
+        last_lock_user = None
+        last_lock_slot_num = None
 
     # Lock the slot
     #
@@ -898,14 +1156,14 @@ def lock_slot(username, slot_num):
         with slot_lock_fd:
             # note our new lock
             #
-            global_slot_lock = slot_lock_fd
-            global_lock_user = username
-            global_lock_slot_num = slot_num
+            last_slot_lock = slot_lock_fd
+            last_lock_user = username
+            last_lock_slot_num = slot_num
     except Timeout:
 
         # too too long to get the lock
         #
-        global_errmsg = "Warning: timeout on slot lock for username: <<" + username + ">> slot: " + slot_num_str
+        last_errmsg = "Warning: timeout on slot lock for username: <<" + username + ">> slot: " + slot_num_str
         return None
 
     # return the slot lock success
@@ -918,7 +1176,7 @@ def unlock_slot():
     unlock a previously locked slot
 
     A slot locked via lock_slot(username, slot_num) is unlocked
-    using the global_slot_lock that noted the slot lock descriptor.
+    using the last_slot_lock that noted the slot lock descriptor.
 
     Returns:
         True    slot unlock successful
@@ -928,34 +1186,34 @@ def unlock_slot():
     # declare global use
     #
     # pylint: disable-next=global-statement
-    global global_slot_lock
+    global last_slot_lock
     # pylint: disable-next=global-statement
-    global global_lock_user
+    global last_lock_user
     # pylint: disable-next=global-statement
-    global global_lock_slot_num
+    global last_lock_slot_num
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
 
     # unlock the global slot lock
     #
-    if global_slot_lock:
+    if last_slot_lock:
         try:
-            global_slot_lock.release(force=True)
+            last_slot_lock.release(force=True)
         except OSError as exception:
             # We give up as we cannot unlock the slot
             #
-            if not global_lock_user:
-                global_lock_user = "((None))"
-            if not global_lock_slot_num:
-                global_lock_slot_num = "((no-slot))"
-            global_errmsg = "Warning: failed to unlock for username: <<" + cglobal_lock_user + \
-                            ">> slot: " + global_lock_slot_num + " exception: " + str(exception)
+            if not last_lock_user:
+                last_lock_user = "((None))"
+            if not last_lock_slot_num:
+                last_lock_slot_num = "((no-slot))"
+            last_errmsg = "Warning: failed to unlock for username: <<" + clast_lock_user + \
+                            ">> slot: " + last_lock_slot_num + " exception: " + str(exception)
 
     # clear lock, lock user and lock slot
     #
-    global_slot_lock = None
-    global_lock_user = None
-    global_lock_slot_num = None
+    last_slot_lock = None
+    last_lock_user = None
+    last_lock_slot_num = None
 
 
 def write_slot_json(slots_json_file, slot_json):
@@ -964,12 +1222,12 @@ def write_slot_json(slots_json_file, slot_json):
 
     Given:
         slots_json_file     JSON filename for a given slot
-        slot_json           JSON content for a given slot
+        slot_json           content for a given slot as a python dictionary
     """
     # declare global use
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
 
     # write JSON file for slot
     #
@@ -979,7 +1237,7 @@ def write_slot_json(slots_json_file, slot_json):
             slot_file_fp.write('\n')
             slot_file_fp.close()
     except OSError:
-        global_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
+        last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
         return False
     return True
 
@@ -994,14 +1252,14 @@ def initialize_user_tree(username):
     We initialize the slot JSON file it the slot JSON file does not exist.
 
     NOTE: Because this may be called early, we cannot use HTML or other
-          error carping delivery.  We only set global_excpt are return None.
+          error carping delivery.  We only set last_excpt are return None.
 
     Given:
         username    IOCCC submit server username
 
     Returns:
         None ==> invalid slot number or Null user_dir
-        != None ==> array of slot JSON data
+        != None ==> array of slot user data as a python dictionary
 
     NOTE: We use the python filelock module.  See:
 
@@ -1013,12 +1271,12 @@ def initialize_user_tree(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # setup
     #
-    if is_user_login_disabled(username):
+    if not username_login_allowed(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1030,7 +1288,7 @@ def initialize_user_tree(username):
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
     except OSError as exception:
-        global_errmsg = "ERROR: in " + me + ": cannot form user directory for user: <<" + \
+        last_errmsg = "ERROR: in " + me + ": cannot form user directory for user: <<" + \
                         username + ">> exception: " + str(exception)
         return None
 
@@ -1051,7 +1309,7 @@ def initialize_user_tree(username):
         try:
             makedirs(slot_dir, mode=0o2770, exist_ok=True)
         except OSError as exception:
-            global_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
+            last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
                             slot_dir + " exception: " + str(exception)
             return None
 
@@ -1065,7 +1323,7 @@ def initialize_user_tree(username):
         try:
             Path(lock_file).touch()
         except OSError as exception:
-            global_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
+            last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
                             slot_dir + " exception: " + str(exception)
             return None
 
@@ -1088,12 +1346,12 @@ def initialize_user_tree(username):
                 slots[slot_num] = json.load(slot_file_fp)
                 slot_file_fp.close()
                 if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                    global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
+                    last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
                                     username + ">> for slot: " + slot_num_str
                     unlock_slot()
                     return None
                 if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                    global_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #0"
+                    last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #0"
                     unlock_slot()
                     return None
         except OSError:
@@ -1102,12 +1360,12 @@ def initialize_user_tree(username):
                                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
                                                          'slot_num': slot_num_str } ))
             if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1 username : <<" + \
+                last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1 username : <<" + \
                                 username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
             if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                global_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #1"
+                last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #1"
                 unlock_slot()
                 return None
             try:
@@ -1116,7 +1374,7 @@ def initialize_user_tree(username):
                     slot_file_fp.write('\n')
                     slot_file_fp.close()
             except OSError as exception:
-                global_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
+                last_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
                                 slot_json_file + " exception: " + str(exception)
                 unlock_slot()
                 return None
@@ -1140,19 +1398,19 @@ def get_json_slot(username, slot_num):
 
     Returns:
         None ==> invalid slot number or Null user_dir
-        != None ==> slot directory (may not exist))
+        != None ==> slot information as a python dictionary
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
     umask(0o022)
 
     # validate username
     #
-    if is_user_login_disabled(username):
+    if not username_login_allowed(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1189,12 +1447,12 @@ def get_json_slot(username, slot_num):
             slot = json.load(slot_file_fp)
             slot_file_fp.close()
             if slot["no_comment"] != NO_COMMENT_VALUE:
-                global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #2 username : <<" + \
+                last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #2 username : <<" + \
                                 username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
             if slot.slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                global_errmsg = "ERROR: in " + me + ": SON slot[" + slot_num_str + "] version: " + \
+                last_errmsg = "ERROR: in " + me + ": SON slot[" + slot_num_str + "] version: " + \
                                 slot[slot_num].slot["slot_JSON_format_version"] + " != " + SLOT_VERSION_VALUE
                 unlock_slot()
                 return None
@@ -1206,12 +1464,12 @@ def get_json_slot(username, slot_num):
                                           'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
                                           'slot_num': slot_num_str } ))
         if slot["no_comment"] != NO_COMMENT_VALUE:
-            global_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #3 username : <<" + \
+            last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #3 username : <<" + \
                             username + ">> for slot: " + slot_num_str
             unlock_slot()
             return None
         if slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-            global_errmsg = "ERROR: in " + me + ": JSON slot[" + slot_num_str + "] version: " + \
+            last_errmsg = "ERROR: in " + me + ": JSON slot[" + slot_num_str + "] version: " + \
                             slot[slot_num].slot["slot_JSON_format_version"] + " != " + SLOT_VERSION_VALUE
             unlock_slot()
             return None
@@ -1223,21 +1481,21 @@ def get_json_slot(username, slot_num):
     #
     unlock_slot()
 
-    # return slot information
+    # return slot information as a python dictionary
     #
     return slot
 
 
 def get_all_json_slots(username):
     """
-    read the JSON data for all slots for a given user.
+    read the user data for all slots for a given user.
 
     Given:
         username    IOCCC submit server username
 
     Returns:
         None ==> invalid slot number or Null user_dir
-        != None ==> array of slot JSON data
+        != None ==> array of slot user data as a python dictionary
     """
 
     # setup
@@ -1246,7 +1504,7 @@ def get_all_json_slots(username):
 
     # validate usewrname
     #
-    if is_user_login_disabled(username):
+    if not username_login_allowed(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1257,13 +1515,15 @@ def get_all_json_slots(username):
     slots = []
     for slot_num in range(0, MAX_SUBMIT_SLOT+1):
 
-        # get the JSON slot
+        # get slot information
         #
         json_slot_data = get_json_slot(username, slot_num)
         if not json_slot_data:
             return None
         slots[slot_num] = json_slot_data
 
+    # return slot information as a python dictionary
+    #
     return slots
 
 
@@ -1284,7 +1544,7 @@ def update_slot(username, slot_num, slot_file):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # initialize user if needed
@@ -1301,7 +1561,7 @@ def update_slot(username, slot_num, slot_file):
             result = hashlib.sha256(file_fp.read())
             file_fp.close()
     except OSError:
-        global_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
+        last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
                         slot_num_str + " file: " + slot_file
         return False
 
@@ -1320,7 +1580,7 @@ def update_slot(username, slot_num, slot_file):
         old_file = slot_dir + "/" + slots[slot_num]['filename']
         if slot_file != old_file and os.path.isfile(old_file):
             os.remove(old_file)
-            global_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
+            last_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
                             " file: " + slots[slot_num]['filename']
 
     # record and report SHA256 hash of file
@@ -1344,29 +1604,31 @@ def update_slot(username, slot_num, slot_file):
 
 def readjfile(jfile):
     """
-    Return the contents of a JSON file.
+    Return the contents of a JSON file as a python dictionary
 
     Given:
         jfile   JSON file to read
 
     Returns:
-        != None     JSON file contents
+        != None     JSON file contents as a python dictionary
         None        unable to read JSON file
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # try to read JSON contents
     #
     try:
         with open(jfile, 'r', encoding="utf-8") as j_fp:
+            # return slot information as a python dictionary
+            #
             return json.load(j_fp)
     except OSError as exception:
-        global_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
+        last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
                         jfile + " exception: " + str(exception)
         return []
 
@@ -1379,7 +1641,7 @@ def set_state(opdate, cldate):
     # setup
     #
     # pylint: disable-next=global-statement
-    global global_errmsg
+    global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # set the state file with open and close date/time
@@ -1391,7 +1653,7 @@ def set_state(opdate, cldate):
             sf_fp.write('\n')
             sf_fp.close()
     except OSError:
-        global_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
+        last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
 
 
 def check_state():
