@@ -104,7 +104,9 @@ class User(flask_login.UserMixin):
 
     def __init__(self):
         self.id = None
-
+        self.authenticated = False
+        self.user_dict = None
+        
     def is_active(self):
         """True, as all users are active."""
         return True
@@ -144,21 +146,16 @@ def login():
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
 
-        if username in users:
-            if users[username]['password'] == form_dict.get('password'):
-                user = User()
-                user.id = username
+        user_dict = lookup_username(username)
+        if user_dict:
+            user = User()
+            user.id = username
+            user.user_dict = user_dict
+            if verify_hash_password(form_dict.get('password'),
+                                    user_dict['pwhash']):
+                user.authenticated  = True
                 flask_login.login_user(user)
-                # return redirect(url_for('protected_page_1'))
-
-        if form_dict.get('page'):
-            return redirect(url_for('page'))
-        if form_dict.get('protected_page_1'):
-            return redirect(url_for('protected_page_1'))
-        if form_dict.get('protected_page_2'):
-            return redirect(url_for('protected_page_2'))
-        if form_dict.get('logout'):
-            return redirect(url_for('logout'))
+                return render_template('protected_page.html')
 
     return render_template('login.html')
 
