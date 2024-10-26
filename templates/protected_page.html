@@ -1,8 +1,8 @@
 
 <h1><b>{{ page_name }}</b></h1> 
 <div style="padding: 10px 10px">
-    {% if current_user.id %}
-    Status: Logged in as <b style="color: green ">{{ current_user.id }}</b>
+    {% if username %}
+    Status: Logged in as <b style="color: green ">{{ username }}</b>
     {% else %}
     Status: <i style="color: gray">Not logged in</i>
   {% endif %}

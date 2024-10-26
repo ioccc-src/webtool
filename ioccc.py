@@ -151,11 +151,11 @@ def login():
             user = User()
             user.id = username
             user.user_dict = user_dict
-            if verify_hash_password(form_dict.get('password'),
+            if verify_hashed_password(form_dict.get('password'),
                                     user_dict['pwhash']):
                 user.authenticated  = True
                 flask_login.login_user(user)
-                return render_template('protected_page.html')
+                return render_template('protected_page.html', username = username)
 
     return render_template('login.html')
 
