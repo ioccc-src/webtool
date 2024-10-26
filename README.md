@@ -61,15 +61,15 @@ To build and run as a single command under a python activated environment:
     docker build -t ioccc-submit:latest . && docker run -p 8191:8191 ioccc-submit:latest
 ```
 
-## iocccpasswd.py user management
+## ioccc_passwd.py user management
 
 While the docker image is running, access the console and
 go to the `/app` directory.
 
-The usage message of the `iocccpasswd.py` is as follows:
+The usage message of the `ioccc_passwd.py` is as follows:
 
 ```
-    usage: iocccpasswd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A] [-U]
+    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A] [-U]
 
     Manage IOCCC submit server password file
 
@@ -85,31 +85,31 @@ The usage message of the `iocccpasswd.py` is as follows:
       -A, --admin        user is an admin (def: not an admin)
       -U, --UUID         generate a new UUID username and password
 
-    iocccpasswd.py version: 1.1.1 2024-10-25
+    ioccc_passwd.py version: 1.1.1 2024-10-25
 ```
 
 
 ### Add a new user
 
 ```sh
-    python3 ./iocccpasswd.py -a username
+    python3 ./ioccc_passwd.py -a username
 ```
 
 The command will output the password in plain-text.
 
 One may add `-p pwd.filename` to the command line to form and/or
-modify a file other than `iocccpasswd`.
+modify a file other than `ioccc_passwd`.
 
 
 ### Remove an old user
 
 
 ```sh
-    python3 ./iocccpasswd.py -d username
+    python3 ./ioccc_passwd.py -d username
 ```
 
 One may add `-p pwd.filename` to the command line to form and/or
-modify a file other than `iocccpasswd`.
+modify a file other than `ioccc_passwd`.
 
 
 ### To test tools outside of the docker container
@@ -164,7 +164,7 @@ To use pylint on the code:
     . ./venv/bin/activate
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_common.py
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc.py
-    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./iocccpasswd.py
+    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_passwd.py
 ```
 
 FYI: Under macOS we installed pylint via pipx:

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # pylint: disable=import-error
 # pylint: disable=wildcard-import
-# pylint: disable=too-many-return-statements
-# pylint: disable=too-many-branches
 # pylint: disable=unused-wildcard-import
 # pylint: disable=unused-import
 """
 The IOCCC submit server
+
+NOTE: This code is modeled after:
+
+    https://github.com/costa-rica/webApp01-Flask-Login/tree/github-main
+    https://nrodrig1.medium.com/flask-login-no-flask-sqlalchemy-d62310bb43e3
 """
 
 # system imports
@@ -16,11 +19,15 @@ import uuid
 import inspect
 
 
+# import from modules
+#
+from typing import Dict, Optional
+
+
 # 3rd party imports
 #
-from flask import Flask, Response, url_for, render_template, flash, redirect, request
-from flask_httpauth import HTTPBasicAuth
-from flask_login import LoginManager
+from flask import Flask, render_template, request, redirect, url_for
+import flask_login
 
 
 # import the ioccc python utility code
@@ -34,17 +41,17 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "0.5.3 2024-10-25"
+VERSION = "0.6 2024-10-25"
 
 
 # Configure the app
 #
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
-app.config['FLASH_AKK'] = "ioccc-submit-tool"
+app.config['FLASH_APP'] = "ioccc-submit-tool"
 app.config['FLASK_DEBUG'] = True
+app.config['FLASK_ENV'] = "development"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['BASIC_AUTH_FORCE'] = True
 #
 # We will read the 1st line of the SECRET_FILE, ignoring the newline
 #
@@ -69,11 +76,6 @@ except OSError:
     app.secret_key = str(uuid.uuid4())
 
 
-# start HTTP Basic authorization
-#
-auth = HTTPBasicAuth()
-
-
 # set app file paths
 #
 with app.test_request_context('/'):
@@ -82,176 +84,164 @@ with app.test_request_context('/'):
     url_for('static', filename='ioccc.png')
 
 
-@auth.verify_password
-def verify_password(username, password):
-    """
-    Standard Password Validation.
-    """
-
-    # Return False if:
-    #
-    # if the username is not valid, or
-    # if the username is not in the password file, or
-    # if the username is not allowed to login, or
-    # if the password is not the correct password for the username
-    #
-    # Otherwise return True:
-    #
-    # if the username is valid, and
-    # if the username is in the password file, and
-    # if the username is allowed to login, and
-    # if the password is the correct password for the username
-    #
-    return verify_user_password(username, password)
+# Setup the login manager
+#
+login_manager = flask_login.LoginManager()
+login_manager.init_app(app)
 
 
-@app.route('/', methods=["GET"])
-@auth.login_required
-def index():
+# Our mock database.
+#
+users = {'user': {'password': 'test'}}
+
+
+# Trivial user class
+#
+class User(flask_login.UserMixin):
     """
-    Basic User Interface.
+    Trivial user class
     """
 
-    # verify the contest is ioen
-    #
-    opdate, cldate, now = check_state()
-    if now < opdate or now > cldate:
-        return render_template("closed.html")
+    def __init__(self):
+        self.id = None
 
-    # setup
-    #
-    username = auth.current_user()
+    def is_active(self):
+        """True, as all users are active."""
+        return True
 
-    # paranoia - username must be a POSIX safe filename
-    #
-    # This also prevents username with /, and prevents it from being empty string,
-    # thus one cannot create a username with system cracking "funny business".
-    #
-    if not re.match(POSIX_SAFE_RE, username):
-        return Response(response="Configuration error #0.0", status=400)
+    def get_id(self):
+        """Return the username to satisfy Flask-Login's requirements."""
+        return self.id
 
-    # get the JSON slots for the user
-    #
-    slots = initialize_user_tree(username)
+    def is_authenticated(self):
+        """Return True if the user is authenticated."""
+        return self.authenticated
 
-    # verify we have slots
-    #
-    if not slots:
-        return Response(response="Configuration error #0.1", status=400)
-
-    # return main user interface
-    #
-    return render_template("index.html", user=username, etable=slots, date=str(cldate).replace('+00:00', ''))
+    def is_anonymous(self):
+        """False, as anonymous users aren't supported."""
+        return False
 
 
-@app.route('/update', methods=["POST"])
-@auth.login_required
-def upload():
+@login_manager.user_loader
+def user_loader(user_id):
     """
-    Upload slot file
+    load the user
     """
+    if user_id not in users:
+        return None
 
-    # verify that the contest is still open
-    #
-    opdate, cldate, now = check_state()
-    if now < opdate or now > cldate:
-        flash("The IOCCC is closed.")
-        return redirect(IOCCC_ROOT)
+    user = User()
+    user.id = user_id
+    return user
 
-    # get usernmame
-    #
-    username = auth.current_user()
 
-    # setup for user
-    #
-    user_dir = return_user_dir_path(username)
-    if not user_dir:
-        flash("ERROR: " + return_last_errmsg())
-        return redirect(IOCCC_ROOT)
+@app.route('/', methods = ['GET', 'POST'])
+def login():
+    """
+    Process login request
+    """
+    if request.method == 'POST':
+        form_dict = request.form.to_dict()
+        username = form_dict.get('username')
 
-    # verify they selected a slot number to upload
-    #
-    if not 'slot_num' in request.form:
-        flash("No slot selected")
-        return redirect(IOCCC_ROOT)
-    user_input = request.form['slot_num']
-    try:
-        slot_num = int(user_input)
-    except ValueError:
-        flash("Slot number is not a number: " + user_input)
-        return redirect(IOCCC_ROOT)
-    slot_num_str = user_input
+        if username in users:
+            if users[username]['password'] == form_dict.get('password'):
+                user = User()
+                user.id = username
+                flask_login.login_user(user)
+                # return redirect(url_for('protected_page_1'))
 
-    # verify slot number
-    #
-    slot_dir = return_slot_dir_path(username, slot_num)
-    if not slot_dir:
-        flash("ERROR: " + return_last_errmsg())
-        return redirect(IOCCC_ROOT)
+        if form_dict.get('page'):
+            return redirect(url_for('page'))
+        if form_dict.get('protected_page_1'):
+            return redirect(url_for('protected_page_1'))
+        if form_dict.get('protected_page_2'):
+            return redirect(url_for('protected_page_2'))
+        if form_dict.get('logout'):
+            return redirect(url_for('logout'))
 
-    # verify they selected a file to upload
-    #
-    if 'file' not in request.files:
-        flash('No file part')
-        return redirect(IOCCC_ROOT)
-    file = request.files['file']
-    if file.filename == '':
-        flash('No selected file')
-        return redirect(IOCCC_ROOT)
+    return render_template('login.html')
 
-    # verify that the filename is in a submit file form
-    #
-    re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
-    if not re.match(re_match_str, file.filename):
-        flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
-        return redirect(IOCCC_ROOT)
 
-    # lock the slot
-    #
-    slot_lock_fd = lock_slot(username, slot_num)
-    if not slot_lock_fd:
-        flash("ERROR: " + return_last_errmsg())
-        return redirect(IOCCC_ROOT)
+@app.route('/page', methods=['GET','POST'])
+def page():
+    """
+    Access User page
+    """
+    if request.method == 'POST':
+        form_dict = request.form.to_dict()
+        print('formDcit::', form_dict)
+        if form_dict.get('page'):
+            return redirect(url_for('page'))
+        if form_dict.get('protected_page_1'):
+            return redirect(url_for('protected_page_1'))
+        if form_dict.get('protected_page_2'):
+            return redirect(url_for('protected_page_2'))
+        if form_dict.get('logout'):
+            return redirect(url_for('logout'))
+        if form_dict.get('login'):
+            return redirect(url_for('login'))
+    return render_template('page.html')
 
-    # save the file in the slot
-    #
-    upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
-    file.save(upload_file)
-    if not update_slot(username, slot_num, upload_file):
-        flash("ERROR: " + return_last_errmsg())
-        # fallthru to unlock_slot()
 
-    # unlock the slot
-    #
-    if not unlock_slot():
-        flash("ERROR: " + return_last_errmsg())
-        # fallthru to redirect(IOCCC_ROOT)
+@app.route('/protected_page_1', methods = ['GET', 'POST'])
+@flask_login.login_required
+def protected_page_1():
+    """
+    Access the protected page #1.
+    """
+    page_name = 'Protected page 1'
+    other_protected_page = 'Protected page 2'
+    if request.method == 'POST':
+        form_dict = request.form.to_dict()
 
-    # report on the successful upload
-    #
-    flash("Uploaded file: " + file.filename)
+        if form_dict.get('page'):
+            return redirect(url_for('page'))
+        if form_dict.get('protected_page_1'):
+            return redirect(url_for('protected_page_1'))
+        if form_dict.get('protected_page_2'):
+            return redirect(url_for('protected_page_2'))
+        if form_dict.get('logout'):
+            return redirect(url_for('logout'))
 
-    # return to the main user page
-    #
-    return redirect(IOCCC_ROOT)
+    return render_template('protected_page.html', flask_login = flask_login,
+        page_name = page_name, other_protected_page = other_protected_page)
+
+
+@app.route('/protected_page_2', methods = ['GET', 'POST'])
+@flask_login.login_required
+def protected_page_2():
+    """
+    Access the protected page 2.
+    """
+    page_name = 'Protected __page__ 2'
+    other_protected_page = 'Protected page 1'
+    if request.method == 'POST':
+        form_dict = request.form.to_dict()
+        if form_dict.get('page'):
+            return redirect(url_for('page'))
+        if form_dict.get('protected_page_1'):
+            return redirect(url_for('protected_page_1'))
+        if form_dict.get('protected_page_2'):
+            return redirect(url_for('protected_page_2'))
+        if form_dict.get('logout'):
+            return redirect(url_for('logout'))
+
+
+    return render_template('protected_page.html', flask_login = flask_login,
+        page_name = page_name, other_protected_page = other_protected_page)
 
 
 @app.route('/logout')
-@auth.login_required
 def logout():
     """
-    Gross hack to invalidate the BasicAuth session
-
-    See https://stackoverflow.com/questions/233507/how-to-log-out-user-from-web-site-using-basic-authentication
+    Logout.
     """
-
-    # hack !!! :-)
-    #
-    print("http://log:out@" + HOST_NAME + ":" + TCP_PORT + "/" + " with code=401")
-    return redirect("http://log:out@" + HOST_NAME + ":" + TCP_PORT + "/", code=401)
+    flask_login.logout_user()
+    return redirect(url_for('login'))
 
 
-# case: debugging via direct execution
+# Run the app on a given port
 #
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=TCP_PORT)
