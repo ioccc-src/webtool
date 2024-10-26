@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.4.5 2024-10-24"
+LABEL org.ioccc.image.version="0.4.6 2024-10-25"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -66,8 +66,8 @@ EOT
 #
 RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
-RUN chmod 0555 ioccc.py ioccc_common.py iocccpasswd.py
-RUN chown root:root ioccc.py ioccc_common.py iocccpasswd.py
+RUN chmod 0555 ioccc.py ioccc_common.py ioccc_passwd.py
+RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
 
 # Set permissions for etc/iocccpasswd.json
 #
