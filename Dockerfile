@@ -51,14 +51,14 @@ RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 #
 RUN <<EOT
     if [[ ! -d /usr/share/dict ]]; then
-	mkdir -p /usr/share/dict
-	chmod 0755 /usr/share/dict
-	chown root:root /usr/share/dict
+        mkdir -p /usr/share/dict
+        chmod 0755 /usr/share/dict
+        chown root:root /usr/share/dict
     fi
     if [[ ! -f /usr/share/dict/words ]]; then
-	aspell dump master | tr -c "[A-Za-z'\n]" "'" > /usr/share/dict/words
-	chmod 0444 /usr/share/dict/words
-	chown root:root /usr/share/dict/words
+        aspell dump master | tr -c "[A-Za-z'\n]" "'" > /usr/share/dict/words
+        chmod 0444 /usr/share/dict/words
+        chown root:root /usr/share/dict/words
     fi
 EOT
 
@@ -78,7 +78,7 @@ RUN chown root:root etc/init.iocccpasswd.json
 #
 RUN <<EOT
     if [[ ! -f etc/iocccpasswd.json ]]; then
-	cp -f etc/init.iocccpasswd.json etc/init.iocccpasswd.json
+        cp -f etc/init.iocccpasswd.json etc/init.iocccpasswd.json
     fi
 EOT
 
@@ -91,14 +91,23 @@ RUN chown uwsgi:uwsgi etc/iocccpasswd.json
 #
 RUN <<EOT
     if [[ ! -f etc/state.json ]]; then
-	touch etc/state.json
+        cp -f etc/init.state.json etc/state.json
     fi
 EOT
 
-# Set permissions for etc/state.json
+# Create an empty the etc/lock.state.json if missing
+#
+RUN <<EOT
+    if [[ ! -f etc/lock.state.json ]]; then
+        touch etc/lock.state.json
+    fi
+EOT
+
+# Set permissions for etc/state.json, etc/lock.state.json, and etc/init.state.json
 #
 RUN chmod 0664 etc/state.json
-RUN chown uwsgi:uwsgi etc/state.json
+RUN chmod 0444 etc/lock.state.json etc/init.state.json
+RUN chown uwsgi:uwsgi etc/state.json etc/lock.state.json etc/init.state.json
 
 # Set permissions for etc/requirements.txt
 #
@@ -109,7 +118,7 @@ RUN chown root:root etc/requirements.txt
 #
 RUN <<EOT
     if [[ ! -s etc/.secret ]]; then
-	/bin/sh ./genflaskkey
+        /bin/sh ./genflaskkey
     fi
 EOT
 
@@ -122,7 +131,7 @@ RUN chown uwsgi:uwsgi etc/.secret
 #
 RUN <<EOT
     if [[ ! -f etc/lock.iocccpasswd.json ]]; then
-	touch etc/lock.iocccpasswd.json
+        touch etc/lock.iocccpasswd.json
     fi
 EOT
 

@@ -142,19 +142,25 @@ def login():
     """
     Process login request
     """
+
+    # setup
+    #
     username = ""
 
     if request.method == 'POST':
+
+        # obtain, if possible user information as a python dictionary
+        #
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
-
         user_dict = lookup_username(username)
+
         if user_dict:
             user = User()
             user.id = username
             user.user_dict = user_dict
             if verify_hashed_password(form_dict.get('password'),
-                                    user_dict['pwhash']):
+                                      user_dict['pwhash']):
                 user.authenticated  = True
                 flask_login.login_user(user)
                 return render_template('protected_page.html',
@@ -169,7 +175,11 @@ def page():
     """
     Access User page
     """
+
+    # setup
+    #
     username = ""
+
     if request.method == 'POST':
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
@@ -195,6 +205,9 @@ def protected_page_1():
     """
     Access the protected page #1.
     """
+
+    # setup
+    #
     page_name = 'Protected page 1'
     other_protected_page = 'Protected page 2'
     username = ""
@@ -225,6 +238,9 @@ def protected_page_2():
     """
     Access the protected page 2.
     """
+
+    # setup
+    #
     page_name = 'Protected __page__ 2'
     other_protected_page = 'Protected page 1'
     username = ""
