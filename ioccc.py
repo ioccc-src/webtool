@@ -64,7 +64,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 #            different SECRET_KEY value.
 #
 try:
-    with open(SECRET_FILE, 'r', encoding="utf-8") as secret:
+    with open(SECRET_FILE, 'r', encoding = "utf-8") as secret:
         app.secret_key = secret.read().rstrip()
         secret.close()
 except OSError:
@@ -79,9 +79,9 @@ except OSError:
 # set app file paths
 #
 with app.test_request_context('/'):
-    url_for('static', filename='style.css')
-    url_for('static', filename='script.js')
-    url_for('static', filename='ioccc.png')
+    url_for('static', filename = 'style.css')
+    url_for('static', filename = 'script.js')
+    url_for('static', filename = 'ioccc.png')
 
 
 # Setup the login manager
@@ -106,7 +106,7 @@ class User(flask_login.UserMixin):
         self.id = None
         self.authenticated = False
         self.user_dict = None
-        
+
     def is_active(self):
         """True, as all users are active."""
         return True
@@ -142,6 +142,8 @@ def login():
     """
     Process login request
     """
+    username = ""
+
     if request.method == 'POST':
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
@@ -155,19 +157,24 @@ def login():
                                     user_dict['pwhash']):
                 user.authenticated  = True
                 flask_login.login_user(user)
-                return render_template('protected_page.html', username = username)
+                return render_template('protected_page.html',
+                                       username = username)
 
-    return render_template('login.html')
+    return render_template('login.html',
+                           username = username)
 
 
-@app.route('/page', methods=['GET','POST'])
+@app.route('/page', methods = ['GET','POST'])
 def page():
     """
     Access User page
     """
+    username = ""
     if request.method == 'POST':
         form_dict = request.form.to_dict()
+        username = form_dict.get('username')
         print('formDcit::', form_dict)
+
         if form_dict.get('page'):
             return redirect(url_for('page'))
         if form_dict.get('protected_page_1'):
@@ -178,7 +185,8 @@ def page():
             return redirect(url_for('logout'))
         if form_dict.get('login'):
             return redirect(url_for('login'))
-    return render_template('page.html')
+
+    return render_template('page.html', username = username)
 
 
 @app.route('/protected_page_1', methods = ['GET', 'POST'])
@@ -189,8 +197,11 @@ def protected_page_1():
     """
     page_name = 'Protected page 1'
     other_protected_page = 'Protected page 2'
+    username = ""
+
     if request.method == 'POST':
         form_dict = request.form.to_dict()
+        username = form_dict.get('username')
 
         if form_dict.get('page'):
             return redirect(url_for('page'))
@@ -201,8 +212,11 @@ def protected_page_1():
         if form_dict.get('logout'):
             return redirect(url_for('logout'))
 
-    return render_template('protected_page.html', flask_login = flask_login,
-        page_name = page_name, other_protected_page = other_protected_page)
+    return render_template('protected_page.html',
+                           flask_login = flask_login,
+                           page_name = page_name,
+                           other_protected_page = other_protected_page,
+                           username = username)
 
 
 @app.route('/protected_page_2', methods = ['GET', 'POST'])
@@ -213,8 +227,12 @@ def protected_page_2():
     """
     page_name = 'Protected __page__ 2'
     other_protected_page = 'Protected page 1'
+    username = ""
+
     if request.method == 'POST':
         form_dict = request.form.to_dict()
+        username = form_dict.get('username')
+
         if form_dict.get('page'):
             return redirect(url_for('page'))
         if form_dict.get('protected_page_1'):
@@ -224,9 +242,11 @@ def protected_page_2():
         if form_dict.get('logout'):
             return redirect(url_for('logout'))
 
-
-    return render_template('protected_page.html', flask_login = flask_login,
-        page_name = page_name, other_protected_page = other_protected_page)
+    return render_template('protected_page.html',
+                           flask_login = flask_login,
+                           page_name = page_name,
+                           other_protected_page = other_protected_page,
+                           username = username)
 
 
 @app.route('/logout')
@@ -241,4 +261,5 @@ def logout():
 # Run the app on a given port
 #
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=TCP_PORT)
+    app.run(host = '0.0.0.0',
+            port = TCP_PORT)
