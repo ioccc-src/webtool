@@ -27,6 +27,7 @@ import inspect
 import string
 import secrets
 import random
+import shutil
 
 
 # import from modules
@@ -61,7 +62,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.1 2024-10-28"
+VERSION_IOCCC_COMMON = "1.1.1 2024-10-28"
 
 # force password change grace time
 #
@@ -96,6 +97,7 @@ if not Path(IOCCC_DIR).is_dir():
     IOCCC_ROOT = "./"
     IOCCC_DIR = IOCCC_ROOT + "app"
 PW_FILE = IOCCC_DIR + "/etc/iocccpasswd.json"
+INIT_PW_FILE = IOCCC_DIR + "/etc/init.iocccpasswd.json"
 PW_LOCK = IOCCC_DIR + "/etc/lock.iocccpasswd.json"
 ADM_FILE = IOCCC_DIR + "/etc/admins.json"
 SECRET_FILE = IOCCC_DIR + "/etc/.secret"
@@ -126,6 +128,7 @@ PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
 # state (open and close) related JSON values
 #
 STATE_FILE = IOCCC_DIR + "/etc/state.json"
+INIT_STATE_FILE = IOCCC_DIR + "/etc/init.state.json"
 STATE_FILE_LOCK = IOCCC_DIR + "/etc/lock.state.json"
 STATE_VERSION_VALUE = "1.1 2024-10-27"
 DEFAULT_JSON_STATE_TEMPLATE = '''{
@@ -357,6 +360,16 @@ def load_pwfile():
     if not pw_lock_fd:
         last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
+
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
 
     # load the password file and unlock
     #
@@ -633,6 +646,16 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
                         ": unable to lock password file"
         return None
 
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
+
     # load the password file and unlock
     #
     try:
@@ -742,6 +765,16 @@ def delete_username(username):
     if not pw_lock_fd:
         last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
+
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
 
     # load the password file and unlock
     #
@@ -1691,6 +1724,16 @@ def read_state():
         #
         last_errmsg = "Warning: timeout on slot lock state file: " + STATE_FILE_LOCK
         return None
+
+    # If there is no state file, or if the state file is empty, copy it from the initial state file
+    #
+    if not os.path.isfile(STATE_FILE) or os.path.getsize(STATE_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
+                            " " + STATE_FILE + " exception: " + str(exception)
+            return None
 
     # read the state
     #

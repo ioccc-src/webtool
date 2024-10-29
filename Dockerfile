@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.4.6 2024-10-25"
+LABEL org.ioccc.image.version="0.4.7 2024-10-28"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -74,26 +74,10 @@ RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
 RUN chmod 0400 etc/init.iocccpasswd.json
 RUN chown root:root etc/init.iocccpasswd.json
 
-# Initialize the etc/iocccpasswd.json if it is missing
-#
-RUN <<EOT
-    if [[ ! -f etc/iocccpasswd.json ]]; then
-        cp -f etc/init.iocccpasswd.json etc/init.iocccpasswd.json
-    fi
-EOT
-
 # Set permissions for etc/iocccpasswd.json
 #
 RUN chmod 0664 etc/iocccpasswd.json
 RUN chown uwsgi:uwsgi etc/iocccpasswd.json
-
-# Create an empty the etc/state.json if missing
-#
-RUN <<EOT
-    if [[ ! -f etc/state.json ]]; then
-        cp -f etc/init.state.json etc/state.json
-    fi
-EOT
 
 # Create an empty the etc/lock.state.json if missing
 #

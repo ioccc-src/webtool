@@ -134,12 +134,6 @@ activate a python environment:
     rm -rf venv __pycache__ && python3 -m venv venv
     . ./venv/bin/activate
     python3 -m pip install -r etc/requirements.txt
-    if [[ ! -f etc/iocccpasswd.json ]]; then
-        cp -f -v etc/init.iocccpasswd.json.json etc/iocccpasswd.json;
-    fi
-    if [[ ! -f etc/state.json ]]; then
-        cp -f -v etc/init.state.json etc/state.json;
-    fi
 ```
 
 Then run:
