@@ -101,11 +101,15 @@ class User(flask_login.UserMixin):
     """
     Trivial user class
     """
-
-    def __init__(self):
-        self.id = None
-        self.authenticated = False
-        self.user_dict = None
+    user_dict = None
+    id = None
+    authenticated = False
+    
+    def __init__(self,username):
+        self.user_dict = lookup_username(username)
+        if self.user_dict:
+            self.id = username
+        
         
     def is_active(self):
         """True, as all users are active."""
@@ -129,12 +133,10 @@ def user_loader(user_id):
     """
     load the user
     """
-    if user_id not in users:
-        return None
-
-    user = User()
-    user.id = user_id
-    return user
+    user =  User(user_id)
+    if user.id:
+        return user
+    return None
 
 
 @app.route('/', methods = ['GET', 'POST'])
@@ -146,21 +148,19 @@ def login():
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
 
-        user_dict = lookup_username(username)
-        if user_dict:
-            user = User()
-            user.id = username
-            user.user_dict = user_dict
-            if verify_hash_password(form_dict.get('password'),
-                                    user_dict['pwhash']):
+        user = User(username)
+        if user.id:
+            if verify_hashed_password(form_dict.get('password'),
+                                    user.user_dict['pwhash']):
                 user.authenticated  = True
                 flask_login.login_user(user)
-                return render_template('protected_page.html')
+                return redirect('/page')
 
     return render_template('login.html')
 
 
 @app.route('/page', methods=['GET','POST'])
+@flask_login.login_required
 def page():
     """
     Access User page
