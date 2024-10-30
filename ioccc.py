@@ -104,13 +104,12 @@ class User(flask_login.UserMixin):
     user_dict = None
     id = None
     authenticated = False
-    
+
     def __init__(self,username):
         self.user_dict = lookup_username(username)
         if self.user_dict:
             self.id = username
-        
-        
+
     def is_active(self):
         """True, as all users are active."""
         return True
