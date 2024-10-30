@@ -5,6 +5,7 @@
 # pylint: disable=too-many-branches
 # pylint: disable=unused-import
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-locals
 """
 Functions to implement adding and deleting of IOCCC contestants.
 """
@@ -29,7 +30,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.1.1 2024-10-25"
+VERSION = "1.2 2024-10-28"
 
 
 def main():
@@ -46,11 +47,15 @@ def main():
     pw_change_by = None
     program = os.path.basename(__file__)
     admin = False
+    start_given = False
+    start_datetime = None
+    stop_given = False
+    stop_datetime = None
 
     # parse args
     #
     parser = argparse.ArgumentParser(
-                description="Manage IOCCC submit server password file",
+                description="Manage IOCCC submit server password file and state file",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-a', '--add',
                         help="add a new user",
@@ -86,6 +91,14 @@ def main():
     parser.add_argument('-U', '--UUID',
                         help='generate a new UUID username and password',
                         action='store_true')
+    parser.add_argument('-s', '--start',
+                        help="set IOCCC start date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format",
+                        metavar='DateTime',
+                        nargs=1)
+    parser.add_argument('-S', '--stop',
+                        help="set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format",
+                        metavar='DateTime',
+                        nargs=1)
     args = parser.parse_args()
 
     # -c - force user to change their password at the next login
@@ -121,6 +134,48 @@ def main():
     if args.admin:
         admin = True
 
+    # -s - set IOCCC start date
+    #
+    if args.start:
+        start_given = True
+        start_datetime = args.start[0]
+
+    # -S - set IOCCC stop date
+    #
+    if args.stop:
+        stop_given = True
+        stop_datetime = args.stop[0]
+
+    # if either -s DateTime or -S DateTime was given:
+    #
+    if start_given or stop_given:
+
+        # if -s DateTime was not given, obtain the current start date
+        #
+        if not start_given:
+            start_datetime, _ = read_state()
+            if not start_datetime:
+                print("ERROR: unable to fetch of start date: <<" + return_last_errmsg() + ">>")
+                sys.exit(3)
+
+        # if -S DateTime was not given, obtain the current stop date
+        #
+        if not stop_given:
+            _, stop_datetime = read_state()
+            if not stop_datetime:
+                print("ERROR: unable to fetch of stop date: <<" + return_last_errmsg() + ">>")
+                sys.exit(4)
+
+        # update the start and/or stop dates
+        #
+        if not update_state(str(start_datetime), str(stop_datetime)):
+            print("ERROR: failed to update start and/or stop  date(s): <<" + return_last_errmsg() + ">>")
+            sys.exit(5)
+        else:
+            print("Notice: set start: " + str(start_datetime) + " stop: " + str(stop_datetime))
+            sys.exit(0)
+
+
     # -a user - add user if they do not already exist
     #
     if args.add:
@@ -135,7 +190,7 @@ def main():
         pwhash = hash_password(password)
         if not pwhash:
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(3)
+            sys.exit(6)
 
         # determine the username to add
         #
@@ -145,7 +200,7 @@ def main():
         #
         if lookup_username(username):
             print("ERROR: username already exists: <<" + username + ">>")
-            sys.exit(4)
+            sys.exit(7)
 
         # add the user
         #
@@ -155,7 +210,7 @@ def main():
         else:
             print("ERROR: failed to add username: <<" + username + ">> password: <<" + password + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(5)
+            sys.exit(8)
 
     # -u user - update if they exit, or add user if they do not already exist
     #
@@ -171,7 +226,7 @@ def main():
         pwhash = hash_password(password)
         if not pwhash:
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(6)
+            sys.exit(9)
 
         # determine the username to update
         #
@@ -185,7 +240,7 @@ def main():
         else:
             print("ERROR: failed to update username: <<" + username + ">> password: <<" + password + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(7)
+            sys.exit(10)
 
     # -d user - delete user
     #
@@ -200,7 +255,7 @@ def main():
         if not lookup_username(username):
             print("ERROR: username does not exist: <<" + username + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(8)
+            sys.exit(11)
 
         # remove the user
         #
@@ -210,7 +265,7 @@ def main():
         else:
             print("ERROR: failed to delete username: <<" + username + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(9)
+            sys.exit(12)
 
     # -a user - add user if they do not already exist
     #
@@ -226,7 +281,7 @@ def main():
         pwhash = hash_password(password)
         if not pwhash:
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(10)
+            sys.exit(13)
 
         # generate an random UUID of type that is not an existing user
         #
@@ -259,7 +314,7 @@ def main():
         #
         if not username:
             print("ERROR: SUPER RARE: failed to found a new UUID after " + str(try_limit) + " attempts!!!")
-            sys.exit(11)
+            sys.exit(14)
 
         # add the user
         #
@@ -269,12 +324,12 @@ def main():
         else:
             print("ERROR: failed to add UUID username: <<" + username + ">> password: <<" + password + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(12)
+            sys.exit(15)
 
-        # no option selected
-        #
-        print("ERROR: command line must use one of: -a USER or -u USER or -d USER or -U")
-        sys.exit(13)
+    # no option selected
+    #
+    print("ERROR: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime")
+    sys.exit(16)
 
 if __name__ == '__main__':
     main()

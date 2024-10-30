@@ -27,6 +27,7 @@ import inspect
 import string
 import secrets
 import random
+import shutil
 
 
 # import from modules
@@ -61,12 +62,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.0.3 2024-10-25"
-
-# default content open and close date if there is no STATE_FILE
-#
-DEF_OPDATE = datetime(2024, 1, 2, 3, 4, 5, tzinfo=ZoneInfo("UTC"))
-DEF_CLDATE = datetime(2025, 12, 31, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
+VERSION_IOCCC_COMMON = "1.1.1 2024-10-28"
 
 # force password change grace time
 #
@@ -101,8 +97,8 @@ if not Path(IOCCC_DIR).is_dir():
     IOCCC_ROOT = "./"
     IOCCC_DIR = IOCCC_ROOT + "app"
 PW_FILE = IOCCC_DIR + "/etc/iocccpasswd.json"
+INIT_PW_FILE = IOCCC_DIR + "/etc/init.iocccpasswd.json"
 PW_LOCK = IOCCC_DIR + "/etc/lock.iocccpasswd.json"
-STATE_FILE = IOCCC_DIR + "/etc/state.json"
 ADM_FILE = IOCCC_DIR + "/etc/admins.json"
 SECRET_FILE = IOCCC_DIR + "/etc/.secret"
 
@@ -110,7 +106,7 @@ SECRET_FILE = IOCCC_DIR + "/etc/.secret"
 #
 POSIX_SAFE_RE = "^[0-9A-Za-z][0-9A-Za-z._+-]*$"
 
-# JSON related values
+# slot related JSON values
 #
 NO_COMMENT_VALUE = "mandatory comment: because comments were removed from the original JSON spec"
 SLOT_VERSION_VALUE = "1.1 2024-10-13"
@@ -124,7 +120,24 @@ EMPTY_JSON_SLOT_TEMPLATE = '''{
     "sha256": null,
     "status": "slot is empty"
 }'''
+
+# password related JSON values
+#
 PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
+
+# state (open and close) related JSON values
+#
+STATE_FILE = IOCCC_DIR + "/etc/state.json"
+INIT_STATE_FILE = IOCCC_DIR + "/etc/init.state.json"
+STATE_FILE_LOCK = IOCCC_DIR + "/etc/lock.state.json"
+STATE_VERSION_VALUE = "1.1 2024-10-27"
+DEFAULT_JSON_STATE_TEMPLATE = '''{
+    "no_comment": "$NO_COMMENT_VALUE",
+    "state_JSON_format_version": "$STATE_VERSION_VALUE",
+    "open_date": "$OPEN_DATE",
+    "close_date": "$CLOSE_DATE"
+}'''
+
 
 # slot numbers from 0 to MAX_SUBMIT_SLOT
 #
@@ -220,13 +233,13 @@ def return_user_dir_path(username):
 
     Returns:
         None ==> username is not POSIX safe
-        != None ==> directory (may not exist) of for the user (not exist)
+        != None ==> user directory path (which may not yet exist) for a user (which not yet exist)
 
     A useful side effect of this call is to verify that the username
     string is sane.  However, the username may not be a valid user
     nor may the user directory exist.  It is up to caller to check that.
 
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
+    It is up the caller to create, if needed, the user directory.
     """
 
     # setup
@@ -263,7 +276,7 @@ def return_slot_dir_path(username, slot_num):
 
     Returns:
         None ==> invalid slot number or Null user_dir
-        != None ==> slot directory (may not exist))
+        != None ==> slot directory path (may not yet exist)
 
     It is up the caller to create, if needed, the slot directory.
     """
@@ -303,7 +316,7 @@ def return_slot_json_filename(username, slot_num):
 
     Returns:
         None ==> invalid slot number or Null user_dir
-        != None ==> path of the JSON filename for this user's slot
+        != None ==> path of the JSON filename for this user's slot (may not yet exist)
 
     It is up the caller to create, if needed, the JSON filename.
     """
@@ -332,7 +345,7 @@ def load_pwfile():
 
     Returns:
         None ==> unable to read the JSON in the password file
-        != None ==> JSON from the password file as a python dictionary
+        != None ==> password file contents as a python dictionary
     """
 
     # setup
@@ -347,6 +360,16 @@ def load_pwfile():
     if not pw_lock_fd:
         last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
+
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
 
     # load the password file and unlock
     #
@@ -384,7 +407,7 @@ def replace_pwfile(pw_file_json):
 
     Returns:
         False ==> unable to write JSON into the password file
-        True ==> password file updated with JSON
+        True ==> password file was successfully updated
     """
 
     # setup
@@ -424,15 +447,15 @@ def replace_pwfile(pw_file_json):
     return True
 
 
-def validate_user_info(user_info):
+def validate_user_dict(user_dict):
     """
     Perform sanity checks on user information for username from password file
 
     Given:
-        user_info    user information for username as a python dictionary
+        user_dict    user information as a python dictionary
 
     Returns:
-        True ==> no error in user information
+        True ==> no error found with in user information
         False ==> a problem was found with user JSON information
     """
 
@@ -444,41 +467,41 @@ def validate_user_info(user_info):
 
     # sanity check argument
     #
-    if not isinstance(user_info, dict):
-        last_errmsg = "ERROR: in " + me + ": user_info arg is not a python dictionary"
+    if not isinstance(user_dict, dict):
+        last_errmsg = "ERROR: in " + me + ": user_dict arg is not a python dictionary"
         return False
 
     # obtain the username
     #
-    if not isinstance(user_info['username'], str):
-        last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_info['username']) + ">>"
+    if not isinstance(user_dict['username'], str):
+        last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_dict['username']) + ">>"
         return False
-    username = user_info['username']
+    username = user_dict['username']
 
     # sanity check the information for user
     #
-    if user_info["no_comment"] != NO_COMMENT_VALUE:
+    if user_dict["no_comment"] != NO_COMMENT_VALUE:
         last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + username + ">>"
         return False
-    if user_info["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
+    if user_dict["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
         last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + username + ">>"
         return False
-    if not user_info['pwhash']:
+    if not user_dict['pwhash']:
         last_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + username + ">>"
         return False
-    if not isinstance(user_info['pwhash'], str):
+    if not isinstance(user_dict['pwhash'], str):
         last_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
         return False
-    if not isinstance(user_info['admin'], bool):
+    if not isinstance(user_dict['admin'], bool):
         last_errmsg = "ERROR: in " + me + ": admin is not a boolean for username : <<" + username + ">>"
         return False
-    if not isinstance(user_info['force_pw_change'], bool):
+    if not isinstance(user_dict['force_pw_change'], bool):
         last_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
         return False
-    if user_info['pw_change_by'] and not isinstance(user_info['pw_change_by'], str):
+    if user_dict['pw_change_by'] and not isinstance(user_dict['pw_change_by'], str):
         last_errmsg = "ERROR: in " + me + ": pw_change_by is not string nor None for username : <<" + username + ">>"
         return False
-    if not isinstance(user_info['disable_login'], bool):
+    if not isinstance(user_dict['disable_login'], bool):
         last_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
         return False
 
@@ -495,10 +518,10 @@ def lookup_username(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
+        None ==> no such username, or
+                 username does not match POSIX_SAFE_RE, or
+                 bad password file
         != None ==> user information as a python dictionary
-
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
 
     # setup
@@ -524,23 +547,23 @@ def lookup_username(username):
 
     # search the password file for the user
     #
-    user_info = None
+    user_dict = None
     for i in pw_file_json:
         if i['username'] == username:
-            user_info = i
+            user_dict = i
             break
-    if not user_info:
+    if not user_dict:
         last_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
         return None
 
     # sanity check the user information for user
     #
-    if not validate_user_info(user_info):
+    if not validate_user_dict(user_dict):
         return None
 
     # return user information for user in the form of a python dictionary
     #
-    return user_info
+    return user_dict
 
 
 # pylint: disable-next=too-many-arguments,too-many-positional-arguments
@@ -561,8 +584,6 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     Returns:
         False ==> unable to update user in the password file
         True ==> user updated or added to the password file
-
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
 
     # setup
@@ -624,6 +645,16 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
         last_errmsg = "ERROR: in " + me + \
                         ": unable to lock password file"
         return None
+
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
 
     # load the password file and unlock
     #
@@ -707,10 +738,10 @@ def delete_username(username):
         username    IOCCC submit server username to remove
 
     Returns:
-        None ==> no such username, or username does not match POSIX_SAFE_RE, or bad password file
-        != None ==> user information about the removed username as a python dictionary
-
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
+        None ==> no such username, or
+                 username does not match POSIX_SAFE_RE, or
+                 bad password file
+        != None ==> removed user information as a python dictionary
     """
 
     # setup
@@ -734,6 +765,16 @@ def delete_username(username):
     if not pw_lock_fd:
         last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
+
+    # If there is no password file, or if the password file is empty, copy it from the initial password file
+    #
+    if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
+                            " " + PW_FILE + " exception: " + str(exception)
+            return None
 
     # load the password file and unlock
     #
@@ -867,7 +908,8 @@ def verify_hashed_password(password, pwhash):
 
     Returns:
         True ==> password matches the hashed password
-        False ==> password does NOT match the hashed password or arg not a string
+        False ==> password does NOT match the hashed password or
+                  a non-string args was found
     """
 
     # setup
@@ -903,7 +945,8 @@ def verify_user_password(username, password):
 
     Returns:
         True ==> password matches the hashed password
-        False ==> password does NOT match the hashed password or arg not a string
+        False ==> password does NOT match the hashed password or
+                  a non-string args was found
     """
 
     # setup
@@ -926,8 +969,8 @@ def verify_user_password(username, password):
 
     # fail if user login is disabled or missing from the password file
     #
-    user_info = lookup_username(username)
-    if not user_info:
+    user_dict = lookup_username(username)
+    if not user_dict:
 
         # user is not in the password file, so we cannot state they have been disabled
         #
@@ -935,7 +978,7 @@ def verify_user_password(username, password):
 
     # fail is the user is not allowed to login
     #
-    if not user_allowed_to_login(user_info):
+    if not user_allowed_to_login(user_dict):
 
         # user is not allowed to login
         #
@@ -943,31 +986,31 @@ def verify_user_password(username, password):
 
     # return the result of the hashed password check for this user
     #
-    return verify_hashed_password(password, user_info['pwhash'])
+    return verify_hashed_password(password, user_dict['pwhash'])
 
 
-def user_allowed_to_login(user_info):
+def user_allowed_to_login(user_dict):
     """
     Determine if the user has been disabled based on the username
 
     Given:
-        user_info    user information for username as a python dictionary
+        user_dict    user information for username as a python dictionary
 
     Returns:
         True ==> user is allowed to login
         False ==> login is not allowed for the user, or
-                  user_info failed sanity checks, or
+                  user_dict failed sanity checks, or
                   user did not change their password in time
     """
 
     # sanity check the user information
     #
-    if not validate_user_info(user_info):
+    if not validate_user_dict(user_dict):
         return False
 
     # deny login if disable_login is true
     #
-    if user_info['disable_login']:
+    if user_dict['disable_login']:
 
         # login disabled
         #
@@ -975,11 +1018,11 @@ def user_allowed_to_login(user_info):
 
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit
     #
-    if user_info['force_pw_change'] and user_info['pw_change_by']:
+    if user_dict['force_pw_change'] and user_dict['pw_change_by']:
 
         # Convert pw_change_by into a datetime string
         #
-        pw_change_by = datetime.strptime(user_info['pw_change_by'], DATETIME_FORMAT)
+        pw_change_by = datetime.strptime(user_dict['pw_change_by'], DATETIME_FORMAT)
 
         # determine the datetime of now
         #
@@ -1003,13 +1046,11 @@ def username_login_allowed(username):
         username    IOCCC submit server username
 
     Returns:
-        True        username logins are is allowed
-        False       username has been disabled in the password file, or
+        True        user is allowed to login
+        False       username is not in the password file, or
+                    username has been disabled in the password file, or
                     user did not change their password in time, or
-                    username is invalid
-
-    NOTE: If the user is not in the password file, we return False.
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
+                    username does not match POSIX_SAFE_RE
     """
 
     # setup
@@ -1029,8 +1070,8 @@ def username_login_allowed(username):
 
     # fail if user login is disabled or missing from the password file
     #
-    user_info = lookup_username(username)
-    if not user_info:
+    user_dict = lookup_username(username)
+    if not user_dict:
 
         # user is not in the password file, so we cannot state they have been disabled
         #
@@ -1038,7 +1079,7 @@ def username_login_allowed(username):
 
     # determine, based on the user information, if the user is allowed to login
     #
-    return user_allowed_to_login(user_info)
+    return user_allowed_to_login(user_dict)
 
 
 def lock_slot(username, slot_num):
@@ -1059,15 +1100,15 @@ def lock_slot(username, slot_num):
 
     Returns:
         lock file descriptor    lock successful
-        None                    lock not successful, invalid username, invalid slot_num
+        None                    lock not successful, or
+                                invalid username, or
+                                invalid slot_num
 
     NOTE: We use the python filelock module.  See:
 
           https://pypi.org/project/filelock/
           https://py-filelock.readthedocs.io/en/latest/api.html
           https://snyk.io/advisor/python/filelock/example
-
-    NOTE: The username must be a POSIX safe filename.  See POSIX_SAFE_RE.
     """
 
     # setup
@@ -1223,6 +1264,10 @@ def write_slot_json(slots_json_file, slot_json):
     Given:
         slots_json_file     JSON filename for a given slot
         slot_json           content for a given slot as a python dictionary
+
+    Returns:
+        True    slot JSON file updated
+        False   failed to update slot JSON file
     """
     # declare global use
     #
@@ -1397,7 +1442,8 @@ def get_json_slot(username, slot_num):
         slot_num    slot number for a given username
 
     Returns:
-        None ==> invalid slot number or Null user_dir
+        None ==> invalid slot number, or
+                 user_dir is Null
         != None ==> slot information as a python dictionary
     """
 
@@ -1494,7 +1540,8 @@ def get_all_json_slots(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> invalid slot number or Null user_dir
+        None ==> invalid slot number, or
+                 user_dir is Null
         != None ==> array of slot user data as a python dictionary
     """
 
@@ -1602,12 +1649,12 @@ def update_slot(username, slot_num, slot_file):
     return True
 
 
-def readjfile(jfile):
+def read_json_file(json_file):
     """
     Return the contents of a JSON file as a python dictionary
 
     Given:
-        jfile   JSON file to read
+        json_file   JSON file to read
 
     Returns:
         != None     JSON file contents as a python dictionary
@@ -1623,71 +1670,279 @@ def readjfile(jfile):
     # try to read JSON contents
     #
     try:
-        with open(jfile, 'r', encoding="utf-8") as j_fp:
+        with open(json_file, 'r', encoding="utf-8") as j_fp:
             # return slot information as a python dictionary
             #
             return json.load(j_fp)
     except OSError as exception:
         last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
-                        jfile + " exception: " + str(exception)
+                        json_file + " exception: " + str(exception)
         return []
 
 
-def set_state(opdate, cldate):
+def read_state():
     """
-    Set contest dates.
+    Read the state file for the open and close dates
+
+    Returns:
+        == None, None
+                Unable to open the state file, or
+                Unable to read the state file, or
+                Unable to parse the JSON in the state file,
+                state file missing the open date, or
+                open date string is not in a valid datetime format, or
+                state file missing the close date, or
+                close date string is not in a valid datetime in DATETIME_FORMAT format
+        != None, open_datetime, close_datetime in datetime in DATETIME_FORMAT format
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
+    global last_slot_lock
+    # pylint: disable-next=global-statement
+    global last_lock_user
+    # pylint: disable-next=global-statement
+    global last_lock_slot_num
+    # pylint: disable-next=global-statement
     global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # set the state file with open and close date/time
+    # Lock the state file
+    #
+    state_lock_fd = FileLock(STATE_FILE_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    try:
+        with state_lock_fd:
+            # note our new lock
+            #
+            last_slot_lock = state_lock_fd
+            last_lock_user = ""
+            last_lock_slot_num = "((no-slot))"
+    except Timeout:
+
+        # too too long to get the lock
+        #
+        last_errmsg = "Warning: timeout on slot lock state file: " + STATE_FILE_LOCK
+        return None
+
+    # If there is no state file, or if the state file is empty, copy it from the initial state file
+    #
+    if not os.path.isfile(STATE_FILE) or os.path.getsize(STATE_FILE) <= 0:
+        try:
+            shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
+        except OSError as exception:
+            last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
+                            " " + STATE_FILE + " exception: " + str(exception)
+            return None
+
+    # read the state
+    #
+    state = read_json_file(STATE_FILE)
+
+    # Unlock the state file
+    #
+    try:
+        last_slot_lock.release(force=True)
+    except OSError:
+        # We give up as we cannot unlock the slot
+        #
+        if not last_lock_user:
+            last_lock_user = "((None))"
+        if not last_lock_slot_num:
+            last_lock_slot_num = "((no-slot))"
+        last_errmsg = "Warning: failed to unlock state file: " + STATE_FILE_LOCK
+        # fall thru
+
+    # clear lock, lock user and lock slot
+    #
+    last_slot_lock = None
+    last_lock_user = None
+    last_lock_slot_num = None
+
+    # detect if we were unable to read the state file
+    #
+    if not state:
+        return None, None
+
+    # state file sanity checks
+    #
+    if not state["no_comment"]:
+        last_errmsg = "ERROR: in " + me + ": no JSON no_comment in state file"
+    if state["no_comment"] != NO_COMMENT_VALUE:
+        last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment in state file: <<" + \
+                      state["no_comment"] + ">> != <<" + NO_COMMENT_VALUE + ">>"
+        return None
+    if not state["state_JSON_format_version"]:
+        last_errmsg = "ERROR: in " + me + ": no JSON state_JSON_format_version in state file"
+    if state["state_JSON_format_version"] != STATE_VERSION_VALUE:
+        last_errmsg = "ERROR: in " + me + ": invalid state_JSON_format_version no_comment in state file: <<" + \
+                      state["state_JSON_format_version"] + ">> != <<" + STATE_VERSION_VALUE + ">>"
+        return None, None
+
+    # convert open and close date strings into datetime values
+    #
+    if not state['open_date']:
+        last_errmsg = "ERROR: in " + me + ": state file missing open_date"
+        return None, None
+    if not isinstance(state['open_date'], str):
+        last_errmsg = "ERROR: in " + me + ": state file open_date is not a string"
+        return None, None
+    try:
+        open_datetime = datetime.strptime(state['open_date'], DATETIME_FORMAT)
+    except ValueError:
+        last_errmsg = "ERROR: in " + me + ": state file open_date is not in proper datetime format: <<" + \
+                      state['open_date'] + ">>"
+        return None, None
+    if not state['close_date']:
+        last_errmsg = "ERROR: in " + me + ": state file missing close_date"
+        return None, None
+    if not isinstance(state['close_date'], str):
+        last_errmsg = "ERROR: in " + me + ": state file close_date is not a string"
+        return None, None
+    try:
+        close_datetime = datetime.strptime(state['close_date'], DATETIME_FORMAT)
+    except ValueError:
+        last_errmsg = "ERROR: in " + me + ": state file close_date is not in proper datetime format: <<" + \
+                      state['close_date'] + ">>"
+        return None, None
+
+    # return open and close dates
+    #
+    return open_datetime, close_datetime
+
+
+def update_state(open_date, close_date):
+    """
+    Update contest dates in the JSON state file
+
+    Given:
+        open_date   IOCCC open date as a string in DATETIME_FORMAT format
+        close_date  IOCCC close date as a string in DATETIME_FORMAT format
+
+    Return:
+        True        json state file was successfully written
+        False       unable to update json state file
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_slot_lock
+    # pylint: disable-next=global-statement
+    global last_lock_user
+    # pylint: disable-next=global-statement
+    global last_lock_slot_num
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+    write_sucessful = True
+
+    # firewall - args must be strings in DATETIME_FORMAT format
+    #
+    if not isinstance(open_date, str):
+        last_errmsg = "ERROR: in " + me + ": open_date is not a string"
+        return False
+    try:
+        # pylint: disable=unused-variable
+        open_datetime = datetime.strptime(open_date, DATETIME_FORMAT)
+    except ValueError:
+        last_errmsg = "ERROR: in " + me + ": open_date is not in proper datetime format: <<" + open_date + ">>"
+        return False
+    if not isinstance(close_date, str):
+        last_errmsg = "ERROR: in " + me + ": close_date is not a string"
+        return False
+    try:
+        # pylint: disable=unused-variable
+        close_datetime = datetime.strptime(close_date, DATETIME_FORMAT)
+    except ValueError:
+        last_errmsg = "ERROR: in " + me + ": close_date is not in proper datetime format: <<" + close_date + ">>"
+        return False
+
+    # Lock the state file
+    #
+    state_lock_fd = FileLock(STATE_FILE_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    try:
+        with state_lock_fd:
+            # note our new lock
+            #
+            last_slot_lock = state_lock_fd
+            last_lock_user = ""
+            last_lock_slot_num = "((no-slot))"
+    except Timeout:
+
+        # too too long to get the lock
+        #
+        last_errmsg = "Warning: timeout on slot lock state file: " + STATE_FILE_LOCK
+        return False
+
+    # write JSON data into the state file
     #
     try:
         with open(STATE_FILE, 'w', encoding='utf-8') as sf_fp:
-            sf_fp.write(json.dumps(f'{{ "opendate" : "{opdate}", "closedate" : "{cldate}" }}', \
-                                   ensure_ascii=True, indent=4))
+            t = Template(DEFAULT_JSON_STATE_TEMPLATE)
+            state = json.loads(t.substitute( { 'NO_COMMENT_VALUE': NO_COMMENT_VALUE, \
+                                               'STATE_VERSION_VALUE': STATE_VERSION_VALUE, \
+                                               'OPEN_DATE': open_date, \
+                                               'CLOSE_DATE': close_date } ))
+            sf_fp.write(json.dumps(state,
+                                   ensure_ascii = True,
+                                   indent = 4))
             sf_fp.write('\n')
             sf_fp.close()
     except OSError:
         last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
+        write_sucessful = False
+        # fall thru
+
+    # Unlock the state file
+    #
+    try:
+        last_slot_lock.release(force=True)
+    except OSError:
+        # We give up as we cannot unlock the slot
+        #
+        if not last_lock_user:
+            last_lock_user = "((None))"
+        if not last_lock_slot_num:
+            last_lock_slot_num = "((no-slot))"
+        last_errmsg = "Warning: failed to unlock state file: " + STATE_FILE_LOCK
+        write_sucessful = False
+        # fall thru
+
+    # clear lock, lock user and lock slot
+    #
+    last_slot_lock = None
+    last_lock_user = None
+    last_lock_slot_num = None
+
+    # return success
+    #
+    return write_sucessful
 
 
-def check_state():
+def contest_is_open():
     """
-    See if the contest is opened.
+    Determine if the IOCCC is open.
+
+    Return:
+        True    The IOCCC is open
+        False   The IOCCC is not open, or
+                unable to contain open and close dates from the state file
     """
 
     # setup
     #
     now = datetime.now(timezone.utc)
 
-    # read state file if exists and is not emopty
+    # obtain open and close dates in datefile format
     #
-    if os.path.isfile(STATE_FILE) and os.stat(STATE_FILE).st_size > 0:
-        st_info = readjfile(STATE_FILE)
-    else:
-        st_info = []
+    open_datetime, close_datetime = read_state()
+    if not open_datetime or not close_datetime:
+        return False
 
-    # obtain content open and close date/time from state file
+    # determine if the contest is open now
     #
-    if st_info:
-        the_time = datetime.fromisoformat(st_info['opendate'])
-        opdate = datetime(the_time.year, the_time.month, the_time.day, \
-                          the_time.hour, the_time.minute, the_time.second, tzinfo=ZoneInfo("UTC"))
-        the_time = datetime.fromisoformat(st_info['closedate'])
-        cldate = datetime(the_time.year, the_time.month, the_time.day, \
-                          the_time.hour, the_time.minute, the_time.second, tzinfo=ZoneInfo("UTC"))
-
-    # in case we filed to read the state file
-    #
-    else:
-        # set default open and close date/time
-        #
-        opdate = DEF_OPDATE
-        cldate = DEF_CLDATE
-
-    return opdate, cldate, now
+    if now >= open_datetime:
+        if now < close_datetime:
+            return True
+    return False

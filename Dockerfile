@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.4.6 2024-10-25"
+LABEL org.ioccc.image.version="0.4.8 2024-10-30"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -51,14 +51,14 @@ RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 #
 RUN <<EOT
     if [[ ! -d /usr/share/dict ]]; then
-	mkdir -p /usr/share/dict
-	chmod 0755 /usr/share/dict
-	chown root:root /usr/share/dict
+        mkdir -p /usr/share/dict
+        chmod 0755 /usr/share/dict
+        chown root:root /usr/share/dict
     fi
     if [[ ! -f /usr/share/dict/words ]]; then
-	aspell dump master | tr -c "[A-Za-z'\n]" "'" > /usr/share/dict/words
-	chmod 0444 /usr/share/dict/words
-	chown root:root /usr/share/dict/words
+        aspell dump master | tr -c "[A-Za-z'\n]" "'" > /usr/share/dict/words
+        chmod 0444 /usr/share/dict/words
+        chown root:root /usr/share/dict/words
     fi
 EOT
 
@@ -69,29 +69,47 @@ RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.
 RUN chmod 0555 ioccc.py ioccc_common.py ioccc_passwd.py
 RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
 
-# Set permissions for etc/iocccpasswd.json
+# Set permissions for etc/init.iocccpasswd.json
 #
 RUN chmod 0400 etc/init.iocccpasswd.json
 RUN chown root:root etc/init.iocccpasswd.json
 
-# Initialize the etc/iocccpasswd.json if it is missing
+# Create etc/iocccpasswd.json from etc/init.iocccpasswd.json if missing or empty
 #
 RUN <<EOT
-    if [[ ! -f etc/iocccpasswd.json ]]; then
-	cp -f etc/init.iocccpasswd.json etc/init.iocccpasswd.json
+    if [[ ! -s etc/iocccpasswd.json ]]; then
+	cp -f etc/init.iocccpasswd.json etc/iocccpasswd.json
     fi
 EOT
 
-# Set permissions for etc/iocccpasswd.json
+# set etc/iocccpasswd.json permissions
 #
 RUN chmod 0664 etc/iocccpasswd.json
 RUN chown uwsgi:uwsgi etc/iocccpasswd.json
 
-# Create an empty the etc/state.json if missing
+# Create an empty the etc/lock.iocccpasswd.json if missing
 #
 RUN <<EOT
-    if [[ ! -f etc/state.json ]]; then
-	touch etc/state.json
+    if [[ ! -f etc/lock.iocccpasswd.json ]]; then
+        touch etc/lock.iocccpasswd.json
+    fi
+EOT
+
+# set etc/lock.iocccpasswd.json permissions
+#
+RUN chmod 0444 etc/lock.iocccpasswd.json
+RUN chown uwsgi:uwsgi etc/lock.iocccpasswd.json
+
+# Set permissions for etc/init.state.json
+#
+RUN chmod 0400 etc/init.state.json
+RUN chown root:root etc/init.state.json
+
+# Create etc/state.json from etc/init.state.json if missing or empty
+#
+RUN <<EOT
+    if [[ ! -s etc/state.json ]]; then
+	cp -f etc/init.state.json etc/state.json
     fi
 EOT
 
@@ -99,6 +117,19 @@ EOT
 #
 RUN chmod 0664 etc/state.json
 RUN chown uwsgi:uwsgi etc/state.json
+
+# Create an empty the etc/lock.state.json if missing
+#
+RUN <<EOT
+    if [[ ! -f etc/lock.state.json ]]; then
+        touch etc/lock.state.json
+    fi
+EOT
+
+# set etc/lock.state.json permissions
+#
+RUN chmod 0444 etc/lock.state.json
+RUN chown uwsgi:uwsgi etc/lock.state.json
 
 # Set permissions for etc/requirements.txt
 #
@@ -109,7 +140,7 @@ RUN chown root:root etc/requirements.txt
 #
 RUN <<EOT
     if [[ ! -s etc/.secret ]]; then
-	/bin/sh ./genflaskkey
+        /bin/sh ./genflaskkey
     fi
 EOT
 
@@ -117,14 +148,6 @@ EOT
 #
 RUN chmod 0440 etc/.secret
 RUN chown uwsgi:uwsgi etc/.secret
-
-# Create an empty the etc/lock.iocccpasswd.json if missing
-#
-RUN <<EOT
-    if [[ ! -f etc/lock.iocccpasswd.json ]]; then
-	touch etc/lock.iocccpasswd.json
-    fi
-EOT
 
 # Set permission for static
 #
@@ -141,14 +164,6 @@ RUN chmod 0444 templates/*
 RUN mkdir -p users
 RUN chmod 2770 users
 RUN chown -R uwsgi:uwsgi users
-
-# test mounting via a volume
-#
-RUN mkdir my-vol
-RUN chmod 2770 my-vol
-#RUN echo "hello world" > my-vol/greeting
-#RUN date > my-vol/now
-RUN chown -R uwsgi:uwsgi my-vol
 
 # Indicates a port the image would like to expose
 #
