@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-# pylint: disable=too-many-lines
 # pylint: disable=import-error
-# pylint: disable=too-many-return-statements
-# pylint: disable=too-many-branches
-# pylint: disable=too-many-statements
-# pylint: disable=undefined-variable
+# pylint: disable=wildcard-import
+# pylint: disable=unused-wildcard-import
 # pylint: disable=unused-import
+# pylint: disable=too-many-lines
 """
 Common support / utility functions needed by the IOCCC Submit Server
 and related tools.
@@ -28,6 +26,7 @@ import string
 import secrets
 import random
 import shutil
+import hashlib
 
 
 # import from modules
@@ -62,7 +61,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.1.1 2024-10-28"
+VERSION_IOCCC_COMMON = "1.2 2024-11-01"
 
 # force password change grace time
 #
@@ -98,7 +97,7 @@ if not Path(IOCCC_DIR).is_dir():
     IOCCC_DIR = IOCCC_ROOT + "app"
 PW_FILE = IOCCC_DIR + "/etc/iocccpasswd.json"
 INIT_PW_FILE = IOCCC_DIR + "/etc/init.iocccpasswd.json"
-PW_LOCK = IOCCC_DIR + "/etc/lock.iocccpasswd.json"
+PW_LOCK = IOCCC_DIR + "/etc/iocccpasswd.lock"
 ADM_FILE = IOCCC_DIR + "/etc/admins.json"
 SECRET_FILE = IOCCC_DIR + "/etc/.secret"
 
@@ -129,7 +128,7 @@ PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
 #
 STATE_FILE = IOCCC_DIR + "/etc/state.json"
 INIT_STATE_FILE = IOCCC_DIR + "/etc/init.state.json"
-STATE_FILE_LOCK = IOCCC_DIR + "/etc/lock.state.json"
+STATE_FILE_LOCK = IOCCC_DIR + "/etc/state.lock"
 STATE_VERSION_VALUE = "1.1 2024-10-27"
 DEFAULT_JSON_STATE_TEMPLATE = '''{
     "no_comment": "$NO_COMMENT_VALUE",
@@ -447,6 +446,8 @@ def replace_pwfile(pw_file_json):
     return True
 
 
+# pylint: disable=too-many-return-statements
+#
 def validate_user_dict(user_dict):
     """
     Perform sanity checks on user information for username from password file
@@ -508,6 +509,8 @@ def validate_user_dict(user_dict):
     # user information passed the sanity checks
     #
     return True
+#
+# pylint: enable=too-many-return-statements
 
 
 def lookup_username(username):
@@ -566,7 +569,12 @@ def lookup_username(username):
     return user_dict
 
 
-# pylint: disable-next=too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-arguments
+#
 def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
     """
     Update a username entry in the password file, or add the entry
@@ -728,8 +736,12 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     # password updated with new username information
     #
     return True
+#
+# pylint: enable=too-many-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def delete_username(username):
     """
     Remove a username from the password file
@@ -833,6 +845,12 @@ def delete_username(username):
     # return the user that was deleted, if they were found
     #
     return deleted_user
+#
+# pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-positional-arguments
+# pylint: enable=too-many-arguments
 
 
 def generate_password():
@@ -1082,6 +1100,8 @@ def username_login_allowed(username):
     return user_allowed_to_login(user_dict)
 
 
+# pylint: disable=too-many-return-statements
+#
 def lock_slot(username, slot_num):
     """
     lock a slot for a user
@@ -1221,7 +1241,7 @@ def unlock_slot():
 
     Returns:
         True    slot unlock successful
-        None    failed to unlock slot
+        False    failed to unlock slot
     """
 
     # declare global use
@@ -1247,14 +1267,18 @@ def unlock_slot():
                 last_lock_user = "((None))"
             if not last_lock_slot_num:
                 last_lock_slot_num = "((no-slot))"
-            last_errmsg = "Warning: failed to unlock for username: <<" + clast_lock_user + \
+            last_errmsg = "ERROR: failed to unlock for username: <<" + last_lock_user + \
                             ">> slot: " + last_lock_slot_num + " exception: " + str(exception)
+            return False
 
     # clear lock, lock user and lock slot
     #
     last_slot_lock = None
     last_lock_user = None
     last_lock_slot_num = None
+    return True
+#
+# pylint: enable=too-many-return-statements
 
 
 def write_slot_json(slots_json_file, slot_json):
@@ -1287,6 +1311,10 @@ def write_slot_json(slots_json_file, slot_json):
     return True
 
 
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-return-statements
+#
 def initialize_user_tree(username):
     """
     Initialize the directory tree for a given user
@@ -1431,8 +1459,14 @@ def initialize_user_tree(username):
     # Return success
     #
     return slots
+#
+# pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-return-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def get_json_slot(username, slot_num):
     """
     read JSON data for a given slot
@@ -1497,7 +1531,7 @@ def get_json_slot(username, slot_num):
                                 username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
-            if slot.slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
+            if slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
                 last_errmsg = "ERROR: in " + me + ": SON slot[" + slot_num_str + "] version: " + \
                                 slot[slot_num].slot["slot_JSON_format_version"] + " != " + SLOT_VERSION_VALUE
                 unlock_slot()
@@ -1530,6 +1564,8 @@ def get_json_slot(username, slot_num):
     # return slot information as a python dictionary
     #
     return slot
+#
+# pylint: enable=too-many-return-statements
 
 
 def get_all_json_slots(username):
@@ -1559,7 +1595,7 @@ def get_all_json_slots(username):
 
     # process each slot for this user
     #
-    slots = []
+    slots = [None] * (MAX_SUBMIT_SLOT+1)
     for slot_num in range(0, MAX_SUBMIT_SLOT+1):
 
         # get slot information
@@ -1680,6 +1716,10 @@ def read_json_file(json_file):
         return []
 
 
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-return-statements
+#
 def read_state():
     """
     Read the state file for the open and close dates
@@ -1809,6 +1849,10 @@ def read_state():
     # return open and close dates
     #
     return open_datetime, close_datetime
+#
+# pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-return-statements
 
 
 def update_state(open_date, close_date):
@@ -1925,9 +1969,9 @@ def contest_is_open():
     Determine if the IOCCC is open.
 
     Return:
-        True    The IOCCC is open
-        False   The IOCCC is not open, or
-                unable to contain open and close dates from the state file
+        != None     Contest is open,
+                    return close_datetime in datetime in DATETIME_FORMAT format
+        None        Contest is closed
     """
 
     # setup
@@ -1938,11 +1982,11 @@ def contest_is_open():
     #
     open_datetime, close_datetime = read_state()
     if not open_datetime or not close_datetime:
-        return False
+        return None
 
     # determine if the contest is open now
     #
     if now >= open_datetime:
         if now < close_datetime:
-            return True
-    return False
+            return close_datetime
+    return None

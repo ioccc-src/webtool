@@ -2,10 +2,7 @@
 # pylint: disable=import-error
 # pylint: disable=wildcard-import
 # pylint: disable=unused-wildcard-import
-# pylint: disable=too-many-branches
 # pylint: disable=unused-import
-# pylint: disable=too-many-statements
-# pylint: disable=too-many-locals
 """
 Functions to implement adding and deleting of IOCCC contestants.
 """
@@ -30,9 +27,13 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.2 2024-10-28"
+VERSION = "1.3 2024-11-01"
 
 
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+#
 def main():
     """
     Main routine when run as a program.
@@ -330,6 +331,10 @@ def main():
     #
     print("ERROR: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime")
     sys.exit(16)
+#
+# pylint: enable=too-many-locals
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-statements
 
 if __name__ == '__main__':
     main()

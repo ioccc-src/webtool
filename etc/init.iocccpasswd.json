@@ -28,5 +28,15 @@
         "force_pw_change": false,
         "pw_change_by": null,
         "disable_login": false
+    },
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "12345678-1234-4321-abcd-1234567890ab",
+        "pwhash": "scrypt:32768:8:1$tKdCV9ftYUsKlBCr$d3925212f549f5084e15706ae4735be7a026919164ee784bfb27d0c56dce691c1bc2577dc5f0d8334e41f109cf2dfae7fcee6cbd86227b60239f03e1da2ff5b9",
+        "admin": false,
+        "force_pw_change": false,
+        "pw_change_by": null,
+        "disable_login": false
     }
 ]

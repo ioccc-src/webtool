@@ -61,70 +61,6 @@ To build and run as a single command under a python activated environment:
     docker build -t ioccc-submit:latest . && docker run -p 8191:8191 ioccc-submit:latest
 ```
 
-## ioccc_passwd.py user management
-
-While the docker image is running, access the console and
-go to the `/app` directory.
-
-The usage message of the `ioccc_passwd.py` is as follows:
-
-```
-    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A]
-                           [-U] [-s DateTime] [-S DateTime]
-
-    Manage IOCCC submit server password file and state file
-
-    options:
-      -h, --help            show this help message and exit
-      -a, --add USER        add a new user
-      -u, --update USER     update a user or add if not a user
-      -d, --delete USER     delete an exist user
-      -p, --password PW     specify the password (def: generate random password)
-      -c, --change          force a password change at next login
-      -g, --grace SECS      grace time in seconds from to change the password(def: 259200 seconds):
-      -n, --nologin         disable login (def: login not explicitly disabled)
-      -A, --admin           user is an admin (def: not an admin)
-      -U, --UUID            generate a new UUID username and password
-      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
-      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
-
-    ioccc_passwd.py version: 1.2 2024-10-28
-```
-
-For example:
-
-### Add a new user
-
-```sh
-    python3 ./ioccc_passwd.py -a username
-```
-
-The command will output the password in plain-text.
-
-One may add `-p password` to set the password, otherwise a random password is generated.
-
-
-### Remove an old user
-
-```sh
-    python3 ./ioccc_passwd.py -d username
-```
-
-
-### Add a random UUID user and require them to change their password
-
-```sh
-    python3 ./ioccc_passwd.py -U -c
-```
-
-
-### Set the contest open and close dates
-
-```sh
-    python3 -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
-```
-
-
 ### To test tools outside of the docker container
 
 To setup a test outside of the docker container, create and
@@ -190,6 +126,69 @@ In case you don't have pipx, we installed pipx via HomeBrew on macOS:
 
 ```sh
     brew install pipx
+```
+
+## ioccc_passwd.py user management
+
+While the docker image is running, access the console and
+go to the `/app` directory.
+
+The usage message of the `ioccc_passwd.py` is as follows:
+
+```
+    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A]
+                           [-U] [-s DateTime] [-S DateTime]
+
+    Manage IOCCC submit server password file and state file
+
+    options:
+      -h, --help            show this help message and exit
+      -a, --add USER        add a new user
+      -u, --update USER     update a user or add if not a user
+      -d, --delete USER     delete an exist user
+      -p, --password PW     specify the password (def: generate random password)
+      -c, --change          force a password change at next login
+      -g, --grace SECS      grace time in seconds from to change the password(def: 259200 seconds):
+      -n, --nologin         disable login (def: login not explicitly disabled)
+      -A, --admin           user is an admin (def: not an admin)
+      -U, --UUID            generate a new UUID username and password
+      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
+      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
+
+    ioccc_passwd.py version: 1.3 2024-11-01
+```
+
+For example:
+
+### Add a new user
+
+```sh
+    python3 ./ioccc_passwd.py -a username
+```
+
+The command will output the password in plain-text.
+
+One may add `-p password` to set the password, otherwise a random password is generated.
+
+
+### Remove an old user
+
+```sh
+    python3 ./ioccc_passwd.py -d username
+```
+
+
+### Add a random UUID user and require them to change their password
+
+```sh
+    python3 ./ioccc_passwd.py -U -c
+```
+
+
+### Set the contest open and close dates
+
+```sh
+    python3 -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
 ```
 
 

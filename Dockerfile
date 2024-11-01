@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.4.8 2024-10-30"
+LABEL org.ioccc.image.version="0.5 2024-11-01"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -21,7 +21,7 @@ COPY . /app
 
 # Set permissions for /app
 #
-RUN chmod 0555 /app
+RUN chmod 0755 /app
 RUN chown root:root /app
 
 # Specifies the "working directory" in the image where files will
@@ -38,6 +38,8 @@ RUN chown root:root etc
 # Copy files from the host and put them into the container image
 #
 COPY ./etc/requirements.txt etc/requirements.txt
+RUN chmod 0444 etc/requirements.txt
+RUN chown root:root etc/requirements.txt
 
 # Setup the python environment needed by this image
 #
@@ -71,7 +73,7 @@ RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
 
 # Set permissions for etc/init.iocccpasswd.json
 #
-RUN chmod 0400 etc/init.iocccpasswd.json
+RUN chmod 0444 etc/init.iocccpasswd.json
 RUN chown root:root etc/init.iocccpasswd.json
 
 # Create etc/iocccpasswd.json from etc/init.iocccpasswd.json if missing or empty
@@ -87,22 +89,22 @@ EOT
 RUN chmod 0664 etc/iocccpasswd.json
 RUN chown uwsgi:uwsgi etc/iocccpasswd.json
 
-# Create an empty the etc/lock.iocccpasswd.json if missing
+# Create an empty the etc/iocccpasswd.lock if missing
 #
 RUN <<EOT
-    if [[ ! -f etc/lock.iocccpasswd.json ]]; then
-        touch etc/lock.iocccpasswd.json
+    if [[ ! -f etc/iocccpasswd.lock ]]; then
+        touch etc/iocccpasswd.lock
     fi
 EOT
 
-# set etc/lock.iocccpasswd.json permissions
+# set etc/iocccpasswd.lock permissions
 #
-RUN chmod 0444 etc/lock.iocccpasswd.json
-RUN chown uwsgi:uwsgi etc/lock.iocccpasswd.json
+RUN chmod 0664 etc/iocccpasswd.lock
+RUN chown uwsgi:uwsgi etc/iocccpasswd.lock
 
 # Set permissions for etc/init.state.json
 #
-RUN chmod 0400 etc/init.state.json
+RUN chmod 0444 etc/init.state.json
 RUN chown root:root etc/init.state.json
 
 # Create etc/state.json from etc/init.state.json if missing or empty
@@ -118,23 +120,18 @@ EOT
 RUN chmod 0664 etc/state.json
 RUN chown uwsgi:uwsgi etc/state.json
 
-# Create an empty the etc/lock.state.json if missing
+# Create an empty the etc/state.lock if missing
 #
 RUN <<EOT
-    if [[ ! -f etc/lock.state.json ]]; then
-        touch etc/lock.state.json
+    if [[ ! -f etc/state.lock ]]; then
+        touch etc/state.lock
     fi
 EOT
 
-# set etc/lock.state.json permissions
+# set etc/state.lock permissions
 #
-RUN chmod 0444 etc/lock.state.json
-RUN chown uwsgi:uwsgi etc/lock.state.json
-
-# Set permissions for etc/requirements.txt
-#
-RUN chmod 0440 etc/requirements.txt
-RUN chown root:root etc/requirements.txt
+RUN chmod 0664 etc/state.lock
+RUN chown uwsgi:uwsgi etc/state.lock
 
 # Generate etc/.secret if not found of if empty
 #
@@ -153,11 +150,13 @@ RUN chown uwsgi:uwsgi etc/.secret
 #
 RUN chmod 0555 static
 RUN chmod 0444 static/*
+RUN chown -R root:root static
 
 # Set permission for templates
 #
 RUN chmod 0555 templates
 RUN chmod 0444 templates/*
+RUN chown -R root:root templates
 
 # Create the IOCCC users directory with permissions
 #
