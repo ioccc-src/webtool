@@ -11,7 +11,7 @@ As such, this code may fall well short of what someone fluent in python would wr
 
 We welcome python developers submmiting pull requests to improve this code ‼️
 
-All that we ask is that your code rewrites be:
+All that we ask is that your code contributions:
 
 - be well commented, or at least better commented than our code 
 - pass pylint 10/10 with a minimum of disbale lines
@@ -218,6 +218,4 @@ As such, YOU should be WARNED that this code may NOT work, or at least may not f
 The IOCCC plans to deploy a hosted docker container to allow IOCCC registered
 contestants to submit files created by the [mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry). 
 
-
-
-
+The [IOCCC judges](https://www.ioccc.org/judges.html) plan to work on this code prior to thr next IOCCC.  
