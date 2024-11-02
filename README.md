@@ -216,7 +216,7 @@ so any fault you find should be blamed on them. 😉
 As such, YOU should be WARNED that this code may NOT work, or at least may not for you.
 
 The IOCCC plans to deploy a hosted docker container to allow IOCCC registered
-contestants to submit files created by the mkiocccentry tool.
+contestants to submit files created by the [mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry). 
 
 
 
