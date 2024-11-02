@@ -180,7 +180,7 @@ For example:
 ### Add a new user
 
 ```sh
-    python3 ./ioccc_passwd.py -a username
+    ./ioccc_passwd.py -a username
 ```
 
 The command will output the password in plain-text.
@@ -191,21 +191,21 @@ One may add `-p password` to set the password, otherwise a random password is ge
 ### Remove an old user
 
 ```sh
-    python3 ./ioccc_passwd.py -d username
+    ./ioccc_passwd.py -d username
 ```
 
 
 ### Add a random UUID user and require them to change their password
 
 ```sh
-    python3 ./ioccc_passwd.py -U -c
+    ./ioccc_passwd.py -U -c
 ```
 
 
 ### Set the contest open and close dates
 
 ```sh
-    python3 -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
+    ./ioccc_passwd.py -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
 ```
 
 
