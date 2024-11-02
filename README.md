@@ -16,6 +16,7 @@ All that we ask is that your code contributions:
 - be well commented, or at least better commented than our code 
 - pass pylint 10/10 with a minimum of disbale lines
 - work as good, if not better than our code
+- be contribed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 
 
 ## IMPORTANT NOTE:
@@ -210,12 +211,11 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Disclaimer
 
-This was baedd on concept code, originally written by Eliot Lear (@elear) in late 2021.
+This code is based on code originally written by Eliot Lear (@elear) in late 2021.
 The [IOCCC judges](https://www.ioccc.org/judges.html) heavly modified Eliot's code,
-so any fault you find should be blamed on them. 😉
-As such, YOU should be WARNED that this code may NOT work, or at least may not for you.
+so any fault you find should be blamed on them. 😉. As such, YOU should be WARNED that this code may NOT work, or at least may not for you.
 
 The IOCCC plans to deploy a hosted docker container to allow IOCCC registered
-contestants to submit files created by the [mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry). 
+contestants to submit files that hqve been created by the [mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry). 
 
 The [IOCCC judges](https://www.ioccc.org/judges.html) plan to work on this code prior to thr next IOCCC.  
