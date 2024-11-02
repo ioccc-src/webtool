@@ -1,8 +1,24 @@
 # IOCCC submit tool
 
-This is the mechanism to upload submissions to an open IOCCC
+This is the mechanism to upload submissions to an open
+[International Obfuscated C Code Contest](https://www.ioccc.org/index.html) (IOCCC)
 
-**IMPORTANT NOTE:**
+
+# Python Developer Help Wanted
+
+Python 🐍 is not the native language of the [IOCCC judges](https://www.ioccc.org/judges.html). 
+As such, this code may fall well short of what someone fluent in python would write.
+
+We welcome python developers submmiting pull requests to improve this code ‼️
+
+All that we ask is that your code rewrites be:
+
+- be well commented, or at least better commented than our code 
+- pass pylint 10/10 with a minimum of disbale lines
+- work as good, if not better than our code
+
+
+## IMPORTANT NOTE:
 
 The examples below assume you have cd-ed into the top directory for the repo.
 
@@ -194,18 +210,14 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Disclaimer
 
-This is concept code, originally written by Eliot Lear (@elear) in late 2021.
-As concept code, YOU should be WARNED that this code may NOT work (for you).
+This was baedd on concept code, originally written by Eliot Lear (@elear) in late 2021.
+The [IOCCC judges](https://www.ioccc.org/judges.html) heavly modified Eliot's code,
+so any fault you find should be blamed on them. 😉
+As such, YOU should be WARNED that this code may NOT work, or at least may not for you.
 
 The IOCCC plans to deploy a hosted docker container to allow IOCCC registered
 contestants to submit files created by the mkiocccentry tool.
-That IOCCC submission container will deploy something based on,
-but NOT identical, to this submit-tool.
 
 
-## Requirements
 
-This code requires cryptography and uwsgi, both of which can bloat
-a container.  What really bloats the container right now, however,
-is a requirement for python3.9 or later (Ubuntu containers run with
-earlier versions by default).
+
