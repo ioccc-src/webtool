@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.5 2024-11-01"
+LABEL org.ioccc.image.version="0.5.1 2024-11-02"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -51,6 +51,9 @@ RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 
 # Be sure we have /usr/share/dict/words available
 #
+# NOTE: You must have either /usr/share/dict/words installed
+#	or have the aspell(1) command installed.
+#
 RUN <<EOT
     if [[ ! -d /usr/share/dict ]]; then
         mkdir -p /usr/share/dict
@@ -64,7 +67,7 @@ RUN <<EOT
     fi
 EOT
 
-# Set permissions in top level files
+# Set permissions for a number of top level files
 #
 RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
@@ -76,7 +79,7 @@ RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
 RUN chmod 0444 etc/init.iocccpasswd.json
 RUN chown root:root etc/init.iocccpasswd.json
 
-# Create etc/iocccpasswd.json from etc/init.iocccpasswd.json if missing or empty
+# Clone etc/iocccpasswd.json from etc/init.iocccpasswd.json if missing or empty
 #
 RUN <<EOT
     if [[ ! -s etc/iocccpasswd.json ]]; then
@@ -84,12 +87,12 @@ RUN <<EOT
     fi
 EOT
 
-# set etc/iocccpasswd.json permissions
+# Set etc/iocccpasswd.json permissions
 #
 RUN chmod 0664 etc/iocccpasswd.json
 RUN chown uwsgi:uwsgi etc/iocccpasswd.json
 
-# Create an empty the etc/iocccpasswd.lock if missing
+# Clone an empty the etc/iocccpasswd.lock if missing
 #
 RUN <<EOT
     if [[ ! -f etc/iocccpasswd.lock ]]; then
@@ -97,7 +100,7 @@ RUN <<EOT
     fi
 EOT
 
-# set etc/iocccpasswd.lock permissions
+# Set etc/iocccpasswd.lock permissions
 #
 RUN chmod 0664 etc/iocccpasswd.lock
 RUN chown uwsgi:uwsgi etc/iocccpasswd.lock
@@ -128,12 +131,12 @@ RUN <<EOT
     fi
 EOT
 
-# set etc/state.lock permissions
+# Set etc/state.lock permissions
 #
 RUN chmod 0664 etc/state.lock
 RUN chown uwsgi:uwsgi etc/state.lock
 
-# Generate etc/.secret if not found of if empty
+# Generate etc/.secret if not found or if empty
 #
 RUN <<EOT
     if [[ ! -s etc/.secret ]]; then
@@ -164,11 +167,11 @@ RUN mkdir -p users
 RUN chmod 2770 users
 RUN chown -R uwsgi:uwsgi users
 
-# Indicates a port the image would like to expose
+# Indicate the TCP port that the docker image would like to make available
 #
 EXPOSE 8191/tcp
 
-# Sets the default user for all subsequent instructions
+# Set the default user for all subsequent instructions
 #
 USER uwsgi:uwsgi
 
