@@ -6,17 +6,17 @@ This is the mechanism to upload submissions to an open
 
 # Python Developer Help Wanted
 
-Python 🐍 is not the native language of the [IOCCC judges](https://www.ioccc.org/judges.html). 
+Python 🐍 is not the native language of the [IOCCC judges](https://www.ioccc.org/judges.html).
 As such, this code may fall well short of what someone fluent in python would write.
 
-We welcome python developers submmiting pull requests to improve this code ‼️
+We welcome python developers submitting pull requests to improve this code ‼️
 
 All that we ask is that your code contributions:
 
-- be well commented, or at least better commented than our code 
-- pass pylint 10/10 with a minimum of disbale lines
+- be well commented, or at least better commented than our code
+- pass pylint 10/10 with a minimum of disable lines
 - work as good, if not better than our code
-- be contribed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
+- code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 
 
 ## IMPORTANT NOTE:
@@ -139,7 +139,7 @@ FYI: Under macOS we installed pylint via pipx:
     sudo pipx --global install pylint
 ```
 
-In case you don't have pipx, we installed pipx via HomeBrew on macOS:
+In case you don't have pipx, we installed pipx via Homebrew on macOS:
 
 ```sh
     brew install pipx
@@ -211,11 +211,15 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Disclaimer
 
-This code is based on code originally written by Eliot Lear (@elear) in late 2021.
-The [IOCCC judges](https://www.ioccc.org/judges.html) heavly modified Eliot's code,
-so any fault you find should be blamed on them. 😉. As such, YOU should be WARNED that this code may NOT work, or at least may not for you.
+This code is based on code originally written by Eliot Lear (@elear)
+in late 2021.  The [IOCCC judges](https://www.ioccc.org/judges.html)
+heavily modified Eliot's code, so any fault you find should be blamed on
+them. 😉. As such, YOU should be WARNED that this code may NOT work,
+or at least may not for you.
 
-The IOCCC plans to deploy a hosted docker container to allow IOCCC registered
-contestants to submit files that hqve been created by the [mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry). 
+The IOCCC plans to deploy a hosted docker container to allow IOCCC
+registered contestants to submit files that have been created by the
+[mkiocccentry tool](https://github.com/ioccc-src/mkiocccentry).
 
-The [IOCCC judges](https://www.ioccc.org/judges.html) plan to work on this code prior to thr next IOCCC.  
+The [IOCCC judges](https://www.ioccc.org/judges.html) plan to work on
+this code prior to the next IOCCC.
