@@ -101,7 +101,8 @@ While that is running, open a browser at (this works under macOS):
     open http://127.0.0.1:8191
 ```
 
-.. or do whatever the equivalent on your to enter this URL into a browser:
+.. or do whatever the equivalent is to enter this URL in your browser
+(alternatively you can copy and paste it into your browser):
 
 ```
     http://127.0.0.1:8191
@@ -110,8 +111,8 @@ While that is running, open a browser at (this works under macOS):
 **IMPORTANT NOTE:** You may find problems running `ioccc.py` due
 to various things such as the tcp port being unavailable, certain
 files not being ready, or the development server having issues.
-Testing outside of a docker container is **NOT supported and may
-fail**!
+Testing outside of a docker container is **NOT SUPPORTED AND MIGHT
+FAIL**!
 
 To deactivate the above python environment:
 
@@ -211,11 +212,11 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Disclaimer
 
-This code is based on code originally written by Eliot Lear (@elear)
-in late 2021.  The [IOCCC judges](https://www.ioccc.org/judges.html)
-heavily modified Eliot's code, so any fault you find should be blamed on
-them. 😉. As such, YOU should be WARNED that this code may NOT work,
-or at least may not for you.
+This code is based on code originally written by Eliot Lear (@elear) in late
+2021\.  The [IOCCC judges](https://www.ioccc.org/judges.html) heavily modified
+Eliot's code, so any fault you find should be blamed on them 😉 (that is, the
+IOCCC Judges :-) ). As such, YOU should be WARNED that this code might NOT work,
+or at least might not for you.
 
 The IOCCC plans to deploy a hosted docker container to allow IOCCC
 registered contestants to submit files that have been created by the
