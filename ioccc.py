@@ -41,7 +41,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.0 2024-11-01"
+VERSION = "1.1 2024-11-15"
 
 
 # Configure the app
@@ -49,7 +49,7 @@ VERSION = "1.0 2024-11-01"
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 app.config['FLASH_APP'] = "ioccc-submit-tool"
-app.config['FLASK_DEBUG'] = True
+app.debug = True
 app.config['FLASK_ENV'] = "development"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 #
@@ -149,8 +149,10 @@ def login():
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
 
+        # If the user is allowed to login
+        #
         user = User(username)
-        if user.id:
+        if user.id and user_allowed_to_login(user.user_dict):
 
             # validate password
             #
@@ -164,6 +166,7 @@ def login():
             close_datetime = contest_is_open()
             if not close_datetime:
                 flash("The IOCCC is closed.")
+                flask_login.logout_user()
                 return render_template('closed.html')
 
             # get the JSON slots for the user and verify we have slots
@@ -204,18 +207,21 @@ def submit():
     close_datetime = contest_is_open()
     if not close_datetime:
         flash("The IOCCC is closed.")
-        return render_template('closed.html')
+        flask_login.logout_user()
+        return redirect(url_for('closed'))
 
     # get username
     #
     if not current_user.id:
         flash("Login required.")
-        return render_template('login.html')
+        flask_login.logout_user()
+        return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
         flash("Login required.")
-        return render_template('login.html')
+        flask_login.logout_user()
+        return redirect(url_for('login'))
 
     # setup for user
     #
@@ -223,19 +229,37 @@ def submit():
     if not user_dir:
         flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
               return_last_errmsg() + ">>")
-        return render_template('login.html', flask_login = flask_login)
+        flask_login.logout_user()
+        return redirect(url_for('login'))
+
+    # get the JSON for all slots for the user
+    #
+    slots = get_all_json_slots(username)
+    if not slots:
+        flash("ERROR: in: " + me + ": get_all_json_slots() failed: <<" + \
+              return_last_errmsg() + ">>")
+        flask_login.logout_user()
+        return redirect(url_for('login'))
 
     # verify they selected a slot number to upload
     #
     if not 'slot_num' in request.form:
         flash("No slot selected")
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
     user_input = request.form['slot_num']
     try:
         slot_num = int(user_input)
     except ValueError:
         flash("Slot number is not a number: " + user_input)
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
     slot_num_str = user_input
 
     # verify slot number
@@ -244,32 +268,40 @@ def submit():
     if not slot_dir:
         flash("ERROR: in: " + me + ": return_slot_dir_path() failed: <<" + \
               return_last_errmsg() + ">>")
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
 
     # verify they selected a file to upload
     #
     if 'file' not in request.files:
         flash('No file part')
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
     file = request.files['file']
     if file.filename == '':
         flash('No selected file')
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
 
     # verify that the filename is in a submit file form
     #
     re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
     if not re.match(re_match_str, file.filename):
         flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
-        return render_template('submit.html', flask_login = flask_login, username = username)
-
-    # lock the slot
-    #
-    slot_lock_fd = lock_slot(username, slot_num)
-    if not slot_lock_fd:
-        flash("ERROR: in: " + me + ": lock_slot() failed: <<" + \
-              return_last_errmsg() + ">>")
-        return render_template('submit.html', flask_login = flask_login, username = username)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
 
     # save the file in the slot
     #
@@ -278,29 +310,15 @@ def submit():
     if not update_slot(username, slot_num, upload_file):
         flash("ERROR: in: " + me + ": update_slot() failed: <<" + \
               return_last_errmsg() + ">>")
-        # fallthru to unlock_slot()
-
-    # unlock the slot
-    #
-    if not unlock_slot():
-        flash("ERROR: in: " + me + ": unlock_slot() failed: <<" + \
-              return_last_errmsg() + ">>")
-        # fallthru to flash(...)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
 
     # report on the successful upload
     #
     flash("Uploaded file: " + file.filename)
-
-    # get the JSON for all slots for the user
-    #
-    slots = get_all_json_slots(username)
-    if not slots:
-        flash("ERROR: in: " + me + ": get_all_json_slots() failed: <<" + \
-              return_last_errmsg() + ">>")
-        return redirect(url_for('login'))
-
-    # both login and user setup are successful
-    #
     return render_template('submit.html',
                            flask_login = flask_login,
                            username = username,
@@ -336,86 +354,12 @@ def upload():
     #
     if not current_user.id:
         flash("Login required.")
-        return render_template('login.html')
+        return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
         flash("Login required.")
-        return render_template('login.html')
-
-    # setup for user
-    #
-    user_dir = return_user_dir_path(username)
-    if not user_dir:
-        flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
-              return_last_errmsg() + ">>")
-        return render_template('login.html', flask_login = flask_login)
-
-    # verify they selected a slot number to upload
-    #
-    if not 'slot_num' in request.form:
-        flash("No slot selected")
-        return render_template('submit.html', flask_login = flask_login, username = username)
-    user_input = request.form['slot_num']
-    try:
-        slot_num = int(user_input)
-    except ValueError:
-        flash("Slot number is not a number: " + user_input)
-        return render_template('submit.html', flask_login = flask_login, username = username)
-    slot_num_str = user_input
-
-    # verify slot number
-    #
-    slot_dir = return_slot_dir_path(username, slot_num)
-    if not slot_dir:
-        flash("ERROR: in: " + me + ": return_slot_dir_path() failed: <<" + \
-              return_last_errmsg() + ">>")
-        return render_template('submit.html', flask_login = flask_login, username = username)
-
-    # verify they selected a file to upload
-    #
-    if 'file' not in request.files:
-        flash('No file part')
-        return render_template('submit.html', flask_login = flask_login, username = username)
-    file = request.files['file']
-    if file.filename == '':
-        flash('No selected file')
-        return render_template('submit.html', flask_login = flask_login, username = username)
-
-    # verify that the filename is in a submit file form
-    #
-    re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
-    if not re.match(re_match_str, file.filename):
-        flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
-        return render_template('submit.html', flask_login = flask_login, username = username)
-
-    # lock the slot
-    #
-    slot_lock_fd = lock_slot(username, slot_num)
-    if not slot_lock_fd:
-        flash("ERROR: in: " + me + ": lock_slot() failed: <<" + \
-              return_last_errmsg() + ">>")
-        return render_template('submit.html', flask_login = flask_login, username = username)
-
-    # save the file in the slot
-    #
-    upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
-    file.save(upload_file)
-    if not update_slot(username, slot_num, upload_file):
-        flash("ERROR: in: " + me + ": update_slot() failed: <<" + \
-              return_last_errmsg() + ">>")
-        # fallthru to unlock_slot()
-
-    # unlock the slot
-    #
-    if not unlock_slot():
-        flash("ERROR: in: " + me + ": unlock_slot() failed: <<" + \
-              return_last_errmsg() + ">>")
-        # fallthru to flash(...)
-
-    # report on the successful upload
-    #
-    flash("Uploaded file: " + file.filename)
+        return redirect(url_for('login'))
 
     # get the JSON for all slots for the user
     #
@@ -425,12 +369,99 @@ def upload():
               return_last_errmsg() + ">>")
         return redirect(url_for('login'))
 
+    # setup for user
+    #
+    user_dir = return_user_dir_path(username)
+    if not user_dir:
+        flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
+              return_last_errmsg() + ">>")
+        return redirect(url_for('login'))
+
+    # verify they selected a slot number to upload
+    #
+    if not 'slot_num' in request.form:
+        flash("No slot selected")
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    user_input = request.form['slot_num']
+    try:
+        slot_num = int(user_input)
+    except ValueError:
+        flash("Slot number is not a number: " + user_input)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    slot_num_str = user_input
+
+    # verify slot number
+    #
+    slot_dir = return_slot_dir_path(username, slot_num)
+    if not slot_dir:
+        flash("ERROR: in: " + me + ": return_slot_dir_path() failed: <<" + \
+              return_last_errmsg() + ">>")
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # verify they selected a file to upload
+    #
+    if 'file' not in request.files:
+        flash('No file part')
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file')
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # verify that the filename is in a submit file form
+    #
+    re_match_str = "^submit\\." + username + "-" + slot_num_str + "\\.[1-9][0-9]{9,}\\.txz$"
+    if not re.match(re_match_str, file.filename):
+        flash("Filename for slot " + slot_num_str + " must match this regular expression: " + re_match_str)
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # save the file in the slot
+    #
+    upload_file = user_dir + "/" + slot_num_str  + "/" + file.filename
+    file.save(upload_file)
+    if not update_slot(username, slot_num, upload_file):
+        flash("ERROR: in: " + me + ": update_slot() failed: <<" + \
+              return_last_errmsg() + ">>")
+        return render_template('submit.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots,
+                               date=str(close_datetime).replace('+00:00', ''))
+
+    # report on the successful upload
+    #
+    flash("Uploaded file: " + file.filename)
+
     # both login and user setup are successful
     #
     return render_template('submit.html',
                            flask_login = flask_login,
                            username = username,
-                           etable = slots,
+                           etable = get_all_json_slots(username),
                            date=str(close_datetime).replace('+00:00', ''))
 #
 # pylint: enable=too-many-branches

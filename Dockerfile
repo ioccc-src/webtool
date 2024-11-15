@@ -71,8 +71,8 @@ EOT
 #
 RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
-RUN chmod 0555 ioccc.py ioccc_common.py ioccc_passwd.py
-RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py
+RUN chmod 0555 ioccc.py ioccc_common.py ioccc_passwd.py ioccc_date.py
+RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py ioccc_date.py
 
 # Set permissions for etc/init.iocccpasswd.json
 #

@@ -78,6 +78,7 @@ To build and run as a single command under a python activated environment:
     docker build -t ioccc-submit:latest . && docker run -p 8191:8191 ioccc-submit:latest
 ```
 
+
 ### To test tools outside of the docker container
 
 To setup a test outside of the docker container, create and
@@ -101,7 +102,8 @@ While that is running, open a browser at (this works under macOS):
     open http://127.0.0.1:8191
 ```
 
-.. or do whatever the equivalent on your to enter this URL into a browser:
+.. or do whatever the equivalent on your to enter this URL into a browser,
+(alternatively you can copy and paste it into your browser):
 
 ```
     http://127.0.0.1:8191
@@ -110,8 +112,8 @@ While that is running, open a browser at (this works under macOS):
 **IMPORTANT NOTE:** You may find problems running `ioccc.py` due
 to various things such as the tcp port being unavailable, certain
 files not being ready, or the development server having issues.
-Testing outside of a docker container is **NOT supported and may
-fail**!
+Testing outside of a docker container is **NOT SUPPORTED AND MIGHT
+FAIL**!
 
 To deactivate the above python environment:
 
@@ -145,6 +147,7 @@ In case you don't have pipx, we installed pipx via Homebrew on macOS:
     brew install pipx
 ```
 
+
 ## ioccc_passwd.py user management
 
 While the docker image is running, access the console and
@@ -153,29 +156,29 @@ go to the `/app` directory.
 The usage message of the `ioccc_passwd.py` is as follows:
 
 ```
-    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c] [-g SECS] [-n] [-A]
-                           [-U] [-s DateTime] [-S DateTime]
+    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c]
+                           [-g SECS] [-n] [-A] [-U]
 
     Manage IOCCC submit server password file and state file
 
     options:
-      -h, --help            show this help message and exit
-      -a, --add USER        add a new user
-      -u, --update USER     update a user or add if not a user
-      -d, --delete USER     delete an exist user
-      -p, --password PW     specify the password (def: generate random password)
-      -c, --change          force a password change at next login
-      -g, --grace SECS      grace time in seconds from to change the password(def: 259200 seconds):
-      -n, --nologin         disable login (def: login not explicitly disabled)
-      -A, --admin           user is an admin (def: not an admin)
-      -U, --UUID            generate a new UUID username and password
-      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
-      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format
+      -h, --help         show this help message and exit
+      -a, --add USER     add a new user
+      -u, --update USER  update a user or add if not a user
+      -d, --delete USER  delete an exist user
+      -p, --password PW  specify the password (def: generate random password)
+      -c, --change       force a password change at next login
+      -g, --grace SECS   grace time in seconds from to change the password(def:
+                         259200 seconds):
+      -n, --nologin      disable login (def: login not explicitly disabled)
+      -A, --admin        user is an admin (def: not an admin)
+      -U, --UUID         generate a new UUID username and password
 
-    ioccc_passwd.py version: 1.3 2024-11-01
+    ioccc_passwd.py version: 1.3.1 2024-11-03
 ```
 
 For example:
+
 
 ### Add a new user
 
@@ -209,13 +212,78 @@ One may add `-p password` to set the password, otherwise a random password is ge
 ```
 
 
+## Set the staring and/or ending dates of the IOCCC
+
+The starting and ending dates of the IOCCC control when `ioccc.py` allows
+the submissions.
+
+While the docker image is running, access the console and
+go to the `/app` directory.
+
+The usage message of the `ioccc_date.py` is as follows:
+
+```
+    usage: ioccc_date.py [-h] [-s DateTime] [-S DateTime]
+
+    Manage IOCCC submit server password file and state file
+
+    options:
+      -h, --help            show this help message and exit
+      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD
+                            HH:MM:SS.micros+hh:mm format
+      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
+                            HH:MM:SS.micros+hh:mm format
+
+    ioccc_date.py version: 1.0 2024-11-15
+```
+
+When neither `-s DateTime` nor `-S DateTime` is given, then the current
+IOCCC start and end values are printed.
+
+
+### Set both the start and the end dates of the IOCCC
+
+```sh
+    ./ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
+```
+
+
+
+## Set slot comment
+
+To set / change the status comment of a user's slot:
+
+```sh
+    ./set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
+```
+
+The usage message of the `ioccc_date.py` is as follows:
+
+```
+    usage: set_slot_status.py [-h] username slot_num status
+
+    Manage IOCCC submit server password file and state file
+
+    positional arguments:
+      username    IOCCC submit server username
+      slot_num    slot number from 0 to 9
+      status      slot status string
+
+    options:
+      -h, --help  show this help message and exit
+
+    set_slot_status.py version: 1.0 2024-11-03
+```
+
+
 ## Disclaimer
 
-This code is based on code originally written by Eliot Lear (@elear)
-in late 2021.  The [IOCCC judges](https://www.ioccc.org/judges.html)
-heavily modified Eliot's code, so any fault you find should be blamed on
-them. 😉. As such, YOU should be WARNED that this code may NOT work,
-or at least may not for you.
+
+This code is based on code originally written by Eliot Lear (@elear) in late
+2021.  The [IOCCC judges](https://www.ioccc.org/judges.html) heavily modified
+Eliot's code, so any fault you find should be blamed on them 😉 (that is, the
+IOCCC Judges :-) ). As such, YOU should be WARNED that this code might NOT work,
+or at least might not for you.
 
 The IOCCC plans to deploy a hosted docker container to allow IOCCC
 registered contestants to submit files that have been created by the

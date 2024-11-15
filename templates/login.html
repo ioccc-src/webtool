@@ -8,6 +8,9 @@
     <meta name="description" content="Upload submissions to the IOCCC">
     <link rel="stylesheet" href="static/ioccc.css">
     <script src="static/ioccc.js" defer></script>
+    {% if current_user.id %}
+	<meta http-equiv="Refresh" content="0; url='/submit'" />
+    {% endif %}
   </head>
   <body>
     <header>
@@ -22,21 +25,32 @@
 
 	  <div>
 	    {% if current_user.id %}
-	      <b style="color: green;">Status: Logged in as {{ current_user.id }}</b><br><br>
+	      <b style="font-size: 20px; color: darkblue;">Status: Logged in as: {{ current_user.id }}</b><br><br>
+	      <a href="/submit"
+		 style="font-size: 20px; font-weight: bold;">Click here for the submit page</a>.
+	      <br><br>
 	    {% else %}
-	      <b style="font-size: 20px;">Status: Not logged in</b><br><br>
+	      <b style="font-size: 20px; color: darkblue;">Status: Not logged in</b><br><br>
 	    {% endif %}
 	  </div>
 
-	  <form method="POST" action="">
-	    <label for="username"><b style="font-size: 20px;">Username: </b></label>
-	    <input type="text" id="username" name="username" style="background-color:#AEC6CF; min-width:30%;"><br><br>
-	    <label for="password"><b style="font-size: 20px;">Password: </b></label>
-	    <input type="text" id="password" name="password" style="background-color:#AEC6CF; min-width:30%;"><br><br>
-	    <input type="submit" value="Login" class="button"
+	  {% if current_user.id %}
+	    <form action="/logout" method="get" target="_self">
+		<button type="submit" formmethod="get" class="button"
+		        style="font-size: 20px; font-weight: bold;">Logout</button>
+	    </form>
+	  {% else %}
+	    <form method="POST" action="">
+	      <label for="username"><b style="font-size: 20px;">Username: </b></label>
+	      <input type="text" id="username" name="username"
+		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+	      <label for="password"><b style="font-size: 20px;">Password: </b></label>
+	      <input type="text" id="password" name="password"
+		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+	      <input type="submit" value="Login" class="button"
 		   style="background-color:#AEC6CF; min-width:100px; font-size: 20px; font-weight: bold;">
-	   </form>
-
+	    </form>
+	  {% endif %}
 	  <p>
         </article>
       </main>

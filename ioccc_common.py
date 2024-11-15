@@ -62,7 +62,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.2,1 2024-11-02"
+VERSION_IOCCC_COMMON = "1.3 2024-11-09"
 
 # force password change grace time
 #
@@ -173,28 +173,25 @@ LOCK_TIMEOUT = 13
 
 # global slot lock - lock file descriptor or none
 #
-# When lock_file is not none, flock has been applied to some lock file.
-# When lock_file is none, no flock has been applied to a slot lock file.
+# When last_lock_fd is not none, flock is holding a lock on the file last_lock_path.
+# When last_lock_fd is none, no flock is currently being held.
 #
-# When starting to operate on a slot, and before we lock the slot, we
-# check if lock_file is not none.  If lock_file is not none, we force
-# the previous slot lock to be unlocked.
+# When we try lock a file via ioccc_file_lock() and we are holding a lock on another file,
+# we will force the flock to be released.
 #
-# The slot lock file only needs to be locked during a brief slot operation,
+# The lock file only needs to be locked during a brief slot operation,
 # which are brief in duration.  Moreover this server is NOT multi-threaded.
-# We NEVER want to lock more than one slot at a time.
+# We NEVER want to lock more than one file at a time.
 #
-# Nevertheless if, before we start a slot operation AND before we attempt
+# Nevertheless if, before we start, say. a slot operation AND before we attempt
 # to lock the slot, we discover that some other slot is still locked
 # (due to unexpected asynchronous event or exception, or code bug), we
 # will force that previous lock to be unlocked.
 #
 # pylint: disable-next=global-statement,invalid-name
-last_slot_lock = None         # lock file descriptor or None
+last_lock_fd = None         # lock file descriptor, or None
 # pylint: disable-next=global-statement,invalid-name
-last_lock_user = None         # username whose slot is locked or None
-# pylint: disable-next=global-statement,invalid-name
-last_lock_slot_num = None     # slot number that is locked or None
+last_lock_path = None       # path of the file that is locked, or None
 # pylint: disable-next=global-statement,invalid-name
 last_errmsg = ""            # recent error message or empty string
 # pylint: disable-next=global-statement,invalid-name
@@ -336,6 +333,147 @@ def return_slot_json_filename(username, slot_num):
     return slot_json_file
 
 
+def ioccc_file_lock(file_lock):
+    """
+    Lock a file
+
+    A side effect of locking a file is that the file will be created with
+    more 0664 it it does not exist.
+
+    Given:
+        file_lock               the filename to lock
+
+        If the filename does not exist, it will be created.
+        If another file is currently unlocked, force the older lock to be unlocked.
+        Lock the new file.
+        Register the lock.
+
+    Returns:
+        lock file descriptor    lock successful
+        None                    lock not successful, or
+                                unable to create the lock file
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_lock_fd
+    # pylint: disable-next=global-statement
+    global last_lock_path
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # be sure the lock file exists for this slot
+    #
+    try:
+        Path(file_lock).touch(mode=0o664, exist_ok=True)
+
+    except OSError as exception:
+        last_errmsg = "ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + file_lock + \
+                      " exception: " + str(exception)
+        return None
+
+    # Force any stale slot lock to become unlocked
+    #
+    if last_lock_fd:
+
+        # Carp
+        #
+        if not last_lock_path:
+            last_lock_path = "((no-last_lock_path))"
+        last_errmsg = "Warning: in " + me + ": forcing stale slot unlock: " + last_lock_path
+
+        # Force previous stale slot lock to become unlocked
+        #
+        try:
+            last_lock_fd.release(force=True)
+
+        except OSError as exception:
+            # We give up as we cannot force the unlock
+            #
+            last_errmsg = "Warning: in " + me + ": failed to force stale unlock: " + last_lock_path + \
+                          " exception: " + str(exception)
+
+        # clear the past lock
+        #
+        last_lock_fd = None
+        last_lock_path = None
+
+    # Lock the file
+    #
+    slot_lock_fd = FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True)
+    try:
+        with slot_lock_fd:
+
+            # note our new lock
+            #
+            last_lock_fd = slot_lock_fd
+            last_lock_path = file_lock
+
+    except Timeout:
+
+        # too too long to get the lock
+        #
+        last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + last_lock_path
+        return None
+
+    # return the slot lock success
+    #
+    return slot_lock_fd
+
+
+def ioccc_file_unlock():
+    """
+    unlock a previously locked file
+
+    A file locked via ioccc_file_lock(file_lock) is unlocked using the last registered lock.
+
+    Returns:
+        True     previously locked file has been unlocked
+        False    failed to unlock the previously locked file, or
+                 no file was previously locked
+    """
+
+    # declare global use
+    #
+    # pylint: disable-next=global-statement
+    global last_lock_fd
+    # pylint: disable-next=global-statement
+    global last_lock_path
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # case: no file was previously unlocked
+    #
+    sucess = False
+    if not last_lock_fd:
+        last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + last_lock_path
+
+    # Unlock the file
+    #
+    else:
+        try:
+            last_lock_fd.release(force=True)
+            sucess = True
+
+        except OSError as exception:
+            # We give up as we cannot force the unlock
+            #
+            last_errmsg = "Warning: in " + me + ": failed to unlock: " + last_lock_path + \
+                          " exception: " + str(exception)
+
+    # Clear any previous lock
+    #
+    last_lock_fd = None
+    last_lock_path = None
+
+    # Return the slot unlock success or failure
+    #
+    return sucess
+
+
 def load_pwfile():
     """
     Return the JSON contents of the password file as a python dictionary
@@ -356,9 +494,8 @@ def load_pwfile():
 
     # Lock the password file
     #
-    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    pw_lock_fd = ioccc_file_lock(PW_LOCK)
     if not pw_lock_fd:
-        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
 
     # If there is no password file, or if the password file is empty, copy it from the initial password file
@@ -369,6 +506,7 @@ def load_pwfile():
         except OSError as exception:
             last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
+            ioccc_file_unlock()
             return None
 
     # load the password file and unlock
@@ -380,18 +518,18 @@ def load_pwfile():
             # close and unlock the password file
             #
             j_pw.close()
-            pw_lock_fd.release(force=True)
+
     except OSError as exception:
         last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
 
-        # unlock the password file
+        # we have no JSON to return
         #
-        pw_lock_fd.release(force=True)
-        return None
+        pw_file_json = None
 
     # return the password JSON data as a python dictionary
     #
+    ioccc_file_unlock()
     return pw_file_json
 
 
@@ -418,9 +556,8 @@ def replace_pwfile(pw_file_json):
 
     # Lock the password file
     #
-    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    pw_lock_fd = ioccc_file_lock(PW_LOCK)
     if not pw_lock_fd:
-        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return False
 
     # rewrite the password file with the pw_file_json and unlock
@@ -433,17 +570,18 @@ def replace_pwfile(pw_file_json):
             # close and unlock the password file
             #
             j_pw.close()
-            pw_lock_fd.release(force=True)
+
     except OSError:
 
         # unlock the password file
         #
         last_errmsg = "ERROR: in " + me + ": unable to write password file"
-        pw_lock_fd.release(force=True)
+        ioccc_file_unlock()
         return False
 
     # password file updated
     #
+    ioccc_file_unlock()
     return True
 
 
@@ -649,10 +787,8 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
     # Lock the password file
     #
-    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    pw_lock_fd = ioccc_file_lock(PW_LOCK)
     if not pw_lock_fd:
-        last_errmsg = "ERROR: in " + me + \
-                        ": unable to lock password file"
         return None
 
     # If there is no password file, or if the password file is empty, copy it from the initial password file
@@ -663,6 +799,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
         except OSError as exception:
             last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
+            ioccc_file_unlock()
             return None
 
     # load the password file and unlock
@@ -674,13 +811,14 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
             # close the password file
             #
             j_pw.close()
+
     except OSError as exception:
 
         # unlock the password file
         #
         last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
-        pw_lock_fd.release(force=True)
+        ioccc_file_unlock()
         return None
 
     # scan through the password file, looking for the user
@@ -724,18 +862,19 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
             # close and unlock the password file
             #
             j_pw.close()
-            pw_lock_fd.release(force=True)
+
     except OSError as exception:
         last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
 
         # unlock the password file
         #
-        pw_lock_fd.release(force=True)
+        ioccc_file_unlock()
         return None
 
     # password updated with new username information
     #
+    ioccc_file_unlock()
     return True
 #
 # pylint: enable=too-many-statements
@@ -774,9 +913,8 @@ def delete_username(username):
 
     # Lock the password file
     #
-    pw_lock_fd = FileLock(PW_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
+    pw_lock_fd = ioccc_file_lock(PW_LOCK)
     if not pw_lock_fd:
-        last_errmsg = "ERROR: in " + me + ": unable to lock password file"
         return None
 
     # If there is no password file, or if the password file is empty, copy it from the initial password file
@@ -787,6 +925,7 @@ def delete_username(username):
         except OSError as exception:
             last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
+            ioccc_file_unlock()
             return None
 
     # load the password file and unlock
@@ -798,13 +937,14 @@ def delete_username(username):
             # close the password file
             #
             j_pw.close()
+
     except OSError as exception:
 
         # unlock the password file
         #
         last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
-        pw_lock_fd.release(force=True)
+        ioccc_file_unlock()
         return None
 
     # scan through the password file, looking for the user
@@ -833,18 +973,19 @@ def delete_username(username):
             # close and unlock the password file
             #
             j_pw.close()
-            pw_lock_fd.release(force=True)
+
     except OSError as exception:
 
         # unlock the password file
         #
         last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
-        pw_lock_fd.release(force=True)
+        ioccc_file_unlock()
         return None
 
     # return the user that was deleted, if they were found
     #
+    ioccc_file_unlock()
     return deleted_user
 #
 # pylint: enable=too-many-statements
@@ -1108,16 +1249,13 @@ def lock_slot(username, slot_num):
     lock a slot for a user
 
     A side effect of locking the slot is that the user directory will be created.
+    A side effect of locking the slot is if another file is locked, that file will be unlocked.
     If it does not exist, and the slot directory for the user will be created.
     If it does not exist, and the lock file will be created .. unless we return None.
 
     Given:
         username    IOCCC submit server username
         slot_num    slot number for a given username
-
-        Force a previously locked slot to be unlocked,
-        Lock the new slot.
-        Register the locked slot.
 
     Returns:
         lock file descriptor    lock successful
@@ -1129,19 +1267,13 @@ def lock_slot(username, slot_num):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_slot_lock
-    # pylint: disable-next=global-statement
-    global last_lock_user
-    # pylint: disable-next=global-statement
-    global last_lock_slot_num
-    # pylint: disable-next=global-statement
     global last_errmsg
     me = inspect.currentframe().f_code.co_name
     umask(0o022)
 
     # validate username and slot
     #
-    if not username_login_allowed(username):
+    if not lookup_username(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1168,61 +1300,15 @@ def lock_slot(username, slot_num):
                         "for username: <<" + username + ">>"
         return None
 
-    # be sure the lock file exists for this slot
+    # determine the lock filename
     #
-    lock_file = slot_dir + "/lock"
-    Path(lock_file).touch()
+    slot_file_lock = slot_dir + "/lock"
 
-    # Force any stale slot lock to become unlocked
+    # lock the slot
     #
-    if last_slot_lock:
-        # Carp
-        #
-        if not last_lock_user:
-            last_lock_user = "((no-username))"
-        if not last_lock_slot_num:
-            last_lock_slot_num = "((no-slot))"
-        last_errmsg = "Warning: forcing stale slot unlock for username: <<" + last_lock_user + ">> slot: " + \
-               str(last_lock_slot_num)
+    slot_lock_fd = ioccc_file_lock(slot_file_lock)
 
-        # Force previous stale slot lock to become unlocked
-        #
-        try:
-            last_slot_lock.release(force=True)
-        except OSError:
-            # We give up as we cannot force the unlock
-            #
-            last_errmsg = "ERROR: failed to force stale slot unlock for username: <<" + last_lock_user + \
-                            ">> slot: " + str(last_lock_slot_num)
-            last_slot_lock = None
-            last_lock_user = None
-            last_lock_slot_num = None
-            return None
-
-        # clear the global lock information
-        #
-        last_slot_lock = None
-        last_lock_user = None
-        last_lock_slot_num = None
-
-    # Lock the slot
-    #
-    slot_lock_fd = FileLock(lock_file, timeout=LOCK_TIMEOUT, is_singleton=True)
-    try:
-        with slot_lock_fd:
-            # note our new lock
-            #
-            last_slot_lock = slot_lock_fd
-            last_lock_user = username
-            last_lock_slot_num = slot_num
-    except Timeout:
-
-        # too too long to get the lock
-        #
-        last_errmsg = "Warning: timeout on slot lock for username: <<" + username + ">> slot: " + slot_num_str
-        return None
-
-    # return the slot lock success
+    # return the slot lock success or None
     #
     return slot_lock_fd
 
@@ -1239,41 +1325,9 @@ def unlock_slot():
         False    failed to unlock slot
     """
 
-    # declare global use
+    # clear any previous lock
     #
-    # pylint: disable-next=global-statement
-    global last_slot_lock
-    # pylint: disable-next=global-statement
-    global last_lock_user
-    # pylint: disable-next=global-statement
-    global last_lock_slot_num
-    # pylint: disable-next=global-statement
-    global last_errmsg
-
-    # unlock the global slot lock
-    #
-    if last_slot_lock:
-        try:
-            last_slot_lock.release(force=True)
-        except OSError as exception:
-            # We give up as we cannot unlock the slot
-            #
-            if not last_lock_user:
-                last_lock_user = "((None))"
-            if not last_lock_slot_num:
-                last_lock_slot_num = "((no-slot))"
-            last_errmsg = "ERROR: failed to unlock for username: <<" + last_lock_user + \
-                            ">> slot: " + last_lock_slot_num + " exception: " + str(exception)
-            return False
-
-    # clear lock, lock user and lock slot
-    #
-    last_slot_lock = None
-    last_lock_user = None
-    last_lock_slot_num = None
-    return True
-#
-# pylint: enable=too-many-return-statements
+    return ioccc_file_unlock()
 
 
 def write_slot_json(slots_json_file, slot_json):
@@ -1338,7 +1392,7 @@ def initialize_user_tree(username):
 
     # setup
     #
-    if not username_login_allowed(username):
+    if not lookup_username(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1375,21 +1429,9 @@ def initialize_user_tree(username):
                             slot_dir + " exception: " + str(exception)
             return None
 
-        # Force any stale slot lock to become unlocked
-        #
-        unlock_slot()
-
-        # be sure the lock file exists for this slot
-        #
-        lock_file = slot_dir + "/lock"
-        try:
-            Path(lock_file).touch()
-        except OSError as exception:
-            last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
-                            slot_dir + " exception: " + str(exception)
-            return None
-
         # Lock the slot
+        #
+        # This will create the lock file if needed.
         #
         slot_lock_fd = lock_slot(username, slot_num)
         if not slot_lock_fd:
@@ -1470,16 +1512,9 @@ def get_json_slot(username, slot_num):
         != None ==> slot information as a python dictionary
     """
 
-    # setup
-    #
-    # pylint: disable-next=global-statement
-    global last_errmsg
-    me = inspect.currentframe().f_code.co_name
-    umask(0o022)
-
     # validate username
     #
-    if not username_login_allowed(username):
+    if not lookup_username(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
@@ -1491,7 +1526,6 @@ def get_json_slot(username, slot_num):
 
     # setup for the user's slot
     #
-    slot_num_str = str(slot_num)
     slot_dir = return_slot_dir_path(username, slot_num)
     if not slot_dir:
         return None
@@ -1501,50 +1535,16 @@ def get_json_slot(username, slot_num):
 
     # first and foremost, lock the user slot
     #
-    # NOTE: If needed the user directory and the slot directory will be created.
-    #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
         return None
 
     # read the JSON file for the user's slot
     #
-    # NOTE: We initialize the slot JSON file if the JSON file does not exist.
-    #
-    try:
-        with open(slot_json_file, "r", encoding="utf-8") as slot_file_fp:
-            slot = json.load(slot_file_fp)
-            slot_file_fp.close()
-            if slot["no_comment"] != NO_COMMENT_VALUE:
-                last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #2 username : <<" + \
-                                username + ">> for slot: " + slot_num_str
-                unlock_slot()
-                return None
-            if slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                last_errmsg = "ERROR: in " + me + ": SON slot[" + slot_num_str + "] version: " + \
-                                slot[slot_num].slot["slot_JSON_format_version"] + " != " + SLOT_VERSION_VALUE
-                unlock_slot()
-                return None
-    except OSError:
-        # initialize slot JSON file
-        #
-        t = Template(EMPTY_JSON_SLOT_TEMPLATE)
-        slot = json.loads(t.substitute( { 'NO_COMMENT_VALUE': NO_COMMENT_VALUE, \
-                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
-                                          'slot_num': slot_num_str } ))
-        if slot["no_comment"] != NO_COMMENT_VALUE:
-            last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #3 username : <<" + \
-                            username + ">> for slot: " + slot_num_str
-            unlock_slot()
-            return None
-        if slot["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-            last_errmsg = "ERROR: in " + me + ": JSON slot[" + slot_num_str + "] version: " + \
-                            slot[slot_num].slot["slot_JSON_format_version"] + " != " + SLOT_VERSION_VALUE
-            unlock_slot()
-            return None
-        if not write_slot_json(slot_json_file, slot):
-            unlock_slot()
-            return None
+    slot = read_json_file(slot_json_file)
+    if not slot:
+        unlock_slot()
+        return None
 
     # unlock the user slot
     #
@@ -1574,34 +1574,30 @@ def get_all_json_slots(username):
     #
     umask(0o022)
 
-    # validate usewrname
+    # validate username
     #
-    if not username_login_allowed(username):
+    if not lookup_username(username):
         return None
     user_dir = return_user_dir_path(username)
     if not user_dir:
         return None
 
-    # process each slot for this user
+    # initialize the user tree in case this is a new user
     #
-    slots = [None] * (MAX_SUBMIT_SLOT+1)
-    for slot_num in range(0, MAX_SUBMIT_SLOT+1):
-
-        # get slot information
-        #
-        json_slot_data = get_json_slot(username, slot_num)
-        if not json_slot_data:
-            return None
-        slots[slot_num] = json_slot_data
+    slots = initialize_user_tree(username)
+    if not slots:
+        return None
 
     # return slot information as a python dictionary
     #
     return slots
 
 
+# pylint: disable=too-many-return-statements
+#
 def update_slot(username, slot_num, slot_file):
     """
-    Update a given slot for a given user.
+    Update a given slot for a given user with a new file
 
     Given:
         username    IOCCC submit server username
@@ -1637,41 +1633,127 @@ def update_slot(username, slot_num, slot_file):
                         slot_num_str + " file: " + slot_file
         return False
 
-    # If the slot previously saved file that has a different name than the new file, then remove the old file
+    # lock the slot because we are about to change it
     #
-    if slots[slot_num]['filename']:
+    slot_lock_fd = lock_slot(username, slot_num)
+    if not slot_lock_fd:
+        return None
+
+    # read the JSON file for the user's slot
+    #
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        unlock_slot()
+        return None
+    slot = read_json_file(slot_json_file)
+    if not slot:
+        unlock_slot()
+        return None
+
+    # If the slot previously saved file that has a different name than the new file,
+    # then remove the old file
+    #
+    if slot['filename']:
 
         # determine the slot directory
         #
         slot_dir = return_slot_dir_path(username, slot_num)
         if not slot_dir:
+            unlock_slot()
             return False
 
-        # remove previously saved fike
+        # remove previously saved file
         #
-        old_file = slot_dir + "/" + slots[slot_num]['filename']
+        old_file = slot_dir + "/" + slot['filename']
         if slot_file != old_file and os.path.isfile(old_file):
             os.remove(old_file)
             last_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
-                            " file: " + slots[slot_num]['filename']
+                            " file: " + slot['filename']
 
     # record and report SHA256 hash of file
     #
-    slots[slot_num]['status'] = "Uploaded file into slot"
-    slots[slot_num]['filename'] = os.path.basename(slot_file)
-    slots[slot_num]['length'] = os.path.getsize(slot_file)
+    slot['status'] = "Uploaded file into slot"
+    slot['filename'] = os.path.basename(slot_file)
+    slot['length'] = os.path.getsize(slot_file)
     dt = datetime.now(timezone.utc).replace(tzinfo=None)
-    slots[slot_num]['date'] = re.sub(r'\.[0-9]{6}$', '', str(dt)) + " UTC"
-    slots[slot_num]['sha256'] = result.hexdigest()
+    slot['date'] = re.sub(r'\.[0-9]{6}$', '', str(dt)) + " UTC"
+    slot['sha256'] = result.hexdigest()
 
     # save JSON data for the slot
     #
     slots_json_file = return_slot_json_filename(username, slot_num)
     if not slots_json_file:
+        unlock_slot()
         return False
-    if not write_slot_json(slots_json_file, slots[slot_num]):
+    if not write_slot_json(slots_json_file, slot):
+        unlock_slot()
         return False
+
+    # unlock the slot and report success
+    #
+    unlock_slot()
     return True
+#
+# pylint: enable=too-many-return-statements
+
+
+# pylint: disable=too-many-return-statements
+#
+def update_slot_status(username, slot_num, status):
+    """
+    Update the status comment for a given user's slot
+
+    Given:
+        username    IOCCC submit server username
+        slot_num    slot number for a given username
+        status      the new status string for the slot
+
+    Returns:
+        True        status updated
+        False       some error was detected
+    """
+
+    # must be a valid user
+    #
+    if not lookup_username(username):
+        return False
+    slot_json_file = return_slot_json_filename(username, slot_num)
+    if not slot_json_file:
+        return False
+
+    # lock the slot because we are about to change it
+    #
+    slot_lock_fd = lock_slot(username, slot_num)
+    if not slot_lock_fd:
+        return None
+
+    # read the JSON file for the user's slot
+    #
+    slot = read_json_file(slot_json_file)
+    if not slot:
+        unlock_slot()
+        return None
+
+    # update the status
+    #
+    slot['status'] = status
+
+    # save JSON data for the slot
+    #
+    slots_json_file = return_slot_json_filename(username, slot_num)
+    if not slots_json_file:
+        unlock_slot()
+        return False
+    if not write_slot_json(slots_json_file, slot):
+        unlock_slot()
+        return False
+
+    # unlock the slot and report success
+    #
+    unlock_slot()
+    return True
+#
+# pylint: enable=too-many-return-statements
 
 
 def read_json_file(json_file):
@@ -1728,30 +1810,13 @@ def read_state():
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_slot_lock
-    # pylint: disable-next=global-statement
-    global last_lock_user
-    # pylint: disable-next=global-statement
-    global last_lock_slot_num
-    # pylint: disable-next=global-statement
     global last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the state file
     #
-    state_lock_fd = FileLock(STATE_FILE_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
-    try:
-        with state_lock_fd:
-            # note our new lock
-            #
-            last_slot_lock = state_lock_fd
-            last_lock_user = ""
-            last_lock_slot_num = "((no-slot))"
-    except Timeout:
-
-        # too too long to get the lock
-        #
-        last_errmsg = "Warning: timeout on slot lock state file: " + STATE_FILE_LOCK
+    state_lock_fd = ioccc_file_lock(STATE_FILE_LOCK)
+    if not state_lock_fd:
         return None
 
     # If there is no state file, or if the state file is empty, copy it from the initial state file
@@ -1759,9 +1824,11 @@ def read_state():
     if not os.path.isfile(STATE_FILE) or os.path.getsize(STATE_FILE) <= 0:
         try:
             shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
+
         except OSError as exception:
             last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
                             " " + STATE_FILE + " exception: " + str(exception)
+            ioccc_file_unlock()
             return None
 
     # read the state
@@ -1770,23 +1837,7 @@ def read_state():
 
     # Unlock the state file
     #
-    try:
-        last_slot_lock.release(force=True)
-    except OSError:
-        # We give up as we cannot unlock the slot
-        #
-        if not last_lock_user:
-            last_lock_user = "((None))"
-        if not last_lock_slot_num:
-            last_lock_slot_num = "((no-slot))"
-        last_errmsg = "Warning: failed to unlock state file: " + STATE_FILE_LOCK
-        # fall thru
-
-    # clear lock, lock user and lock slot
-    #
-    last_slot_lock = None
-    last_lock_user = None
-    last_lock_slot_num = None
+    ioccc_file_unlock()
 
     # detect if we were unable to read the state file
     #
@@ -1860,12 +1911,6 @@ def update_state(open_date, close_date):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_slot_lock
-    # pylint: disable-next=global-statement
-    global last_lock_user
-    # pylint: disable-next=global-statement
-    global last_lock_slot_num
-    # pylint: disable-next=global-statement
     global last_errmsg
     me = inspect.currentframe().f_code.co_name
     write_sucessful = True
@@ -1893,19 +1938,8 @@ def update_state(open_date, close_date):
 
     # Lock the state file
     #
-    state_lock_fd = FileLock(STATE_FILE_LOCK, timeout=LOCK_TIMEOUT, is_singleton=True)
-    try:
-        with state_lock_fd:
-            # note our new lock
-            #
-            last_slot_lock = state_lock_fd
-            last_lock_user = ""
-            last_lock_slot_num = "((no-slot))"
-    except Timeout:
-
-        # too too long to get the lock
-        #
-        last_errmsg = "Warning: timeout on slot lock state file: " + STATE_FILE_LOCK
+    state_lock_fd = ioccc_file_lock(STATE_FILE_LOCK)
+    if not state_lock_fd:
         return False
 
     # write JSON data into the state file
@@ -1922,6 +1956,7 @@ def update_state(open_date, close_date):
                                    indent = 4))
             sf_fp.write('\n')
             sf_fp.close()
+
     except OSError:
         last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
         write_sucessful = False
@@ -1929,24 +1964,7 @@ def update_state(open_date, close_date):
 
     # Unlock the state file
     #
-    try:
-        last_slot_lock.release(force=True)
-    except OSError:
-        # We give up as we cannot unlock the slot
-        #
-        if not last_lock_user:
-            last_lock_user = "((None))"
-        if not last_lock_slot_num:
-            last_lock_slot_num = "((no-slot))"
-        last_errmsg = "Warning: failed to unlock state file: " + STATE_FILE_LOCK
-        write_sucessful = False
-        # fall thru
-
-    # clear lock, lock user and lock slot
-    #
-    last_slot_lock = None
-    last_lock_user = None
-    last_lock_slot_num = None
+    ioccc_file_unlock()
 
     # return success
     #
@@ -1967,7 +1985,7 @@ def contest_is_open():
     #
     now = datetime.now(timezone.utc)
 
-    # obtain open and close dates in datefile format
+    # obtain open and close dates in datetime format
     #
     open_datetime, close_datetime = read_state()
     if not open_datetime or not close_datetime:

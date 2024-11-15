@@ -10,104 +10,126 @@
     <script src="static/ioccc.js" defer></script>
   </head>
   <body>
+
     <header>
       <div id="logo"><img src="static/ioccc.png"> Upload your submission(s) to the IOCCC</div>
     </header>
+
     <section>
       <strong>
-{% if username %}
-Welcome, {{ username }}!<br>
-{% endif %}
-        <br>
-        Use this page to upload or update your submissions to the IOCCC.<br>
-      </strong> </section>
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <section>
-      <strong>Message(s):</strong>
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
+      {% if username %}
+        <div style="font-size: 20px; color: darkblue;">Welcome, {{ username }}</div><br>
+      {% endif %}
+      <br>
+      Use this page to upload or update your submissions to the IOCCC.<br>
+      </strong>
     </section>
-    {% endif %}
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <section>
+          <strong>Message(s):</strong>
+          <ul class=flashes>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        </section>
+      {% endif %}
     {% endwith %}
+
     <section id="pageContent">
       <main role="main">
         <article>
+
           <p id="labelFont"><b>First:</b> Select a slot:</p>
           <form name="upload" action="update" method="post" enctype="multipart/form-data"><br>
-	      <table>
-		<tr>
-		  <th style="width:5%">Select</th>
-		  <th>Slot Information</th>
-		</tr>
-		{% for slot in etable %}
-		<tr>
-		  <td>
-		      <label for="en{{slot.slot}}"><b>{{slot.slot}}:</b>&nbsp;</label>
-			<input name="slot_num" id="slots{{slot.slot}}"
-			       onclick="show_sub();" type="radio"
-			       value="{{slot.slot}}">
-		  </td>
-		  <td>
-		      <b>Status</b>: {{slot.status}}<br>
-		      {% if slot.filename %}
-		      <br><b>Filename</b>: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{slot.filename}}<br>
-		      {% endif %}
-		      {% if slot.length %}
-		      <b>File length</b>: &nbsp;&nbsp;&nbsp; {{slot.length}}<br>
-		      {% endif %}
-		      {% if slot.date %}
-		      <b>Upload date</b>: &nbsp; {{slot.date}}<br>
-		      {% endif %}
-		      {% if slot.sha256 %}
-		      <br><b>SHA256</b>: {{slot.sha256}}<br>
-		      {% endif %}
-		  </td>
-		</tr>
-		{% endfor %}
-	      </table>
-	      </p>
+            <table>
+              <tr>
+                <th style="width:5%">Select</th>
+                <th>Slot Information</th>
+              </tr>
+              {% for slot in etable %}
+                <tr>
+                  <td>
+                    <label for="en{{slot.slot}}"><b>{{slot.slot}}:</b>&nbsp;</label>
+                    <input name="slot_num" id="slots{{slot.slot}}"
+                           onclick="show_sub();" type="radio"
+                           value="{{slot.slot}}">
+                  </td>
+                  <td>
+                    <b>Status: </b><b style="color: darkblue; font-weight: bold;">{{slot.status}}</b><br>
+                    {% if slot.filename %}
+                      <br><b>Filename</b>: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{slot.filename}}<br>
+                    {% endif %}
+                    {% if slot.length %}
+                      <b>File length</b>: &nbsp;&nbsp;&nbsp; {{slot.length}}<br>
+                    {% endif %}
+                    {% if slot.date %}
+                      <b>Upload date</b>: &nbsp; {{slot.date}}<br>
+                    {% endif %}
+                    {% if slot.sha256 %}
+                      <br><b>SHA256</b>: {{slot.sha256}}<br>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </table>
+
             <br>
             <br>
-	    <p><b>IMPORTANT:</b> Upload <b>only XZ compressed tarballs</b> whose <b>filename is</b>:</p>
-	    <br>
-	    <p><code><b>&nbsp;&nbsp;&nbsp;&nbsp;submit.{{username}}-<i>SLOT</i>.<i>TIMESTAMP</i>.txz</b></code></p>
-	    <br>
-	    <p>where <code><b><i>SLOT</i></b></code> is a slot number, and <code><b><i>TIMESTAMP</i></b></code>
-	    is the build time as a <a href="https://unixtime.org">Unix timestamp</a>.</p>
-	    <br>
-	    <p>We <b>highly recommend</b> that you use
-	    <a href="https://github.com/ioccc-src/mkiocccentry">mkiocccentry(1)</a>
-	    to create your submit file as it <b>must pass</b> the
-	    <a href="https://github.com/ioccc-src/mkiocccentry">txzchk(1)</a> sanity check,
-	    and when the uncompressed tarball is untarred, the resulting directory <b>must pass</b>
-	    <a href="https://github.com/ioccc-src/mkiocccentry">chkentry(1)</a>.</p>
-	    <br>
-	    <p id="labelFont"><label for="file"><b>Second:</b></label>
-	    <input name="file" id="file" required="" type="file" class="button" style="min-width: 700px;"></p>
-	    <br>
-	    <p id="labelFont"><label><b>Third:</b> Click:</label>
-	    <button type="submit" style="display: none" id="sub_button" class="button">Submit</button>
-	    <div font="-2">(Submit button will appear once a slot is selected)</div>
-	    </p>
-	    <br>
-	    <p id="labelFont"><label><b>Else:</b> Click:</label>
-            <button type="reset" onclick="hide_sub()" class="button">Reset</button></p>
-	  </form>
-	  <br>
-	  <form action="/logout" method="get" target="_self">
-	      <p id="labelFont"><label><b>Last:</b> Click:</label>
-	      <button type="submit" formmethod="get" class="button">Logout</button></p>
-	  </form>
-	  <p>
-	  <br><b>IMPORTANT</b>: Submissions may be updated at any time prior to <b>{{date}} UTC</b>.<br>
-	  <p>
+
+            <p><b>IMPORTANT:</b> Upload <b>only XZ compressed tarballs</b> whose <b>filename is</b>:</p>
+            <br>
+            <p><code><b>&nbsp;&nbsp;&nbsp;&nbsp;submit.{{username}}-<i>SLOT</i>.<i>TIMESTAMP</i>.txz</b></code></p>
+            <br>
+            <p>where <code><b><i>SLOT</i></b></code> is a slot number, and <code><b><i>TIMESTAMP</i></b></code>
+            is the build time as a <a href="https://unixtime.org">Unix timestamp</a>.</p>
+            <br>
+            <p>We <b>highly recommend</b> that you use
+            <a href="https://github.com/ioccc-src/mkiocccentry">mkiocccentry(1)</a>
+            to create your submit file as it <b>must pass</b> the
+            <a href="https://github.com/ioccc-src/mkiocccentry">txzchk(1)</a> sanity check,
+            and when the uncompressed tarball is untarred, the resulting directory <b>must pass</b>
+            <a href="https://github.com/ioccc-src/mkiocccentry">chkentry(1)</a>.</p>
+
+            <br>
+
+            <p id="labelFont"><label for="file"><b>Second:</b></label>
+              <input name="file" id="file" required="" type="file" class="button" style="min-width: 700px;">
+            </p>
+
+            <br>
+
+            <p id="labelFont"><label><b>Third:</b> Click:</label>
+              <button type="submit" style="display: none" id="sub_button" class="button">Submit</button>
+              <div font="-2">(Submit button will appear once a slot is selected)</div>
+            </p>
+
+            <br>
+
+            <p id="labelFont"><label><b>Else:</b> Click:</label>
+              <button type="reset" onclick="hide_sub()" class="button">Reset</button>
+            </p>
+
+          </form>
+
+          <br>
+
+          <form action="/logout" method="get" target="_self">
+            <p id="labelFont"><label><b>Last:</b> Click:</label>
+              <button type="submit" formmethod="get" class="button">Logout</button>
+            </p>
+          </form>
+
+          <p>
+
+          <br><b>IMPORTANT</b>: Submissions may be updated at any time prior to <b>{{date}} UTC</b>.<br>
+          <p>
         </article>
       </main>
     </section>
+
     <footer>
       <div id="resources"><h3>Recommended IOCCC resources</h3>
       <ul>
