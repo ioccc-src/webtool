@@ -169,8 +169,7 @@ The usage message of the `ioccc_passwd.py` is as follows:
       -d, --delete USER  delete an exist user
       -p, --password PW  specify the password (def: generate random password)
       -c, --change       force a password change at next login
-      -g, --grace SECS   grace time in seconds from to change the password(def:
-                         259200 seconds):
+      -g, --grace SECS   grace seconds to change the password (def: 259200)
       -n, --nologin      disable login (def: login not explicitly disabled)
       -A, --admin        user is an admin (def: not an admin)
       -U, --UUID         generate a new UUID username and password
