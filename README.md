@@ -133,6 +133,7 @@ To use pylint on the code:
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_common.py
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc.py
     PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_passwd.py
+    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./set_slot_status.py
 ```
 
 FYI: Under macOS we installed pylint via pipx:
