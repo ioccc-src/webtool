@@ -4,25 +4,89 @@
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The IOCCC is Closed</title>
-    <meta name="description" content="IOCCC is closed">
+    <title>IOCCC Submission Page</title>
+    <meta name="description" content="Upload submissions to the IOCCC">
     <link rel="stylesheet" href="static/ioccc.css">
+    <script src="static/ioccc.js" defer></script>
   </head>
   <body>
+
     <header>
-      <div id="logo"><img src="static/ioccc.png"> IOCCC is Closed</div>
+      <div id="logo"><img src="static/ioccc.png"> The IOCCC is NOT open</div>
     </header>
+
     <section>
-      <form action="/logout" method="get" target="_self">
-	  <button type="submit" formmethod="get" class="button">Logout</button>
-      </form>
+      <strong>
+      {% if username %}
+        <div style="font-size: 20px; color: darkblue;">Welcome, {{ username }}</div><br>
+      {% endif %}
+      <h2>The contest is NOT open for submissions.</h2>
       <br>
-      <h2>The contest is closed.</h2>
-      <br>
-      Sorry (tm Canada 🇨🇦), the IOCCC is closed.
+      Sorry (tm Canada 🇨🇦), the IOCCC is not open.
       <br><br>
-      You can no longer upload IOCCC submissions.
+      You cannot upload IOCCC submissions at this time.
+      </strong>
     </section>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <section>
+          <strong>Message(s):</strong>
+	  <br><br>
+          <ul class=flashes>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        </section>
+      {% endif %}
+    {% endwith %}
+
+    <section id="pageContent">
+      <main role="main">
+        <article>
+
+	  <table>
+	    <tr>
+	      <th style="width:5%">Slot</th>
+	      <th>Slot Information</th>
+	    </tr>
+	    {% for slot in etable %}
+	      <tr>
+		<td>
+		  <label for="en{{slot.slot}}"><b>{{slot.slot}}:</b>&nbsp;</label>
+		</td>
+		<td>
+		  <b>Status: </b><b style="color: darkblue; font-weight: bold;">{{slot.status}}</b><br>
+		  {% if slot.filename %}
+		    <br><b>Filename</b>: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{slot.filename}}<br>
+		  {% endif %}
+		  {% if slot.length %}
+		    <b>File length</b>: &nbsp;&nbsp;&nbsp; {{slot.length}}<br>
+		  {% endif %}
+		  {% if slot.date %}
+		    <b>Upload date</b>: &nbsp; {{slot.date}}<br>
+		  {% endif %}
+		  {% if slot.sha256 %}
+		    <br><b>SHA256</b>: {{slot.sha256}}<br>
+		  {% endif %}
+		</td>
+	      </tr>
+	    {% endfor %}
+	  </table>
+
+          <br>
+
+          <form action="/logout" method="get" target="_self">
+            <p id="labelFont">
+              <button type="submit" formmethod="get" class="button">Logout</button>
+            </p>
+          </form>
+
+        </article>
+      </main>
+    </section>
+
     <footer>
       <div id="resources"><h3>Recommended IOCCC resources</h3>
       <ul>

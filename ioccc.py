@@ -41,7 +41,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.1 2024-11-15"
+VERSION = "1.2 2024-11-17"
 
 
 # Configure the app
@@ -161,14 +161,6 @@ def login():
                 user.authenticated  = True
                 flask_login.login_user(user)
 
-            # verify that the contest is still open
-            #
-            close_datetime = contest_is_open()
-            if not close_datetime:
-                flash("The IOCCC is closed.")
-                flask_login.logout_user()
-                return render_template('closed.html')
-
             # get the JSON slots for the user and verify we have slots
             #
             slots = initialize_user_tree(username)
@@ -177,14 +169,29 @@ def login():
                       return_last_errmsg() + ">>")
                 return redirect(url_for('login'))
 
-            # both login and user setup are successful
+            # render based on if the contest is open or not
             #
-            return render_template('submit.html',
+            close_datetime = contest_is_open()
+            if close_datetime:
+
+                # case: contest open - both login and user setup are successful
+                #
+                return render_template('submit.html',
+                                       flask_login = flask_login,
+                                       username = username,
+                                       etable = slots,
+                                       date=str(close_datetime).replace('+00:00', ''))
+
+            # case: contest is not open - both login and user setup are successful
+            #
+            flash("The IOCCC is not open.")
+            return render_template('not-open.html',
                                    flask_login = flask_login,
                                    username = username,
-                                   etable = slots,
-                                   date=str(close_datetime).replace('+00:00', ''))
+                                   etable = slots)
 
+    # case: unable to login
+    #
     return render_template('login.html')
 
 
@@ -201,14 +208,6 @@ def submit():
     # setup
     #
     me = inspect.currentframe().f_code.co_name
-
-    # verify that the contest is still open
-    #
-    close_datetime = contest_is_open()
-    if not close_datetime:
-        flash("The IOCCC is closed.")
-        flask_login.logout_user()
-        return redirect(url_for('closed'))
 
     # get username
     #
@@ -240,6 +239,16 @@ def submit():
               return_last_errmsg() + ">>")
         flask_login.logout_user()
         return redirect(url_for('login'))
+
+    # verify that the contest is still open
+    #
+    close_datetime = contest_is_open()
+    if not close_datetime:
+        flash("The IOCCC is not open.")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots)
 
     # verify they selected a slot number to upload
     #
@@ -343,13 +352,6 @@ def upload():
     #
     me = inspect.currentframe().f_code.co_name
 
-    # verify that the contest is still open
-    #
-    close_datetime = contest_is_open()
-    if not close_datetime:
-        flash("The IOCCC is closed.")
-        return render_template('closed.html')
-
     # get username
     #
     if not current_user.id:
@@ -376,6 +378,16 @@ def upload():
         flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
               return_last_errmsg() + ">>")
         return redirect(url_for('login'))
+
+    # verify that the contest is still open
+    #
+    close_datetime = contest_is_open()
+    if not close_datetime:
+        flash("The IOCCC is not open.")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots)
 
     # verify they selected a slot number to upload
     #
