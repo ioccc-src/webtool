@@ -74,8 +74,8 @@ def main():
                         help='force a password change at next login',
                         action='store_true')
     parser.add_argument('-g', '--grace',
-                        help='grace time in seconds from to change the password' + \
-                             f'(def: {DEFAULT_GRACE_PERIOD} seconds):',
+                        help='grace seconds to change the password ' + \
+                             f'(def: {DEFAULT_GRACE_PERIOD})',
                         metavar='SECS',
                         type=int,
                         nargs=1)
