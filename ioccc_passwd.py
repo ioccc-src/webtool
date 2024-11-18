@@ -20,14 +20,16 @@ import uuid
 #
 # NOTE: This in turn imports a lot of other stuff, and sets global constants.
 #
+# TO DO: Change wild card import into specific import set
+#
 from ioccc_common import *
 
 
-# iocccpassword version
+# ioccc_passwd.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.3.1 2024-11-03"
+VERSION = "1.4 2024-11-17"
 
 
 # pylint: disable=too-many-locals
@@ -44,6 +46,7 @@ def main():
     now = datetime.now(timezone.utc)
     force_pw_change = False
     password = None
+    pwhash = None
     disable_login = False
     pw_change_by = None
     program = os.path.basename(__file__)
@@ -90,6 +93,11 @@ def main():
                         action='store_true')
     args = parser.parse_args()
 
+    # -g secs - set the grace time to change in seconds from now
+    #
+    if args.grace:
+        pw_change_by = str(now + timedelta(seconds=args.grace[0]))
+
     # -c - force user to change their password at the next login
     #
     if args.change:
@@ -98,27 +106,26 @@ def main():
         #
         force_pw_change = True
 
-        # -g secs - set the grace time to change in seconds from now
+        # case: -g not give, assume default grace period
         #
-        if args.grace:
-            pw_change_by = str(now + timedelta(seconds=args.grace[0]))
-
-        # otherwise set the grace time using the default grace period
-        #
-        else:
+        if not args.grace:
             pw_change_by = str(now + timedelta(seconds=DEFAULT_GRACE_PERIOD))
 
     # -p password - use password supplied in the command line
     #
     if args.password:
         password = args.password[0]
+        pwhash = hash_password(password)
 
     # -n - disable login of user
     #
     if args.nologin:
         disable_login = True
 
-    # -A - disable login of user
+    # -A - make the user an admin
+    #
+    # NOTE: The admin state is currently unused.  Setting this has no effect
+    #       other than to change the state of the user's password entry.
     #
     if args.admin:
         admin = True
@@ -163,26 +170,66 @@ def main():
     #
     if args.update:
 
-        # add with random password unless we used -p password
-        #
-        if not password:
-            password = generate_password()
-
-        # we store the hash of the password only
-        #
-        pwhash = hash_password(password)
-        if not pwhash:
-            print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(9)
-
         # determine the username to update
         #
         username = args.update[0]
 
+        # obtain the user_dict if the user exists
+        #
+        user_dict = lookup_username(username)
+
+        # if this is an existing user, setup for the update
+        #
+        if user_dict:
+
+            # case: -p was not given, keep the existing password hash
+            #
+            if not password:
+                pwhash = user_dict['pwhash']
+
+            # case: -A was not given, keep the existing admin
+            #
+            if not args.admin:
+                admin = user_dict['admin']
+
+            # case: -c was not given, keep the existing force_pw_change
+            #
+            if not args.change:
+                force_pw_change = user_dict['force_pw_change']
+
+            # case: -c nor -g was not given, keep the existing pw_change_by
+            #
+            if not pw_change_by:
+                pw_change_by = user_dict['pw_change_by']
+
+            # case: -n was not given, keep the existing disable_login
+            #
+            if not args.nologin:
+                disable_login = user_dict['disable_login']
+
+        # if not yet a user, generate the random password unless we used -p password
+        #
+        else:
+
+            # add with random password unless we used -p password
+            #
+            if not password:
+                password = generate_password()
+
+            # we store the hash of the password only
+            #
+            pwhash = hash_password(password)
+            if not pwhash:
+                print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
+                sys.exit(9)
+
         # update the user
         #
         if update_username(username, pwhash, admin, force_pw_change, pw_change_by, disable_login):
-            print("Notice: updated username: " + username + " password: " + password)
+            if password:
+                print("Notice: updated username: " + username + " password: " + password)
+            else:
+                print("Notice: updated username: " + username + " password is unchanged")
             sys.exit(0)
         else:
             print("ERROR: failed to update username: <<" + username + ">> password: <<" + password + ">>")

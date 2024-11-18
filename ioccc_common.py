@@ -52,17 +52,18 @@ from filelock import Timeout, FileLock
 # 3rd party imports
 #
 from werkzeug.security import check_password_hash, generate_password_hash
+import pwnedpasswords
 
 
 ##################
 # Global constants
 ##################
 
-# IOCCC common version
+# ioccc_common.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.3 2024-11-09"
+VERSION_IOCCC_COMMON = "1.4 2024-11-17"
 
 # force password change grace time
 #
@@ -84,6 +85,8 @@ DEFAULT_GRACE_PERIOD = 72*3600
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f%z"
 
 # default IP and port
+#
+# TO DO: Figure out how what HOST_NAME and TCP_PORT we should use.
 #
 HOST_NAME = "127.0.0.1"
 TCP_PORT = "8191"
@@ -137,6 +140,16 @@ DEFAULT_JSON_STATE_TEMPLATE = '''{
     "open_date": "$OPEN_DATE",
     "close_date": "$CLOSE_DATE"
 }'''
+
+# password rules
+#
+# For password rule guidance, see:
+#
+#    https://pages.nist.gov/800-63-4/sp800-63b.html
+#    https://cybersecuritynews.com/nist-rules-password-security/
+#
+MIN_PASSWORD_LENGTH = 15
+MAX_PASSWORD_LENGTH = 64
 
 
 # slot numbers from 0 to MAX_SUBMIT_SLOT
@@ -730,7 +743,8 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
     Returns:
         False ==> unable to update user in the password file
-        True ==> user updated or added to the password file
+        True ==> user updated, or
+                 added to the password file
     """
 
     # setup
@@ -878,6 +892,10 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     return True
 #
 # pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-positional-arguments
+# pylint: enable=too-many-arguments
 
 
 # pylint: disable=too-many-return-statements
@@ -988,11 +1006,7 @@ def delete_username(username):
     ioccc_file_unlock()
     return deleted_user
 #
-# pylint: enable=too-many-statements
-# pylint: enable=too-many-branches
 # pylint: enable=too-many-return-statements
-# pylint: enable=too-many-positional-arguments
-# pylint: enable=too-many-arguments
 
 
 def generate_password():
@@ -1068,7 +1082,7 @@ def verify_hashed_password(password, pwhash):
 
     Returns:
         True ==> password matches the hashed password
-        False ==> password does NOT match the hashed password or
+        False ==> password does NOT match the hashed password, or
                   a non-string args was found
     """
 
@@ -1105,7 +1119,9 @@ def verify_user_password(username, password):
 
     Returns:
         True ==> password matches the hashed password
-        False ==> password does NOT match the hashed password or
+        False ==> password does NOT match the hashed password, or
+                  username is not in the password database, or
+                  user is not allowed to login, or
                   a non-string args was found
     """
 
@@ -1121,7 +1137,7 @@ def verify_user_password(username, password):
         last_errmsg = "ERROR: in " + me + ": username arg is not a string"
         return False
 
-    # firewall - pwhash must be a string
+    # firewall - password must be a string
     #
     if not isinstance(password, str):
         last_errmsg = "ERROR: in " + me + ": password arg is not a string"
@@ -1136,7 +1152,7 @@ def verify_user_password(username, password):
         #
         return False
 
-    # fail is the user is not allowed to login
+    # fail if the user is not allowed to login
     #
     if not user_allowed_to_login(user_dict):
 
@@ -1147,6 +1163,160 @@ def verify_user_password(username, password):
     # return the result of the hashed password check for this user
     #
     return verify_hashed_password(password, user_dict['pwhash'])
+
+
+def is_proper_password(password):
+    """
+    Determine if a password is proper.  That is, if the password
+    follows the rules for a good password that as not been pwned.
+
+    For password rule guidance, see:
+
+        https://pages.nist.gov/800-63-4/sp800-63b.html
+        https://cybersecuritynews.com/nist-rules-password-security/
+
+    Given:
+        password    plaintext password
+
+    Returns:
+        True ==> password is allowed under the rules
+        False ==> password is is not allowed, or
+                  non-string arg was found
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(password, str):
+        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        return False
+
+    # password must be at at least MIN_PASSWORD_LENGTH long
+    #
+    if len(password) < MIN_PASSWORD_LENGTH:
+        last_errmsg = "ERROR: password must be at least " + str(MIN_PASSWORD_LENGTH) + \
+                      " characters long"
+        return False
+
+    # password must be a sane length
+    #
+    if len(password) > MAX_PASSWORD_LENGTH:
+        last_errmsg = "ERROR: password must not be longer than " + str(MAX_PASSWORD_LENGTH) + \
+                      " characters"
+        return False
+
+    # password must not have been Pwned
+    #
+    if pwnedpasswords.check(password) > 0:
+        last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
+        return False
+
+    # until we have password rules, allow any string
+    #
+    return True
+
+
+# pylint: disable=too-many-return-statements
+#
+def update_password(username, old_password, new_password):
+    """
+    Update the password for a given user.
+
+    NOTE: If the user is allowed to login, and the old_password is the
+          current password, and the new_password is an allowed password,
+          we update the user's password AND clear any force_pw_change state.
+
+    Given:
+        username        IOCCC submit server username
+        old_password    current plaintext password
+        new_password    new plaintext password
+
+    Returns:
+        True ==> password updated
+        False ==> old_password does NOT match the hashed password, or
+                  non-string args was found, or
+                  username is not in the password database, or
+                  user is not allowed to login, or
+                  new_password is not a valid password
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(username, str):
+        last_errmsg = "ERROR: in " + me + ": username arg is not a string"
+        return False
+
+    # firewall - old_password must be a string
+    #
+    if not isinstance(old_password, str):
+        last_errmsg = "ERROR: in " + me + ": old_password arg is not a string"
+        return False
+
+    # firewall - new_password must be a string
+    #
+    if not isinstance(new_password, str):
+        last_errmsg = "ERROR: in " + me + ": new_password arg is not a string"
+        return False
+
+    # new_password must be a proper password
+    #
+    if not is_proper_password(new_password):
+        return False
+
+    # fail if user login is disabled or missing from the password file
+    #
+    user_dict = lookup_username(username)
+    if not user_dict:
+
+        # user is not in the password file, so we cannot state they have been disabled
+        #
+        return False
+
+    # fail if the user is not allowed to login
+    #
+    if not user_allowed_to_login(user_dict):
+
+        # user is not allowed to login
+        #
+        return False
+
+    # return the result of the hashed password check for this user
+    #
+    if not verify_hashed_password(old_password, user_dict['pwhash']):
+
+        # old_password is not correct
+        #
+        last_errmsg = "ERROR: invalid old password"
+        return False
+
+    # update user entry in the password database
+    #
+    # We force the force_pw_change state to be False as this action IS changing the password.
+    #
+    if not update_username(username,
+                           hash_password(new_password),
+                           user_dict['admin'],
+                           False,
+                           user_dict['pw_change_by'],
+                           user_dict['disable_login']):
+        return False
+
+    # password successfully updated
+    #
+    return True
+#
+# pylint: enable=too-many-return-statements
 
 
 def user_allowed_to_login(user_dict):
@@ -1160,6 +1330,7 @@ def user_allowed_to_login(user_dict):
         True ==> user is allowed to login
         False ==> login is not allowed for the user, or
                   user_dict failed sanity checks, or
+                  user is not allowed to login, or
                   user did not change their password in time
     """
 
@@ -1196,6 +1367,27 @@ def user_allowed_to_login(user_dict):
     # user login attempt is allowed
     #
     return True
+
+
+def must_change_password(user_dict):
+    """
+    Determine if the user is required to change their password.
+
+    Given:
+        user_dict    user information for username as a python dictionary
+
+    Returns:
+        True ==> user must change their password
+        False ==> user is not requited to change their password, or
+                  invalid user_dict
+    """
+
+    # sanity check the user information
+    #
+    if not validate_user_dict(user_dict):
+        return False
+
+    return user_dict['force_pw_change']
 
 
 def username_login_allowed(username):
@@ -1311,6 +1503,8 @@ def lock_slot(username, slot_num):
     # return the slot lock success or None
     #
     return slot_lock_fd
+#
+# pylint: enable=too-many-return-statements
 
 
 def unlock_slot():
@@ -1380,7 +1574,8 @@ def initialize_user_tree(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> invalid slot number or Null user_dir
+        None ==> invalid slot number, or
+                 Null user_dir
         != None ==> array of slot user data as a python dictionary
     """
 

@@ -15,10 +15,12 @@ import sys
 #
 # NOTE: This in turn imports a lot of other stuff, and sets global constants.
 #
+# TO DO: Change wild card import into specific import set
+#
 from ioccc_common import *
 
 
-# iocccpassword version
+# ioccc_date.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #

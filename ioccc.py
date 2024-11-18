@@ -34,10 +34,12 @@ from flask_login import current_user
 #
 # NOTE: This in turn imports a lot of other stuff, and sets global constants.
 #
+# TO DO: Change wild card import into specific import set
+#
 from ioccc_common import *
 
 
-# Submit tool server version
+# ioccc.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
@@ -168,6 +170,11 @@ def login():
                 flash("ERROR: in: " + me + ": initialize_user_tree() failed: <<" + \
                       return_last_errmsg() + ">>")
                 return redirect(url_for('login'))
+
+            # case: user is required to change password
+            #
+            if must_change_password(user.user_dict):
+                flash("user is required to change password - TO DO - add code here")
 
             # render based on if the contest is open or not
             #

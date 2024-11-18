@@ -4,4 +4,5 @@ flask-auth>=0.85
 flask-httpauth>=4.8.0
 flask-login>=0.6.3
 passwordgenerator>=1.5.1
+pwnedpasswords>=2.0.0
 werkzeug>=3.0.3
