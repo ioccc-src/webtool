@@ -87,13 +87,13 @@ activate a python environment:
 ```sh
     rm -rf venv __pycache__ && python3 -m venv venv
     . ./venv/bin/activate
-    python3 -m pip install -r etc/requirements.txt
+    python3 -m pip install -r ./etc/requirements.txt
 ```
 
 Then run:
 
 ```sh
-    python3 -i ./ioccc.py
+    python3 -i ./bin/ioccc.py
 ```
 
 While that is running, open a browser at (this works under macOS):
@@ -130,10 +130,7 @@ To use pylint on the code:
 ```sh
     rm -rf venv __pycache__ && python3 -m venv venv
     . ./venv/bin/activate
-    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_common.py
-    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc.py
-    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./ioccc_passwd.py
-    PYTHONPATH=$PWD/venv/lib/python3.13 pylint ./set_slot_status.py
+    ./bin/pychk.sh
 ```
 
 FYI: Under macOS we installed pylint via pipx:
@@ -149,12 +146,12 @@ In case you don't have pipx, we installed pipx via Homebrew on macOS:
 ```
 
 
-## ioccc_passwd.py user management
+## bin/ioccc_passwd.py user management
 
 While the docker image is running, access the console and
 go to the `/app` directory.
 
-The usage message of the `ioccc_passwd.py` is as follows:
+The usage message of the `./bin/ioccc_passwd.py` is as follows:
 
 ```
     usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c]
@@ -183,7 +180,7 @@ For example:
 ### Add a new user
 
 ```sh
-    ./ioccc_passwd.py -a username
+    ./bin/ioccc_passwd.py -a username
 ```
 
 The command will output the password in plain-text.
@@ -194,33 +191,33 @@ One may add `-p password` to set the password, otherwise a random password is ge
 ### Remove an old user
 
 ```sh
-    ./ioccc_passwd.py -d username
+    ./bin/ioccc_passwd.py -d username
 ```
 
 
 ### Add a random UUID user and require them to change their password
 
 ```sh
-    ./ioccc_passwd.py -U -c
+    ./bin/ioccc_passwd.py -U -c
 ```
 
 
 ### Set the contest open and close dates
 
 ```sh
-    ./ioccc_passwd.py -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
+    ./bin/ioccc_passwd.py -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
 ```
 
 
 ## Set the staring and/or ending dates of the IOCCC
 
-The starting and ending dates of the IOCCC control when `ioccc.py` allows
-the submissions.
+The starting and ending dates of the IOCCC control when `./bin/ioccc.py` allows
+for submission uploads.
 
 While the docker image is running, access the console and
 go to the `/app` directory.
 
-The usage message of the `ioccc_date.py` is as follows:
+The usage message of the `./bin/ioccc_date.py` is as follows:
 
 ```
     usage: ioccc_date.py [-h] [-s DateTime] [-S DateTime]
@@ -244,7 +241,7 @@ IOCCC start and end values are printed.
 ### Set both the start and the end dates of the IOCCC
 
 ```sh
-    ./ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
+    ./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
 ```
 
 
@@ -254,10 +251,10 @@ IOCCC start and end values are printed.
 To set / change the status comment of a user's slot:
 
 ```sh
-    ./set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
+    ./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
 ```
 
-The usage message of the `ioccc_date.py` is as follows:
+The usage message of the `./bin/ioccc_date.py` is as follows:
 
 ```
     usage: set_slot_status.py [-h] username slot_num status

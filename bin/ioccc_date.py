@@ -7,8 +7,8 @@ Functions to set the open and close data of the IOCCC.
 
 # system imports
 #
-import argparse
 import sys
+import argparse
 
 
 # import the ioccc python utility code

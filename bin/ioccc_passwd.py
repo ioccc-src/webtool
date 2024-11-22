@@ -9,10 +9,10 @@ Functions to implement adding, updating and deleting of IOCCC contestants.
 
 # system imports
 #
+import sys
 import json
 import argparse
 from os import listdir, remove, rmdir
-import sys
 import uuid
 
 
@@ -29,7 +29,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.4 2024-11-17"
+VERSION = "1.5 2024-11-22"
 
 
 # pylint: disable=too-many-locals

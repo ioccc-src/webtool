@@ -16,6 +16,7 @@ NOTE: This code is modeled after:
 #
 import uuid
 import inspect
+import sys
 
 
 # import from modules
@@ -43,12 +44,14 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.2 2024-11-17"
+VERSION = "1.3 2024-11-22"
 
 
 # Configure the app
 #
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder='templates/',
+            root_path='./')
 app.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 app.config['FLASH_APP'] = "ioccc-submit-tool"
 app.debug = True

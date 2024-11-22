@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# genflaskkey - generate the Flask secret key
+# genflaskkey.sh - generate the Flask secret key
 #
 # The secret does not have to be super string.  It just needs to be long
 # enough to not be easily guessable.  We want at least 48 characters in the file.

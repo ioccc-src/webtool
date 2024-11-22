@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.5.2 2024-11-17"
+LABEL org.ioccc.image.version="0.6 2024-11-22"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -15,7 +15,7 @@ LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 #
 RUN mkdir -p /app
 
-# Copy everying from . into /app except for things mentioned in .dockerignore
+# Copy everything from . into /app except for things mentioned in .dockerignore
 #
 COPY . /app
 
@@ -28,6 +28,12 @@ RUN chown root:root /app
 # be copied and commands will be executed.
 #
 WORKDIR /app
+
+# Create etc sub-directory
+#
+RUN mkdir -p bin
+RUN chmod 0555 bin
+RUN chown root:root bin
 
 # Create etc sub-directory
 #
@@ -71,8 +77,11 @@ EOT
 #
 RUN chmod 0444 .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
-RUN chmod 0555 ioccc.py ioccc_common.py ioccc_passwd.py ioccc_date.py set_slot_status.py
-RUN chown root:root ioccc.py ioccc_common.py ioccc_passwd.py ioccc_date.py set_slot_status.py
+
+# Set permissions for executables
+#
+RUN chmod 0555 bin/ioccc.py bin/ioccc_common.py bin/ioccc_passwd.py bin/ioccc_date.py bin/set_slot_status.py
+RUN chown root:root bin/ioccc.py bin/ioccc_common.py bin/ioccc_passwd.py bin/ioccc_date.py bin/set_slot_status.py
 
 # Set permissions for etc/init.iocccpasswd.json
 #
@@ -140,7 +149,7 @@ RUN chown uwsgi:uwsgi etc/state.lock
 #
 RUN <<EOT
     if [[ ! -s etc/.secret ]]; then
-        /bin/sh ./genflaskkey
+        /bin/sh ./bin/genflaskkey.sh
     fi
 EOT
 
@@ -167,6 +176,10 @@ RUN mkdir -p users
 RUN chmod 2770 users
 RUN chown -R uwsgi:uwsgi users
 
+# setup python path
+#
+ENV PYTHONPATH=".:bin"
+
 # Indicate the TCP port that the docker image would like to make available
 #
 EXPOSE 8191/tcp
@@ -178,6 +191,7 @@ USER uwsgi:uwsgi
 # What to run as an docker executable
 #
 ENTRYPOINT [ "uwsgi" ]
+
 
 # Default args given to the ENTRYPOINT
 #
