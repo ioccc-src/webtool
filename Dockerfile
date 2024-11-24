@@ -7,7 +7,7 @@ FROM alpine:latest
 #
 LABEL org.ioccc.image.name="ioccc-submit"
 LABEL org.ioccc.image.description="IOCCC Submit Server"
-LABEL org.ioccc.image.version="0.7 2024-11-23"
+LABEL org.ioccc.image.version="0.7.1 2024-11-24"
 LABEL org.ioccc.image.author="IOCCC Judges"
 LABEL org.ioccc.image.contact="https://www.ioccc.org/judges.html"
 
@@ -28,18 +28,6 @@ RUN chown root:root /app
 #
 WORKDIR /app
 
-# Create etc sub-directory
-#
-RUN chown root:root bin
-
-# Create etc sub-directory
-#
-RUN chown root:root etc
-
-# Copy files from the host and put them into the container image
-#
-RUN chown root:root etc/requirements.txt
-
 # Setup the python environment needed by this image
 #
 RUN apk add tzdata
@@ -52,32 +40,42 @@ RUN python3 -m pip install --break-system-packages -r etc/requirements.txt
 #
 RUN chown root:root .dockerignore .gitignore Dockerfile LICENSE README.md uwsgi.ini
 
-# Set permissions for executables
+# Set the default ownership for files under bin
 #
-RUN chown root:root bin/ioccc.py bin/ioccc_common.py bin/ioccc_passwd.py bin/ioccc_date.py bin/set_slot_status.py
+RUN chown -R root:root bin
 
-# Set permissions for etc/init.iocccpasswd.json
+# Set the default ownership for files under etc
 #
-RUN chown root:root etc/init.iocccpasswd.json
+RUN chown -R root:root etc
 
 # Set etc/iocccpasswd.json permissions
 #
+RUN <<EOT
+    if [[ ! -s etc/iocccpasswd.json ]]; then
+        cp -f etc/init.iocccpasswd.json etc/iocccpasswd.json
+    fi
+EOT
+RUN chmod 0664 etc/iocccpasswd.json
 RUN chown uwsgi:uwsgi etc/iocccpasswd.json
 
 # Set etc/iocccpasswd.lock permissions
 #
+RUN chmod 0664 etc/iocccpasswd.lock
 RUN chown uwsgi:uwsgi etc/iocccpasswd.lock
-
-# Set permissions for etc/init.state.json
-#
-RUN chown root:root etc/init.state.json
 
 # Set permissions for etc/state.json
 #
+RUN <<EOT
+    if [[ ! -s etc/state.json ]]; then
+        cp -f etc/init.state.json etc/state.json
+    fi
+EOT
+RUN chmod 0664 etc/state.json
 RUN chown uwsgi:uwsgi etc/state.json
 
 # Set etc/state.lock permissions
 #
+RUN chmod 0664 etc/state.lock
 RUN chown uwsgi:uwsgi etc/state.lock
 
 # Generate etc/.secret if not found or if empty
@@ -90,18 +88,21 @@ EOT
 
 # Set permissions for etc/.secret
 #
+RUN chmod 0440 etc/.secret
 RUN chown uwsgi:uwsgi etc/.secret
 
-# Set permission for static
+# Set the default ownership for files under static
 #
 RUN chown -R root:root static
 
-# Set permission for templates
+# Set the default ownership for files under templates
 #
 RUN chown -R root:root templates
 
 # Create the IOCCC users directory with permissions
 #
+RUN mkdir -p users
+RUN chmod 2775 users
 RUN chown -R uwsgi:uwsgi users
 
 # setup python path
