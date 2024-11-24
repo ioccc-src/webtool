@@ -36,6 +36,7 @@ from os import makedirs, umask
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
+from random import randrange
 
 
 # For user slot locking
@@ -63,7 +64,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.4 2024-11-17"
+VERSION_IOCCC_COMMON = "1.4.1 2024-11-23"
 
 # force password change grace time
 #
@@ -148,6 +149,7 @@ DEFAULT_JSON_STATE_TEMPLATE = '''{
 #    https://pages.nist.gov/800-63-4/sp800-63b.html
 #    https://cybersecuritynews.com/nist-rules-password-security/
 #
+PW_WORDS = IOCCC_DIR + "/etc/pw.words"
 MIN_PASSWORD_LENGTH = 15
 MAX_PASSWORD_LENGTH = 64
 
@@ -1027,22 +1029,22 @@ def generate_password():
     # load the word dictionary if it is empty
     #
     if not words:
-        with open('/usr/share/dict/words', "r", encoding="utf-8") as f:
+        with open(PW_WORDS, "r", encoding="utf-8") as f:
             words = [word.strip() for word in f]
         f.close()
 
-    # generate a 3-word password with random separators
+    # generate a 2-word password with random separators and an f9.4 number
     #
-    # Our dictionary as between 103494 and 123679 words in it.
-    # Our selected punctuation list as 30 characters.
+    # Our dictionary has about 104944 (log2 ~ 16.68) words in it.
+    # Our selected punctuation list as 30 (log2 ~ 4.91) characters.
+    # We append a f9.4 (4 digits + . + 4 digits) number (log2 ~ 19.93).
     #
-    # Randomly selected, a 3-word password with random separators
-    # can provide between 59.8 and 60.6 bits.  That good enough
-    # for an initial password.
+    # Typical entropy is about 63.10 bits:
     #
-    password = secrets.choice(words)
-    password = password + random.choice(punct) + secrets.choice(words)
-    password = password + random.choice(punct) + secrets.choice(words)
+    #   log2(104944)*2 + log2(30)*2 + log2(1000) + log2(1000)
+    #
+    password = secrets.choice(words) + random.choice(punct) + secrets.choice(words)
+    password = password + random.choice(punct) + str(randrange(1000)) + "." + str(randrange(1000))
     return password
 
 
