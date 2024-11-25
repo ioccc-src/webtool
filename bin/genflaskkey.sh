@@ -336,7 +336,7 @@ fi
 
 # make the secret read only
 #
-chmod 0400 "$SECRET_FILE"
+chmod 0440 "$SECRET_FILE"
 status="$?"
 if [[ $status -ne 0 ]]; then
     echo "$0: ERROR: chmod 0400 $SECRET_FILE failed, error code: $status" 1>&1
