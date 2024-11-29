@@ -4,18 +4,15 @@
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IOCCC Submission Page</title>
-    <meta name="description" content="Upload submissions to the IOCCC">
+    <title>IOCCC Change Password</title>
+    <meta name="description" content="Change your IOCCC Password">
     <link rel="stylesheet" href="static/ioccc.css">
     <script src="static/ioccc.js" defer></script>
-    {% if current_user.id %}
-	<meta http-equiv="Refresh" content="0; url='/submit'" />
-    {% endif %}
   </head>
   <body>
     <header>
       <div id="logo" style="color: black;"><img src="static/ioccc.png">
-	IOCCC Submit Server - Login to submit
+	IOCCC Submit Server - Change Password
       </div>
     </header>
 
@@ -23,50 +20,54 @@
       <main role="main">
         <article>
 
-	  <div>
-	    {% if current_user.id %}
-	      <b style="font-size: 20px; color: darkblue;">Status: Logged in as: {{ current_user.id }}</b><br><br>
-	      <a href="/submit"
-		 style="font-size: 20px; font-weight: bold;">Click here for the submit page</a>.
-	      <br><br>
-	    {% else %}
-	      <b style="font-size: 20px; color: darkblue;">Status: Not logged in</b><br><br>
-	    {% endif %}
-	  </div>
+          <div>
+            {% if current_user.id %}
+              <b style="font-size: 20px; color: darkblue;">Status: Logged in as: {{ current_user.id }}</b><br><br>
+            {% else %}
+              <b style="font-size: 20px; color: darkblue;">Status: Not logged in</b><br><br>
+            {% endif %}
+          </div>
 
-	  {% with messages = get_flashed_messages() %}
-	    {% if messages %}
-	      <section>
-		<strong>Message(s):</strong>
-		<br><br>
-		<ul class=flashes>
-		  {% for message in messages %}
-		    <li>{{ message }}</li>
-		  {% endfor %}
-		</ul>
-		<br><br>
-	      </section>
-	    {% endif %}
-	  {% endwith %}
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              <section>
+                <strong>Message(s):</strong>
+                <br><br>
+                <ul class=flashes>
+                  {% for message in messages %}
+                    <li>{{ message }}</li>
+                  {% endfor %}
+                </ul>
+                <br>
+              </section>
+            {% endif %}
+          {% endwith %}
 
-	  {% if current_user.id %}
-	    <form action="/logout" method="get" target="_self">
-		<button type="submit" formmethod="get" class="button"
-		        style="font-size: 20px; font-weight: bold;">Logout</button>
-	    </form>
-	  {% else %}
-	    <form method="POST" action="">
-	      <label for="username"><b style="font-size: 20px;">Username: </b></label>
-	      <input type="text" id="username" name="username"
-		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
-	      <label for="password"><b style="font-size: 20px;">Password: </b></label>
-	      <input type="text" id="password" name="password"
-		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
-	      <input type="submit" value="Login" class="button"
-		   style="background-color:#AEC6CF; min-width:100px; font-size: 20px; font-weight: bold;">
-	    </form>
-	  {% endif %}
-	  <p>
+          {% if current_user.id %}
+            <form method="POST" action="">
+              <label for="password"><b style="font-size: 20px;">Current Password: </b></label>
+              <input type="text" id="old_password" name="old_password"
+                     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+              <label for="password"><b style="font-size: 20px;">New Password: </b></label>
+              <input type="text" id="new_password" name="new_password"
+                     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+              <label for="password"><b style="font-size: 20px;">Reenter New Password: </b></label>
+              <input type="text" id="reenter_new_password" name="reenter_new_password"
+                     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+              <input type="submit" value="passwd" class="button"
+                     style="background-color:#AEC6CF; min-width:100px; font-size: 20px; font-weight: bold;">
+              <button type="logout" formmethod="get" class="button"
+                      style="font-size: 20px; font-weight: bold;">Logout</button>
+            </form>
+          {% endif %}
+
+          <br>
+
+          <form action="/logout" method="get" target="_self">
+            <p id="labelFont"><label><b>Last:</b> Click:</label>
+              <button type="submit" formmethod="get" class="button">Logout</button>
+            </p>
+          </form>
         </article>
       </main>
     </section>

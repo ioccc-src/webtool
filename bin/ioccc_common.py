@@ -64,7 +64,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.4.1 2024-11-23"
+VERSION_IOCCC_COMMON = "1.4.2 2024-11-25"
 
 # force password change grace time
 #
@@ -1310,7 +1310,7 @@ def update_password(username, old_password, new_password):
                            hash_password(new_password),
                            user_dict['admin'],
                            False,
-                           user_dict['pw_change_by'],
+                           None,
                            user_dict['disable_login']):
         return False
 

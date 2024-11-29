@@ -44,7 +44,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.3 2024-11-22"
+VERSION = "1.3.1 2024-11-25"
 
 
 # Configure the app
@@ -163,8 +163,11 @@ def login():
             #
             if verify_hashed_password(form_dict.get('password'),
                                       user.user_dict['pwhash']):
-                user.authenticated  = True
+                user.authenticated = True
                 flask_login.login_user(user)
+            else:
+                flash("invalid password")
+                return render_template('login.html')
 
             # get the JSON slots for the user and verify we have slots
             #
@@ -172,12 +175,17 @@ def login():
             if not slots:
                 flash("ERROR: in: " + me + ": initialize_user_tree() failed: <<" + \
                       return_last_errmsg() + ">>")
+                flask_login.logout_user()
                 return redirect(url_for('login'))
 
             # case: user is required to change password
             #
             if must_change_password(user.user_dict):
-                flash("user is required to change password - TO DO - add code here")
+                flash("in login: user is required to change password")
+                return render_template('passwd.html',
+                                       flask_login = flask_login,
+                                       username = username,
+                                       etable = slots)
 
             # render based on if the contest is open or not
             #
@@ -194,7 +202,7 @@ def login():
 
             # case: contest is not open - both login and user setup are successful
             #
-            flash("The IOCCC is not open.")
+            flash("The IOCCC is not open")
             return render_template('not-open.html',
                                    flask_login = flask_login,
                                    username = username,
@@ -249,6 +257,15 @@ def submit():
               return_last_errmsg() + ">>")
         flask_login.logout_user()
         return redirect(url_for('login'))
+
+    # case: user is required to change password
+    #
+    if must_change_password(current_user.user_dict):
+        flash("in login: user is required to change password")
+        return render_template('passwd.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots)
 
     # verify that the contest is still open
     #
@@ -497,6 +514,93 @@ def logout():
     """
     flask_login.logout_user()
     return redirect(url_for('login'))
+
+
+# pylint: disable=too-many-branches
+#
+@app.route('/passwd', methods = ['GET', 'POST'])
+def passwd():
+    """
+    Change user password
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+
+    # process POST
+    #
+    if request.method == 'POST':
+        form_dict = request.form.to_dict()
+        username = form_dict.get('username')
+
+        # If the user is allowed to login
+        #
+        user = User(username)
+        if user.id:
+
+            # get username
+            #
+            if not current_user.id:
+                flash("Login required.")
+                return redirect(url_for('login'))
+            # paranoia
+            if not username:
+                flash("Login required.")
+                return redirect(url_for('login'))
+
+            # get the JSON for all slots for the user
+            #
+            slots = get_all_json_slots(username)
+            if not slots:
+                flash("ERROR: in: " + me + ": get_all_json_slots() failed: <<" + \
+                      return_last_errmsg() + ">>")
+                return redirect(url_for('login'))
+
+            # setup for user
+            #
+            user_dir = return_user_dir_path(username)
+            if not user_dir:
+                flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
+                      return_last_errmsg() + ">>")
+                return redirect(url_for('login'))
+
+            # test
+            #
+            flash("in passwd: user is required to change password")
+            #
+            username = form_dict.get('username')
+            if username:
+                flash(f'in passwd: username: {username}')
+            else:
+                flash("in passwd: no username")
+            #
+            old_password = form_dict.get('old_password')
+            if old_password:
+                flash(f'in passwd: old_password: {old_password}')
+            else:
+                flash("in passwd: no old_password")
+            #
+            new_password = form_dict.get('new_password')
+            if new_password:
+                flash(f'in passwd: new_password: {new_password}')
+            else:
+                flash("in passwd: no new_password: ((NONE))")
+            #
+            reenter_new_password = form_dict.get('reenter_new_password')
+            if reenter_new_password:
+                flash(f'in passwd: reenter_new_password: {reenter_new_password}')
+            else:
+                flash("in passwd: no reenter_new_password")
+            #
+            flask_login.logout_user()
+            return redirect(url_for('login'))
+
+    # case: unable to login
+    #
+    return redirect(url_for('login'))
+#
+# pylint: enable=too-many-branches
 
 
 # Run the app on a given port
