@@ -182,10 +182,7 @@ def login():
             #
             if must_change_password(user.user_dict):
                 flash("in login: user is required to change password")
-                return render_template('passwd.html',
-                                       flask_login = flask_login,
-                                       username = username,
-                                       etable = slots)
+                return redirect(url_for('passwd'))
 
             # render based on if the contest is open or not
             #
@@ -257,15 +254,15 @@ def submit():
               return_last_errmsg() + ">>")
         flask_login.logout_user()
         return redirect(url_for('login'))
-
-    # case: user is required to change password
-    #
-    if must_change_password(current_user.user_dict):
-        flash("in login: user is required to change password")
-        return render_template('passwd.html',
-                               flask_login = flask_login,
-                               username = username,
-                               etable = slots)
+#@#
+#@#    # case: user is required to change password
+#@#    #
+#@#    if must_change_password(current_user.user_dict):
+#@#        flash("in submit: user is required to change password")
+#@#        return render_template('passwd.html',
+#@#                               flask_login = flask_login,
+#@#                               username = username,
+#@#                               etable = slots)
 
     # verify that the contest is still open
     #
@@ -593,8 +590,7 @@ def passwd():
             else:
                 flash("in passwd: no reenter_new_password")
             #
-            flask_login.logout_user()
-            return redirect(url_for('login'))
+            return redirect(url_for('submit'))
 
     # case: unable to login
     #
