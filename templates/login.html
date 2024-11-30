@@ -57,11 +57,13 @@
 	  {% else %}
 	    <form method="POST" action="">
 	      <label for="username"><b style="font-size: 20px;">Username: </b></label>
-	      <input type="text" id="username" name="username"
-		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+	      <input type="text" id="username" name="username" placeholder="Enter Username"
+		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;">
+	      <br><br>
 	      <label for="password"><b style="font-size: 20px;">Password: </b></label>
-	      <input type="text" id="password" name="password"
-		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px;"><br><br>
+	      <input type="text" id="password" name="password" placeholder="Enter Password"
+		     style="background-color:#AEC6CF; min-width:50%; font-size: 20px; -webkit-text-security: circle">
+	      <br><br>
 	      <input type="submit" value="Login" class="button"
 		   style="background-color:#AEC6CF; min-width:100px; font-size: 20px; font-weight: bold;">
 	    </form>
