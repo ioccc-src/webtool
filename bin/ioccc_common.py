@@ -64,7 +64,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.4.2 2024-11-25"
+VERSION_IOCCC_COMMON = "1.4.3 2024-11-29"
 
 # force password change grace time
 #
@@ -1336,6 +1336,11 @@ def user_allowed_to_login(user_dict):
                   user did not change their password in time
     """
 
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global last_errmsg
+
     # sanity check the user information
     #
     if not validate_user_dict(user_dict):
@@ -1347,6 +1352,7 @@ def user_allowed_to_login(user_dict):
 
         # login disabled
         #
+        last_errmsg = "ERROR: user login has been disabled"
         return False
 
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit
@@ -1364,6 +1370,7 @@ def user_allowed_to_login(user_dict):
         # failed to change the password in time
         #
         if now > pw_change_by:
+            last_errmsg = "ERROR: user failed to change the password in time"
             return False
 
     # user login attempt is allowed

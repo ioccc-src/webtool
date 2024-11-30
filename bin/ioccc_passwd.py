@@ -29,7 +29,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.5 2024-11-22"
+VERSION = "1.5.1 2024-11-29"
 
 
 # pylint: disable=too-many-locals
@@ -232,7 +232,10 @@ def main():
                 print("Notice: updated username: " + username + " password is unchanged")
             sys.exit(0)
         else:
-            print("ERROR: failed to update username: <<" + username + ">> password: <<" + password + ">>")
+            if password:
+                print("ERROR: failed to update username: " + username + " password: " + password)
+            else:
+                print("ERROR: failed to update username: " + username + " password is unchanged")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
             sys.exit(10)
 

@@ -44,7 +44,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.3.1 2024-11-25"
+VERSION = "1.4 2024-11-29"
 
 
 # Configure the app
@@ -148,7 +148,7 @@ def login():
     #
     me = inspect.currentframe().f_code.co_name
 
-    # process POST
+    # case: process / POST
     #
     if request.method == 'POST':
         form_dict = request.form.to_dict()
@@ -181,7 +181,7 @@ def login():
             # case: user is required to change password
             #
             if must_change_password(user.user_dict):
-                flash("in login: user is required to change password")
+                flash("User is required to change their password")
                 return redirect(url_for('passwd'))
 
             # render based on if the contest is open or not
@@ -205,7 +205,7 @@ def login():
                                    username = username,
                                    etable = slots)
 
-    # case: unable to login
+    # case: process / GET
     #
     return render_template('login.html')
 
@@ -227,13 +227,13 @@ def submit():
     # get username
     #
     if not current_user.id:
-        flash("Login required.")
+        flash("ERROR: Login required")
         flask_login.logout_user()
         return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
-        flash("Login required.")
+        flash("ERROR: Login required")
         flask_login.logout_user()
         return redirect(url_for('login'))
 
@@ -254,15 +254,12 @@ def submit():
               return_last_errmsg() + ">>")
         flask_login.logout_user()
         return redirect(url_for('login'))
-#@#
-#@#    # case: user is required to change password
-#@#    #
-#@#    if must_change_password(current_user.user_dict):
-#@#        flash("in submit: user is required to change password")
-#@#        return render_template('passwd.html',
-#@#                               flask_login = flask_login,
-#@#                               username = username,
-#@#                               etable = slots)
+
+    # case: user is required to change password
+    #
+    if must_change_password(current_user.user_dict):
+        flash("User is required to change their password")
+        return redirect(url_for('passwd'))
 
     # verify that the contest is still open
     #
@@ -379,12 +376,12 @@ def upload():
     # get username
     #
     if not current_user.id:
-        flash("Login required.")
+        flash("ERROR: Login required")
         return redirect(url_for('login'))
     username = current_user.id
     # paranoia
     if not username:
-        flash("Login required.")
+        flash("ERROR: Login required")
         return redirect(url_for('login'))
 
     # get the JSON for all slots for the user
@@ -412,6 +409,12 @@ def upload():
                                flask_login = flask_login,
                                username = username,
                                etable = slots)
+
+    # case: user is required to change password
+    #
+    if must_change_password(current_user.user_dict):
+        flash("User is required to change their password")
+        return redirect(url_for('passwd'))
 
     # verify they selected a slot number to upload
     #
@@ -514,6 +517,8 @@ def logout():
 
 
 # pylint: disable=too-many-branches
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-statements
 #
 @app.route('/passwd', methods = ['GET', 'POST'])
 def passwd():
@@ -525,11 +530,29 @@ def passwd():
     #
     me = inspect.currentframe().f_code.co_name
 
-    # process POST
+    # get username
+    #
+    if not current_user.id:
+        flash("ERROR: Login required")
+        return redirect(url_for('login'))
+    username = current_user.id
+    # paranoia
+    if not username:
+        flash("ERROR: Login required")
+        return redirect(url_for('login'))
+
+    # get the JSON for all slots for the user
+    #
+    slots = get_all_json_slots(username)
+    if not slots:
+        flash("ERROR: in: " + me + ": get_all_json_slots() failed: <<" + \
+              return_last_errmsg() + ">>")
+        return redirect(url_for('login'))
+
+    # case: process /passwd POST
     #
     if request.method == 'POST':
         form_dict = request.form.to_dict()
-        username = form_dict.get('username')
 
         # If the user is allowed to login
         #
@@ -539,64 +562,80 @@ def passwd():
             # get username
             #
             if not current_user.id:
-                flash("Login required.")
+                flash("ERROR: Login required")
                 return redirect(url_for('login'))
             # paranoia
             if not username:
-                flash("Login required.")
+                flash("ERROR: Login required")
                 return redirect(url_for('login'))
 
-            # get the JSON for all slots for the user
-            #
-            slots = get_all_json_slots(username)
-            if not slots:
-                flash("ERROR: in: " + me + ": get_all_json_slots() failed: <<" + \
-                      return_last_errmsg() + ">>")
-                return redirect(url_for('login'))
-
-            # setup for user
-            #
-            user_dir = return_user_dir_path(username)
-            if not user_dir:
-                flash("ERROR: in: " + me + ": return_user_dir_path() failed: <<" + \
-                      return_last_errmsg() + ">>")
-                return redirect(url_for('login'))
-
-            # test
-            #
-            flash("in passwd: user is required to change password")
-            #
-            username = form_dict.get('username')
-            if username:
-                flash(f'in passwd: username: {username}')
-            else:
-                flash("in passwd: no username")
+            # get form parameters
             #
             old_password = form_dict.get('old_password')
-            if old_password:
-                flash(f'in passwd: old_password: {old_password}')
-            else:
-                flash("in passwd: no old_password")
-            #
+            if not old_password:
+                flash("ERROR: You must enter your current password")
+                return redirect(url_for('login'))
             new_password = form_dict.get('new_password')
-            if new_password:
-                flash(f'in passwd: new_password: {new_password}')
-            else:
-                flash("in passwd: no new_password: ((NONE))")
-            #
+            if not new_password:
+                flash("ERROR: You must enter a new password")
+                return redirect(url_for('login'))
             reenter_new_password = form_dict.get('reenter_new_password')
-            if reenter_new_password:
-                flash(f'in passwd: reenter_new_password: {reenter_new_password}')
-            else:
-                flash("in passwd: no reenter_new_password")
-            #
-            return redirect(url_for('submit'))
+            if not reenter_new_password:
+                flash("ERROR: You must re-enter the new password")
+                return redirect(url_for('login'))
 
-    # case: unable to login
+            # verify new and reentered passwords match
+            #
+            if new_password != reenter_new_password:
+                flash("ERROR: New Password and Reentered Password are not the same")
+                return redirect(url_for('passwd'))
+
+            # disallow old and new passwords being substrings of each other
+            #
+            if new_password == old_password:
+                flash("ERROR: New password cannot be the same as your current password")
+                return redirect(url_for('passwd'))
+            if new_password in old_password:
+                flash("ERROR: New password must not contain your current password")
+                return redirect(url_for('passwd'))
+            if old_password in new_password:
+                flash("ERROR: Your current password cannot contain your new password")
+                return redirect(url_for('passwd'))
+
+            # validate new password
+            #
+            if not is_proper_password(new_password):
+                flash("ERROR: New Password is not a valid password")
+                flash(return_last_errmsg())
+                return redirect(url_for('passwd'))
+
+            # change user password
+            #
+            # NOTE: This will also validate the old password
+            #
+            if not update_password(username, old_password, new_password):
+                flash("ERROR: Password not changed")
+                flash(return_last_errmsg())
+                return redirect(url_for('passwd'))
+
+            # user password change successful
+            #
+            flash("Password successfully changed")
+            return redirect(url_for('logout'))
+
+    # case: process /passwd GET
     #
-    return redirect(url_for('login'))
+    pw_change_by = current_user.user_dict['pw_change_by']
+    return render_template('passwd.html',
+                           flask_login = flask_login,
+                           username = username,
+                           pw_change_by = pw_change_by,
+                           min_length = str(MIN_PASSWORD_LENGTH),
+                           max_length = str(MAX_PASSWORD_LENGTH))
 #
 # pylint: enable=too-many-branches
+# pylint: enable=too-many-return-statements
+# pylint: enable=too-many-statements
 
 
 # Run the app on a given port
