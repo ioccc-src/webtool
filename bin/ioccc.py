@@ -14,9 +14,9 @@ NOTE: This code is modeled after:
 
 # system imports
 #
-import uuid
 import inspect
 import sys
+import argparse
 
 
 # import from modules
@@ -44,7 +44,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.4 2024-11-29"
+VERSION = "1.5 2024-12-04"
 
 
 # Configure the app
@@ -57,29 +57,7 @@ app.config['FLASH_APP'] = "ioccc-submit-tool"
 app.debug = True
 app.config['FLASK_ENV'] = "development"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-#
-# We will read the 1st line of the SECRET_FILE, ignoring the newline
-#
-# IMPORTANT: You MUST generate the secret key once and then
-#            copy/paste the value into your app or store it as an
-#            environment variable. Do NOT regenerate the secret key within
-#            the app, or you will get a new value for each instance
-#            of the app, which can cause issues when you deploy to
-#            production since each instance of the app has a
-#            different SECRET_KEY value.
-#
-try:
-    with open(SECRET_FILE, 'r', encoding="utf-8") as secret:
-        app.secret_key = secret.read().rstrip()
-        secret.close()
-except OSError:
-    # FALLBACK: generate on a secret the fly for testing
-    #
-    # IMPORTANT: This exception case may not work well in production as
-    #            different instances of this app will have different secrets.
-    #
-    app.secret_key = str(uuid.uuid4())
-
+app.secret_key = return_secret()
 
 # set app file paths
 #
@@ -641,4 +619,29 @@ def passwd():
 # Run the app on a given port
 #
 if __name__ == '__main__':
+
+    # setup
+    #
+    program = os.path.basename(__file__)
+
+    # parse args
+    #
+    parser = argparse.ArgumentParser(
+                description="IOCCC submit server tool",
+                epilog=f'{program} version: {VERSION}')
+    parser.add_argument('-t', '--topdir',
+                        help="app directory path",
+                        metavar='appdir',
+                        nargs=1)
+    args = parser.parse_args()
+
+    # -t topdir - set the path to the top level app direcory
+    #
+    if args.topdir:
+        if not change_startup_appdir(args.topdir[0]):
+            print("ERROR: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            sys.exit(3)
+
+    # launch the application
+    #
     app.run(host='0.0.0.0', port=TCP_PORT)

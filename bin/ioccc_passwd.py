@@ -13,7 +13,6 @@ import sys
 import json
 import argparse
 from os import listdir, remove, rmdir
-import uuid
 
 
 # import the ioccc python utility code
@@ -29,7 +28,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.5.1 2024-11-29"
+VERSION = "1.6 2024-12-04"
 
 
 # pylint: disable=too-many-locals
@@ -57,6 +56,10 @@ def main():
     parser = argparse.ArgumentParser(
                 description="Manage IOCCC submit server password file and state file",
                 epilog=f'{program} version: {VERSION}')
+    parser.add_argument('-t', '--topdir',
+                        help="app directory path",
+                        metavar='appdir',
+                        nargs=1)
     parser.add_argument('-a', '--add',
                         help="add a new user",
                         metavar='USER',
@@ -92,6 +95,13 @@ def main():
                         help='generate a new UUID username and password',
                         action='store_true')
     args = parser.parse_args()
+
+    # -t topdir - set the path to the top level app direcory
+    #
+    if args.topdir:
+        if not change_startup_appdir(args.topdir[0]):
+            print("ERROR: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            sys.exit(3)
 
     # -g secs - set the grace time to change in seconds from now
     #
@@ -144,7 +154,7 @@ def main():
         pwhash = hash_password(password)
         if not pwhash:
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(6)
+            sys.exit(4)
 
         # determine the username to add
         #
@@ -154,7 +164,7 @@ def main():
         #
         if lookup_username(username):
             print("ERROR: username already exists: <<" + username + ">>")
-            sys.exit(7)
+            sys.exit(5)
 
         # add the user
         #
@@ -164,7 +174,7 @@ def main():
         else:
             print("ERROR: failed to add username: <<" + username + ">> password: <<" + password + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(8)
+            sys.exit(6)
 
     # -u user - update if they exit, or add user if they do not already exist
     #
@@ -221,7 +231,7 @@ def main():
             pwhash = hash_password(password)
             if not pwhash:
                 print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-                sys.exit(9)
+                sys.exit(7)
 
         # update the user
         #
@@ -237,7 +247,7 @@ def main():
             else:
                 print("ERROR: failed to update username: " + username + " password is unchanged")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(10)
+            sys.exit(8)
 
     # -d user - delete user
     #
@@ -252,7 +262,7 @@ def main():
         if not lookup_username(username):
             print("ERROR: username does not exist: <<" + username + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(11)
+            sys.exit(9)
 
         # remove the user
         #
@@ -262,7 +272,7 @@ def main():
         else:
             print("ERROR: failed to delete username: <<" + username + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(12)
+            sys.exit(10)
 
     # -a user - add user if they do not already exist
     #
@@ -278,7 +288,7 @@ def main():
         pwhash = hash_password(password)
         if not pwhash:
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(13)
+            sys.exit(11)
 
         # generate an random UUID of type that is not an existing user
         #
@@ -311,7 +321,7 @@ def main():
         #
         if not username:
             print("ERROR: SUPER RARE: failed to found a new UUID after " + str(try_limit) + " attempts!!!")
-            sys.exit(14)
+            sys.exit(12)
 
         # add the user
         #
@@ -321,12 +331,12 @@ def main():
         else:
             print("ERROR: failed to add UUID username: <<" + username + ">> password: <<" + password + ">>")
             print("ERROR: last_errmsg: <<" + return_last_errmsg() + ">>")
-            sys.exit(15)
+            sys.exit(13)
 
     # no option selected
     #
     print("ERROR: must use one of: -a USER or -u USER or -d USER or -U or -s DateTime or -S DateTime")
-    sys.exit(16)
+    sys.exit(14)
 #
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-branches

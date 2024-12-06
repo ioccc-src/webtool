@@ -27,6 +27,7 @@ import secrets
 import random
 import shutil
 import hashlib
+import uuid
 
 
 # import from modules
@@ -56,7 +57,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import pwnedpasswords
 
 
-##################
+#.#################
 # Global constants
 ##################
 
@@ -64,7 +65,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.4.3 2024-11-29"
+VERSION_IOCCC_COMMON = "1.5 2024-12-04"
 
 # force password change grace time
 #
@@ -92,19 +93,54 @@ DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f%z"
 HOST_NAME = "127.0.0.1"
 TCP_PORT = "8191"
 
-# important directories and files
+# determine the default APPDIR
 #
-IOCCC_ROOT = "/"
-IOCCC_DIR = IOCCC_ROOT + "app"
-# if we are testing in ., assume ./app is a symlink to app
-if not Path(IOCCC_DIR).is_dir():
-    IOCCC_ROOT = "./"
-    IOCCC_DIR = IOCCC_ROOT + "app"
-PW_FILE = IOCCC_DIR + "/etc/iocccpasswd.json"
-INIT_PW_FILE = IOCCC_DIR + "/etc/init.iocccpasswd.json"
-PW_LOCK = IOCCC_DIR + "/etc/iocccpasswd.lock"
-ADM_FILE = IOCCC_DIR + "/etc/admins.json"
-SECRET_FILE = IOCCC_DIR + "/etc/.secret"
+# case: We have /app a directory, assume Docker container directory layout
+if Path("/app").is_dir():
+    APPDIR = "/app"
+
+# case: assume we are testing in . and so assume ./app is a symlink to app
+else:
+    APPDIR = "./app"
+
+# important directories and files that are relative to APPDIR
+#
+# We set FOO_RELATIVE_PATH, the value relative to APPDIR, and
+# then set FOO to be APPDIR + "/" + FOO_RELATIVE_PATH.
+#
+# IMPORTANT NOTE: Calling change_startup_appdir(topdir) can
+#                 change APPDIR and all of the values below
+#                 that depend on APPDIR.
+#
+PW_FILE_RELATIVE_PATH = "etc/iocccpasswd.json"
+PW_FILE = APPDIR + "/" + PW_FILE_RELATIVE_PATH
+#
+INIT_PW_FILE_RELATIVE_PATH = "etc/init.iocccpasswd.json"
+INIT_PW_FILE = APPDIR + "/" + INIT_PW_FILE_RELATIVE_PATH
+#
+PW_LOCK_RELATIVE_PATH = "etc/iocccpasswd.lock"
+PW_LOCK = APPDIR + "/" + PW_LOCK_RELATIVE_PATH
+#
+ADM_FILE_RELATIVE_PATH = "etc/admins.json"
+ADM_FILE = APPDIR + "/" + ADM_FILE_RELATIVE_PATH
+#
+SECRET_FILE_RELATIVE_PATH = "etc/.secret"
+SECRET_FILE = APPDIR + "/" + SECRET_FILE_RELATIVE_PATH
+#
+USERS_DIR_RELATIVE_PATH = "users"
+USERS_DIR = APPDIR + "/" + USERS_DIR_RELATIVE_PATH
+#
+STATE_FILE_RELATIVE_PATH = "etc/state.json"
+STATE_FILE = APPDIR + "/" + STATE_FILE_RELATIVE_PATH
+#
+INIT_STATE_FILE_RELATIVE_PATH = "etc/init.state.json"
+INIT_STATE_FILE = APPDIR + "/" + INIT_STATE_FILE_RELATIVE_PATH
+#
+STATE_FILE_LOCK_RELATIVE_PATH = "etc/state.lock"
+STATE_FILE_LOCK = APPDIR + "/" + STATE_FILE_LOCK_RELATIVE_PATH
+#
+PW_WORDS_RELATIVE_PATH = "etc/pw.words"
+PW_WORDS = APPDIR + "/" + PW_WORDS_RELATIVE_PATH
 
 # POSIX safe filename regular expression
 #
@@ -131,9 +167,6 @@ PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
 
 # state (open and close) related JSON values
 #
-STATE_FILE = IOCCC_DIR + "/etc/state.json"
-INIT_STATE_FILE = IOCCC_DIR + "/etc/init.state.json"
-STATE_FILE_LOCK = IOCCC_DIR + "/etc/state.lock"
 STATE_VERSION_VALUE = "1.1 2024-10-27"
 DEFAULT_JSON_STATE_TEMPLATE = '''{
     "no_comment": "$NO_COMMENT_VALUE",
@@ -149,7 +182,6 @@ DEFAULT_JSON_STATE_TEMPLATE = '''{
 #    https://pages.nist.gov/800-63-4/sp800-63b.html
 #    https://cybersecuritynews.com/nist-rules-password-security/
 #
-PW_WORDS = IOCCC_DIR + "/etc/pw.words"
 MIN_PASSWORD_LENGTH = 15
 MAX_PASSWORD_LENGTH = 64
 
@@ -236,6 +268,79 @@ def return_last_errmsg():
     return last_errmsg
 
 
+def change_startup_appdir(topdir):
+    """
+    Change the path to the app directory from the APPDIR default.
+    Modify paths to all other files and directories used in this file.
+
+    NOTE: It is important that this function be called early AND
+          before other functions in this file that use directories
+          and files, are called.  Calling this function after other functions
+          are called could lead to unpredictable and undesirable results!
+
+    Given:
+        topdir  path to the app directory
+
+    Returns:
+        True ==> paths successfully changed
+        False ==> app directory not found, or
+                  topdir is not a string argument
+    """
+
+    # setup
+    #
+    # pylint: disable=global-statement
+    global last_errmsg
+    global APPDIR
+    global PW_FILE
+    global INIT_PW_FILE
+    global PW_LOCK
+    global ADM_FILE
+    global SECRET_FILE
+    global USERS_DIR
+    global STATE_FILE
+    global INIT_STATE_FILE
+    global STATE_FILE_LOCK
+    global PW_WORDS
+    # pylint: enable=global-statement
+    me = inspect.currentframe().f_code.co_name
+
+    # paranoia - if last_errmsg is not a string, return as string version
+    #
+    if not isinstance(topdir, str):
+        last_errmsg = "ERROR: in " + me + ": topdir arg is not a string"
+        return False
+
+    # topdir must be a directory
+    #
+    if not Path(topdir).is_dir():
+        last_errmsg = "ERROR: in " + me + ": topdir is not a directory: " + topdir
+        return False
+
+    # now modify paths to all other files and directories used in this file
+    #
+    # pylint: disable=redefined-outer-name
+    #
+    APPDIR = topdir
+    #
+    PW_FILE = topdir + "/" + PW_FILE_RELATIVE_PATH
+    INIT_PW_FILE = topdir + "/" + INIT_PW_FILE_RELATIVE_PATH
+    PW_LOCK = topdir + "/" + PW_LOCK_RELATIVE_PATH
+    ADM_FILE = topdir + "/" + ADM_FILE_RELATIVE_PATH
+    SECRET_FILE = topdir + "/" + SECRET_FILE_RELATIVE_PATH
+    USERS_DIR = topdir + "/" + USERS_DIR_RELATIVE_PATH
+    STATE_FILE = topdir + "/" + STATE_FILE_RELATIVE_PATH
+    INIT_STATE_FILE = topdir + "/" + INIT_STATE_FILE_RELATIVE_PATH
+    STATE_FILE_LOCK = topdir + "/" + STATE_FILE_LOCK_RELATIVE_PATH
+    PW_WORDS = topdir + "/" + PW_WORDS_RELATIVE_PATH
+    #
+    # pylint: enable=redefined-outer-name
+
+    # assume all is well
+    #
+    return True
+
+
 def return_user_dir_path(username):
     """
     Return the user directory path
@@ -274,7 +379,7 @@ def return_user_dir_path(username):
 
     # return user directory path
     #
-    user_dir = IOCCC_DIR + "/users/" + username
+    user_dir = USERS_DIR + "/" + username
     return user_dir
 
 
@@ -2201,3 +2306,37 @@ def contest_is_open():
         if now < close_datetime:
             return close_datetime
     return None
+
+
+def return_secret():
+    """
+    Read a application secret key from the SECRET_FILE, or generate it on the fly.
+
+    We try will read the 1st line of the SECRET_FILE, ignoring the newlines.
+    If we cannot, we will generate on a secret the fly for testing using a UUID type 4.
+
+    Generating a secret the fly exception case may not work well in production as
+    different instances of this app will have different secrets.
+
+    Returns:
+        secret randomly generated string or about 64 bytes in length.
+    """
+
+    # Try read the 1st line of the SECRET_FILE, ignoring the newline:
+    #
+    try:
+        with open(SECRET_FILE, 'r', encoding="utf-8") as secret:
+            secret_key = secret.read().rstrip()
+            secret.close()
+
+    except OSError:
+        # FALLBACK: generate on a secret the fly for testing
+        #
+        # IMPORTANT: This exception case may not work well in production as
+        #            different instances of this app will have different secrets.
+        #
+        secret_key = str(uuid.uuid4())
+
+    # return secret key
+    #
+    return secret_key
