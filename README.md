@@ -21,15 +21,11 @@ All that we ask is that your code contributions:
 - code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 
 
-# IMPORTANT NOTE:
+# IMPORTANT NOTE: Setup the python environment
 
 The examples below assume you have cd-ed into the top directory for the repo.
 
-
-# bin/ioccc.py - the submit tool
-
-To test the submit tool `bin/ioccc.py`, create and
-activate a python environment, making sure to upgrade everything first:
+Each of the examples assumes that you have executed the following:
 
 ```sh
 rm -rf venv __pycache__ && python3 -m venv venv
@@ -56,7 +52,9 @@ Requirement already satisfied: pip in /Users/cody/Library/Python/3.9/lib/python/
 it should be okay (**NOTE**: do **NOT** run the command as root!).
 
 
-After running the previous commands (which might have a lot of output), run:
+# bin/ioccc.py - the submit tool
+
+After setting up the environment, (which might have a lot of output), run:
 
 ```sh
 ./bin/ioccc.py
@@ -132,7 +130,7 @@ rm -rf __pycache__ venv
 
 # bin/pychk.sh - use of pylint
 
-To use pylint on the code:
+After setting up the environment, (which might have a lot of output), to use `pylint(1)` on the code:
 
 ```sh
 rm -rf venv __pycache__ && python3 -m venv venv
