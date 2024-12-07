@@ -5,13 +5,16 @@ This is the mechanism to upload submissions to an open
 (IOCCC).
 
 
+# IMPORTANT NOTE
+
 <div id="setup">
-# IMPORTANT NOTE: Setup the python environment
+You **MUST setup the python environment** before you run any of the commands in test mode.
 </div>
 
-The examples below assume you have cd-ed into the top directory for the repo.
+All of examples assume you have **cd-ed into the top directory**
+where you cloned the [submit tool repo](https://github.com/ioccc-src/submit-tool).
 
-Each of the examples assumes that you have executed the following:
+Each of the examples in this document assume that you have executed the following:
 
 ```sh
 rm -rf venv __pycache__ && python3 -m venv venv
@@ -20,7 +23,7 @@ pip install --upgrade pip
 python3 -m pip install -r ./etc/requirements.txt
 ```
 
-**NOTE**: if you see something like (this was observed in macOS Sequoia 15.1):
+**NOTE**: if you see something like under macOS (such as under macOS Sequoia 15.1.1):
 
 ```
 WARNING: You are using pip version 21.2.4; however, version 24.3.1 is available.
@@ -40,7 +43,9 @@ it should be okay (**NOTE**: do **NOT** run the command as root!).
 
 # bin/ioccc.py - the submit tool
 
-After setting up the environment, (which might have a lot of output), run:
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+
+To run the **IOCCC submit tool** server:
 
 ```sh
 ./bin/ioccc.py
