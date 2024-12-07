@@ -105,9 +105,9 @@ http://127.0.0.1:8191
 
 In your browser, it should look something like:
 
-<img src="static/ioccc-submit-index-page.jpg"
+<img src="static/login-example.jpg"
  alt="IOCCC submit server index page"
- width=600 height=401>
+ width=662 height=658>
 
 At the console, you should see something like:
 
