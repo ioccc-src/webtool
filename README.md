@@ -28,7 +28,7 @@ The examples below assume you have cd-ed into the top directory for the repo.
 
 # bin/ioccc.py - the submit tool
 
-To test the submit tool `bin/ioccc.py` of the docker container, create and
+To test the submit tool `bin/ioccc.py`, create and
 activate a python environment, making sure to upgrade everything first:
 
 ```sh
@@ -155,12 +155,6 @@ brew install pipx
 
 
 # bin/ioccc_passwd.py - IOCCC user management
-
-**IMPORTANT NOTE**: please see the note about [Docker being
-deprecated](#deprecated-docker-use).
-
-While the docker image is running, access the console and
-go to the `/app` directory.
 
 The usage message of the `./bin/ioccc_passwd.py` is as follows:
 
