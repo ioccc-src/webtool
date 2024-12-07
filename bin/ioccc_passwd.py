@@ -28,7 +28,7 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.6 2024-12-04"
+VERSION = "1.6.1 2024-12-07"
 
 
 # pylint: disable=too-many-locals
@@ -303,6 +303,23 @@ def main():
             # try a new UUID
             #
             username = str(uuid.uuid4())
+
+            # The IOCCC mkiocccentry(1) tool, version: 1.0.8 2024-08-23,
+            # requires the UUID based username to be of this form:
+            #
+            #   xxxxxxxx-xxxx-4xxx-axxx-xxxxxxxxxxxx
+            #
+            # While str(uuid.uuid4()) does generate a '4' in the
+            # 14th character postion, the 19th position seems
+            # to be able to be any of [89ab].  We force the 19th
+            # character position to be an 'a' for now.
+            #
+            tmp = list(username)
+            # paranoia
+            tmp[14] = '4'
+            # mkiocccentry(1) tool, version: 1.0.8 2024-08-23 workaround
+            tmp[19] = 'a'
+            username = ''.join(tmp)
 
             # the user must not already exist
             #
