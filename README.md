@@ -19,14 +19,224 @@ All that we ask is that your code contributions:
 - code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 
 
-## IMPORTANT NOTE:
+# IMPORTANT NOTE:
 
 The examples below assume you have cd-ed into the top directory for the repo.
 
 
-## To use:
+## bin/ioccc.py - the submit tool
 
-On a macOS host with the docker app installed:
+To test the submit tool `bin/ioccc.py` of the docker container, create and
+activate a python environment:
+
+```sh
+    rm -rf venv __pycache__ && python3 -m venv venv
+    . ./venv/bin/activate
+    pip install --upgrade pip
+    python3 -m pip install -r ./etc/requirements.txt
+```
+
+Then run:
+
+```sh
+    ./bin/ioccc.py
+```
+
+NOTE: If the `./bin/ioccc.py` is not executable, try: `python3 ./bin/ioccc.py`
+
+While `bin/ioccc.py` is running, open a browser at (this works under macOS):
+
+```
+    open http://127.0.0.1:8191
+```
+
+.. or do whatever the equivalent on your to enter this URL into a browser,
+(alternatively you can copy and paste it into your browser):
+
+```
+    http://127.0.0.1:8191
+```
+
+To deactivate the above python environment:
+
+```sh
+    deactivate
+    rm -rf __pycache__ venv
+```
+
+
+# bin/pychk.sh - use of pylint
+
+To use pylint on the code:
+
+```sh
+    rm -rf venv __pycache__ && python3 -m venv venv
+    . ./venv/bin/activate
+    ./bin/pychk.sh
+```
+
+FYI: Under macOS we installed pylint via pipx:
+
+```sh
+    sudo pipx --global install pylint
+```
+
+In case you don't have pipx, we installed pipx via Homebrew on macOS:
+
+```sh
+    brew install pipx
+```
+
+
+# bin/ioccc_passwd.py - IOCCC user management
+
+While the docker image is running, access the console and
+go to the `/app` directory.
+
+The usage message of the `./bin/ioccc_passwd.py` is as follows:
+
+```
+    usage: ioccc_passwd.py [-h] [-t appdir] [-a USER] [-u USER] [-d USER] [-p PW]
+                           [-c] [-g SECS] [-n] [-A] [-U]
+
+    Manage IOCCC submit server password file and state file
+
+    options:
+      -h, --help           show this help message and exit
+      -t, --topdir appdir  app directory path
+      -a, --add USER       add a new user
+      -u, --update USER    update a user or add if not a user
+      -d, --delete USER    delete an exist user
+      -p, --password PW    specify the password (def: generate random password)
+      -c, --change         force a password change at next login
+      -g, --grace SECS     grace seconds to change the password (def: 259200)
+      -n, --nologin        disable login (def: login not explicitly disabled)
+      -A, --admin          user is an admin (def: not an admin)
+      -U, --UUID           generate a new UUID username and password
+
+    ioccc_passwd.py version: 1.6 2024-12-04
+```
+
+For example:
+
+
+## Add a new user
+
+```sh
+    ./bin/ioccc_passwd.py -a username
+```
+
+The command will output the password in plain-text.
+
+One may add `-p password` to set the password, otherwise a random password is generated.
+
+
+## Remove an old user
+
+For example, to add a user called `username`:
+
+```sh
+    ./bin/ioccc_passwd.py -d username
+```
+
+
+## Add a random UUID user and require them to change their password
+
+For example, to generate a username with a random UUID, a temporary random password,
+and a requirement to change that temporary password within the grace period:
+
+```sh
+    ./bin/ioccc_passwd.py -U -c
+```
+
+The tool will output the username and temporary random that has just been
+added to the `etc/iocccpasswd.json` IOCCC password file.
+
+
+# bin/ioccc_date.py - manage IOCCC open and close dates
+
+The `bin/ioccc_date.py` tool is used to query or set the IOCCC
+open and close dates.
+
+
+## Set the staring and/or ending dates of the IOCCC
+
+The starting and ending dates of the IOCCC control when `./bin/ioccc.py` allows
+for submission uploads.
+
+The usage message of the `./bin/ioccc_date.py` is as follows:
+
+```
+    usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime]
+
+    Manage IOCCC submit server password file and state file
+
+    options:
+      -h, --help            show this help message and exit
+      -t, --topdir appdir   app directory path
+      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD
+                            HH:MM:SS.micros+hh:mm format
+      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
+                            HH:MM:SS.micros+hh:mm format
+
+    ioccc_date.py version: 1.1 2024-12-04
+```
+
+**NOTE**: When neither `-s DateTime` nor `-S DateTime` is given, then the current
+IOCCC start and end values are printed.
+
+
+## Set both the start and the end dates of the IOCCC
+
+Example of setting a open and close date:
+
+
+```sh
+    ./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
+```
+
+
+
+# bin/set_slot_status.py - modify a slot comment
+
+To set / change the status comment of a user's slot:
+
+```sh
+    ./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
+```
+
+The usage message of the `./bin/ioccc_date.py` is as follows:
+
+```
+    usage: set_slot_status.py [-h] [-t appdir] username slot_num status
+
+    Manage IOCCC submit server password file and state file
+
+    positional arguments:
+      username             IOCCC submit server username
+      slot_num             slot number from 0 to 9
+      status               slot status string
+
+    options:
+      -h, --help           show this help message and exit
+      -t, --topdir appdir  app directory path
+
+    set_slot_status.py version: 1.1 2024-12-04
+```
+
+
+### Deprecated docker use
+
+NOTE: The use of docker was initially used for testing purposes.
+      At one time there was consideration for deploying via a
+      docker container.  We have chosen instead to deploy this
+      on a server under Apache.
+
+NOTE: This use of docker is NOT supported.
+
+Given that docker use has been deprecated, consider
+the following of historic and unsupported interest
+using a macOS host with the docker app installed:
 
 ```sh
     # launch/run the docker app
@@ -79,203 +289,7 @@ To build and run as a single command under a python activated environment:
 ```
 
 
-### To test tools outside of the docker container
-
-To setup a test outside of the docker container, create and
-activate a python environment:
-
-```sh
-    rm -rf venv __pycache__ && python3 -m venv venv
-    . ./venv/bin/activate
-    pip install --upgrade pip
-    python3 -m pip install -r ./etc/requirements.txt
-```
-
-Then run:
-
-```sh
-    python3 -i ./bin/ioccc.py
-```
-
-While that is running, open a browser at (this works under macOS):
-
-```
-    open http://127.0.0.1:8191
-```
-
-.. or do whatever the equivalent on your to enter this URL into a browser,
-(alternatively you can copy and paste it into your browser):
-
-```
-    http://127.0.0.1:8191
-```
-
-**IMPORTANT NOTE:** You may find problems running `ioccc.py` due
-to various things such as the tcp port being unavailable, certain
-files not being ready, or the development server having issues.
-Testing outside of a docker container is **NOT SUPPORTED AND MIGHT
-FAIL**!
-
-To deactivate the above python environment:
-
-```sh
-    deactivate
-    rm -rf __pycache__ venv
-```
-
-
-## pylint
-
-To use pylint on the code:
-
-```sh
-    rm -rf venv __pycache__ && python3 -m venv venv
-    . ./venv/bin/activate
-    ./bin/pychk.sh
-```
-
-FYI: Under macOS we installed pylint via pipx:
-
-```sh
-    sudo pipx --global install pylint
-```
-
-In case you don't have pipx, we installed pipx via Homebrew on macOS:
-
-```sh
-    brew install pipx
-```
-
-
-## bin/ioccc_passwd.py user management
-
-While the docker image is running, access the console and
-go to the `/app` directory.
-
-The usage message of the `./bin/ioccc_passwd.py` is as follows:
-
-```
-    usage: ioccc_passwd.py [-h] [-a USER] [-u USER] [-d USER] [-p PW] [-c]
-                           [-g SECS] [-n] [-A] [-U]
-
-    Manage IOCCC submit server password file and state file
-
-    options:
-      -h, --help         show this help message and exit
-      -a, --add USER     add a new user
-      -u, --update USER  update a user or add if not a user
-      -d, --delete USER  delete an exist user
-      -p, --password PW  specify the password (def: generate random password)
-      -c, --change       force a password change at next login
-      -g, --grace SECS   grace seconds to change the password (def: 259200)
-      -n, --nologin      disable login (def: login not explicitly disabled)
-      -A, --admin        user is an admin (def: not an admin)
-      -U, --UUID         generate a new UUID username and password
-
-    ioccc_passwd.py version: 1.3.1 2024-11-03
-```
-
-For example:
-
-
-### Add a new user
-
-```sh
-    ./bin/ioccc_passwd.py -a username
-```
-
-The command will output the password in plain-text.
-
-One may add `-p password` to set the password, otherwise a random password is generated.
-
-
-### Remove an old user
-
-```sh
-    ./bin/ioccc_passwd.py -d username
-```
-
-
-### Add a random UUID user and require them to change their password
-
-```sh
-    ./bin/ioccc_passwd.py -U -c
-```
-
-
-### Set the contest open and close dates
-
-```sh
-    ./bin/ioccc_passwd.py -s '2024-05-04 03:02:01.09876+00:00' -S '2025-12-31 23:59:59.999999+00:00'
-```
-
-
-## Set the staring and/or ending dates of the IOCCC
-
-The starting and ending dates of the IOCCC control when `./bin/ioccc.py` allows
-for submission uploads.
-
-While the docker image is running, access the console and
-go to the `/app` directory.
-
-The usage message of the `./bin/ioccc_date.py` is as follows:
-
-```
-    usage: ioccc_date.py [-h] [-s DateTime] [-S DateTime]
-
-    Manage IOCCC submit server password file and state file
-
-    options:
-      -h, --help            show this help message and exit
-      -s, --start DateTime  set IOCCC start date in YYYY-MM-DD
-                            HH:MM:SS.micros+hh:mm format
-      -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
-                            HH:MM:SS.micros+hh:mm format
-
-    ioccc_date.py version: 1.0 2024-11-15
-```
-
-When neither `-s DateTime` nor `-S DateTime` is given, then the current
-IOCCC start and end values are printed.
-
-
-### Set both the start and the end dates of the IOCCC
-
-```sh
-    ./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
-```
-
-
-
-## Set slot comment
-
-To set / change the status comment of a user's slot:
-
-```sh
-    ./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
-```
-
-The usage message of the `./bin/ioccc_date.py` is as follows:
-
-```
-    usage: set_slot_status.py [-h] username slot_num status
-
-    Manage IOCCC submit server password file and state file
-
-    positional arguments:
-      username    IOCCC submit server username
-      slot_num    slot number from 0 to 9
-      status      slot status string
-
-    options:
-      -h, --help  show this help message and exit
-
-    set_slot_status.py version: 1.0 2024-11-03
-```
-
-
 ## Disclaimer
-
 
 This code is based on code originally written by Eliot Lear (@elear) in late
 2021.  The [IOCCC judges](https://www.ioccc.org/judges.html) heavily modified
