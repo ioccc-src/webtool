@@ -5,23 +5,9 @@ This is the mechanism to upload submissions to an open
 (IOCCC).
 
 
-# Python Developer Help Wanted
-
-Python 🐍 is not the native language of the [IOCCC
-judges](https://www.ioccc.org/judges.html).  As such, this code may fall well
-short of what someone fluent in python would write.
-
-We welcome python developers submitting pull requests to improve this code ‼️
-
-All that we ask is that your code contributions:
-
-- be well commented, or at least better commented than our code
-- pass pylint 10/10 with a minimum of disable lines
-- work as good, if not better than our code
-- code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
-
-
+<div id="setup">
 # IMPORTANT NOTE: Setup the python environment
+</div>
 
 The examples below assume you have cd-ed into the top directory for the repo.
 
@@ -130,11 +116,9 @@ rm -rf __pycache__ venv
 
 # bin/pychk.sh - use of pylint
 
-After setting up the environment, (which might have a lot of output), to use `pylint(1)` on the code:
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 ```sh
-rm -rf venv __pycache__ && python3 -m venv venv
-. ./venv/bin/activate
 ./bin/pychk.sh
 ```
 
@@ -182,6 +166,8 @@ ioccc_passwd.py version: 1.6 2024-12-04
 
 ## Add a new user
 
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+
 An example in how to add a new user:
 
 ```sh
@@ -195,6 +181,8 @@ One may add `-p password` to set the password, otherwise a random password is ge
 
 ## Remove an old user
 
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+
 For example, to add a user called `username`:
 
 ```sh
@@ -203,6 +191,8 @@ For example, to add a user called `username`:
 
 
 ## Add a random UUID user and require them to change their password
+
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 To generate a username with a random UUID, a temporary random password,
 and a requirement to change that temporary password within the grace period:
@@ -250,6 +240,8 @@ IOCCC start and end values are printed.
 
 ## Set both the start and the end dates of the IOCCC
 
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
+
 Example of setting an open and close date:
 
 
@@ -260,6 +252,8 @@ Example of setting an open and close date:
 
 
 # bin/set_slot_status.py - modify a slot comment
+
+**NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 To set / change the status comment of a user's slot:
 
@@ -349,6 +343,22 @@ docker container prune -f ; \
 docker image rm ioccc-submit ; \
 docker build -t ioccc-submit:latest . && docker run -p 8191:8191 ioccc-submit:latest
 ```
+
+
+# Python Developer Help Welcome
+
+Python 🐍 is not the native language of the [IOCCC
+judges](https://www.ioccc.org/judges.html).  As such, this code may fall well
+short of what someone fluent in python would write.
+
+We welcome python developers submitting pull requests to improve this code ‼️
+
+All that we ask is that your code contributions:
+
+- be well commented, or at least better commented than our code
+- pass pylint 10/10 with a minimum of disable lines
+- work as good, if not better than our code
+- code contributed under the same [BSD 3-Clause License](https://github.com/ioccc-src/submit-tool/blob/master/LICENSE)
 
 
 ## Disclaimer
