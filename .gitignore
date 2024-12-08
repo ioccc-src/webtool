@@ -1,14 +1,16 @@
 # We sort the list below via: sort -d -u
 ?
 .DS_Store
-.*.sw[a-zA-Z]
 NOTES/
+build/
+dist/
 etc/iocccpasswd.json
 etc/.secret
 etc/state.json
-__pycache__/
-venv/
-build/
-dist/
 ioccc_submit_tool.egg-info/
-*~
+__pycache__/
+src/etc/iocccpasswd.json
+src/etc/.secret
+src/etc/state.json
+.*.sw[a-zA-Z]
+venv/
