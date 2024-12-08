@@ -8,3 +8,7 @@ etc/.secret
 etc/state.json
 __pycache__/
 venv/
+build/
+dist/
+ioccc_submit_tool.egg-info/
+*~
