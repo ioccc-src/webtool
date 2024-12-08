@@ -44,24 +44,24 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.5 2024-12-04"
+VERSION = "1.5.1 2024-12-04"
 
 
-# Configure the app
+# Configure the application
 #
-app = Flask(__name__,
+application = Flask(__name__,
             template_folder='templates/',
             root_path='./')
-app.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
-app.config['FLASH_APP'] = "ioccc-submit-tool"
-app.debug = True
-app.config['FLASK_ENV'] = "development"
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.secret_key = return_secret()
+application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
+application.config['FLASH_APP'] = "ioccc-submit-tool"
+application.debug = True
+application.config['FLASK_ENV'] = "development"
+application.config['TEMPLATES_AUTO_RELOAD'] = True
+application.secret_key = return_secret()
 
-# set app file paths
+# set application file paths
 #
-with app.test_request_context('/'):
+with application.test_request_context('/'):
     url_for('static', filename='style.css')
     url_for('static', filename='script.js')
     url_for('static', filename='ioccc.png')
@@ -70,7 +70,7 @@ with app.test_request_context('/'):
 # Setup the login manager
 #
 login_manager = flask_login.LoginManager()
-login_manager.init_app(app)
+login_manager.init_app(application)
 
 
 # Trivial user class
@@ -116,7 +116,7 @@ def user_loader(user_id):
     return None
 
 
-@app.route('/', methods = ['GET', 'POST'])
+@application.route('/', methods = ['GET', 'POST'])
 def login():
     """
     Process login request
@@ -191,7 +191,7 @@ def login():
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
 #
-@app.route('/submit', methods = ['GET', 'POST'])
+@application.route('/submit', methods = ['GET', 'POST'])
 @flask_login.login_required
 def submit():
     """
@@ -340,7 +340,7 @@ def submit():
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-return-statements
 #
-@app.route('/update', methods=["POST"])
+@application.route('/update', methods=["POST"])
 @flask_login.login_required
 def upload():
     """
@@ -485,7 +485,7 @@ def upload():
 # pylint: enable=too-many-return-statements
 
 
-@app.route('/logout')
+@application.route('/logout')
 def logout():
     """
     Logout.
@@ -498,7 +498,7 @@ def logout():
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
 #
-@app.route('/passwd', methods = ['GET', 'POST'])
+@application.route('/passwd', methods = ['GET', 'POST'])
 def passwd():
     """
     Change user password
@@ -616,7 +616,7 @@ def passwd():
 # pylint: enable=too-many-statements
 
 
-# Run the app on a given port
+# Run the application on a given port
 #
 if __name__ == '__main__':
 
@@ -630,12 +630,12 @@ if __name__ == '__main__':
                 description="IOCCC submit server tool",
                 epilog=f'{program} version: {VERSION}')
     parser.add_argument('-t', '--topdir',
-                        help="app directory path",
+                        help="application directory path",
                         metavar='appdir',
                         nargs=1)
     args = parser.parse_args()
 
-    # -t topdir - set the path to the top level app direcory
+    # -t topdir - set the path to the top level application direcory
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
@@ -644,4 +644,4 @@ if __name__ == '__main__':
 
     # launch the application
     #
-    app.run(host='0.0.0.0', port=TCP_PORT)
+    application.run(host='0.0.0.0', port=TCP_PORT)
