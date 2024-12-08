@@ -14,16 +14,28 @@ You **MUST setup the python environment** before you run any of the commands in 
 All of examples assume you have **cd-ed into the top directory**
 where you cloned the [submit tool repo](https://github.com/ioccc-src/submit-tool).
 
-Each of the examples in this document assume that you have executed the following:
+First, make sure to clean out the cache:
 
 ```sh
 rm -rf venv __pycache__ && python3 -m venv venv
+```
+
+Now, in each tab/terminal window/console you need to do something (like running
+the server and then in another tab/terminal window/console, creating a new user
+and password), you should run the following:
+
+
+```sh
 . ./venv/bin/activate
 pip install --upgrade pip
 python3 -m pip install -r ./etc/requirements.txt
 ```
 
-**NOTE**: if you see something like under macOS (such as under macOS Sequoia 15.1.1):
+**IMPORTANT**: all of the below examples in this document assume that you have
+executed the above commands.
+
+**NOTE**: if you see something like this, (this was observed in macOS Sequoia
+15.1.1):
 
 ```
 WARNING: You are using pip version 21.2.4; however, version 24.3.1 is available.
@@ -39,6 +51,9 @@ Requirement already satisfied: pip in /Users/cody/Library/Python/3.9/lib/python/
 ```
 
 it should be okay (**NOTE**: do **NOT** run the command as root!).
+
+**NOTE**: to tell if the environment is activated, look for the text `(venv)`
+before your prompt (the `PS1` variable).
 
 
 # bin/ioccc.py - the submit tool
@@ -71,9 +86,11 @@ Press CTRL+C to quit
 
 ```
 
-.. where the last blank line is not a command line but rather it being in the
-background (of course, you you could put it in the background with
-`./bin/ioccc.py &`, if you wanted).
+.. where the last blank line is not a command line but rather the server
+running.
+
+**NOTE**: it does not at this time work putting it in the background (i.e.
+`./bin/ioccc.py &`).
 
 **NOTE**: in macOS you might see an alert asking you if you wish to allow the
 program to bind and listen to the addresses and port. If you wish to proceed you
@@ -98,7 +115,7 @@ In your browser, it should look something like:
  alt="IOCCC submit server index page"
  width=662 height=658>
 
-At the console, you should see something like:
+At the console (where the server is running), you should see something like:
 
 ```
 127.0.0.1 - - [07/Dec/2024 06:22:47] "GET / HTTP/1.1" 200 -
@@ -110,8 +127,8 @@ At the console, you should see something like:
 127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.png HTTP/1.1" 304 -
 ```
 
-To deactivate the above python environment from the submit server top level
-directory, make sure the server is no longer running and then run:
+When needed, to deactivate the above python environment from the submit server
+top level directory, make sure the server is no longer running and then execute:
 
 ```sh
 deactivate
@@ -133,8 +150,8 @@ FYI: Under macOS we installed `pylint` via `pipx`:
 sudo pipx --global install pylint
 ```
 
-In case you don't have `pipx`, we installed `pipx` via
-[Homebrew](https://brew.sh) on macOS:
+In case you don't have `pipx`, you can install [Homebrew](https://brew.sh) in
+macOS and then install `pylint` by running:
 
 ```sh
 brew install pipx
