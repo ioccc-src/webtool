@@ -14,8 +14,10 @@ NOTE: This code is modeled after:
 
 # system imports
 #
-import inspect
 import sys
+sys.path.insert(0,"/var/www/ioccc/venv/lib/python3.9/site-packages")
+sys.path.insert(0,"/var/www/ioccc/bin")
+import inspect
 import argparse
 
 
@@ -44,13 +46,13 @@ from ioccc_common import *
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.5.1 2024-12-04"
+VERSION = "1.5.2 2024-12-08"
 
 
 # Configure the application
 #
 application = Flask(__name__,
-            template_folder='templates/',
+            template_folder='/var/www/ioccc/templates/',
             root_path='./')
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "ioccc-submit-tool"
