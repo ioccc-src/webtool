@@ -15,8 +15,8 @@ NOTE: This code is modeled after:
 # system imports
 #
 import sys
-sys.path.insert(0,"/var/www/ioccc/venv/lib/python3.9/site-packages")
-sys.path.insert(0,"/var/www/ioccc/bin")
+# sys.path.insert(0,"/var/www/ioccc/venv/lib/python3.9/site-packages")
+# sys.path.insert(0,"/var/www/ioccc/bin")
 import inspect
 import argparse
 
@@ -644,6 +644,8 @@ if __name__ == '__main__':
             print("ERROR: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
             sys.exit(3)
 
-    # launch the application
-    #
+# launch the application if we are not inside uwsgi.
+#
+
+if __name__ == '__main__':
     application.run(host='0.0.0.0', port=TCP_PORT)
