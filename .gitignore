@@ -1,6 +1,7 @@
 # We sort the list below via: sort -d -u
 ?
 .DS_Store
+.*.sw[a-zA-Z]
 NOTES/
 etc/iocccpasswd.json
 etc/.secret
