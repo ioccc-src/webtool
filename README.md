@@ -136,12 +136,12 @@ rm -rf __pycache__ venv
 ```
 
 
-# bin/pychk.sh - use of pylint
+# sbin/pychk.sh - use of pylint
 
 **NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 ```sh
-./bin/pychk.sh
+./sbin/pychk.sh
 ```
 
 FYI: Under macOS we installed `pylint` via `pipx`:
@@ -158,9 +158,9 @@ brew install pipx
 ```
 
 
-# bin/ioccc_passwd.py - IOCCC user management
+# sbin/ioccc_passwd.py - IOCCC user management
 
-The usage message of the `./bin/ioccc_passwd.py` is as follows:
+The usage message of the `./sbin/ioccc_passwd.py` is as follows:
 
 ```
 usage: ioccc_passwd.py [-h] [-t appdir] [-a USER] [-u USER] [-d USER] [-p PW]
@@ -193,7 +193,7 @@ ioccc_passwd.py version: 1.6 2024-12-04
 An example in how to add a new user:
 
 ```sh
-./bin/ioccc_passwd.py -a username
+./sbin/ioccc_passwd.py -a username
 ```
 
 The command will output the password in plain-text.
@@ -208,7 +208,7 @@ One may add `-p password` to set the password, otherwise a random password is ge
 For example, to add a user called `username`:
 
 ```sh
-./bin/ioccc_passwd.py -d username
+./sbin/ioccc_passwd.py -d username
 ```
 
 
@@ -220,16 +220,16 @@ To generate a username with a random UUID, a temporary random password,
 and a requirement to change that temporary password within the grace period:
 
 ```sh
-./bin/ioccc_passwd.py -U -c
+./sbin/ioccc_passwd.py -U -c
 ```
 
 The tool will output the username and temporary random that has just been
 added to the `etc/iocccpasswd.json` IOCCC password file.
 
 
-# bin/ioccc_date.py - manage IOCCC open and close dates
+# sbin/ioccc_date.py - manage IOCCC open and close dates
 
-The `bin/ioccc_date.py` tool is used to query or set the IOCCC
+The `sbin/ioccc_date.py` tool is used to query or set the IOCCC
 open and close dates.
 
 
@@ -238,7 +238,7 @@ open and close dates.
 The starting and ending dates of the IOCCC control when `./bin/ioccc.py` allows
 for submission uploads.
 
-The usage message of the `./bin/ioccc_date.py` is as follows:
+The usage message of the `./sbin/ioccc_date.py` is as follows:
 
 ```
 usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime]
@@ -268,22 +268,22 @@ Example of setting an open and close date:
 
 
 ```sh
-./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
+./sbin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
 ```
 
 
 
-# bin/set_slot_status.py - modify a slot comment
+# sbin/set_slot_status.py - modify a slot comment
 
 **NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 To set / change the status comment of a user's slot:
 
 ```sh
-./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
+./sbin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
 ```
 
-The usage message of the `./bin/ioccc_date.py` is as follows:
+The usage message of the `./sbin/ioccc_date.py` is as follows:
 
 ```
 usage: set_slot_status.py [-h] [-t appdir] username slot_num status
