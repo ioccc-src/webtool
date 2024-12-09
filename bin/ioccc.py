@@ -52,7 +52,7 @@ VERSION = "1.5.2 2024-12-08"
 # Configure the application
 #
 application = Flask(__name__,
-            template_folder='/var/www/ioccc/templates/',
+            template_folder='templates',
             root_path='./')
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "ioccc-submit-tool"

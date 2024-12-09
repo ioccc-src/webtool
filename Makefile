@@ -69,21 +69,21 @@ all: ${TARGETS}
 # build rules #
 ###############
 
-setup.cfg: setup.cfg.template requirements.txt
+setup.cfg: setup.cfg.template etc/requirements.txt
 	${RM} -f $@ tmp.requirements.txt.tmp
-	${SED} -e 's/^/    /' < requirements.txt > tmp.requirements.txt.tmp
+	${SED} -e 's/^/    /' < etc/requirements.txt > tmp.requirements.txt.tmp
 	${SED} -e 's/@@VERSION@@/${VERSION}/' \
 	       -e '/^install_requires =/ {' -e 'r tmp.requirements.txt.tmp' -e '}' \
 		  < setup.cfg.template > $@
 	${RM} -f tmp.requirements.txt.tmp
 
-venv: requirements.txt setup.cfg
+venv: etc/requirements.txt setup.cfg
 	${RM} -rf venv __pycache__
 	${PYTHON} -m venv venv
 	source ./venv/bin/activate && \
 	    ${PIP} install --upgrade pip && \
 	    ${PIP} install setuptools && \
-	    ${PYTHON} -m pip install -r requirements.txt
+	    ${PYTHON} -m pip install -r etc/requirements.txt
 
 build/lib/submittool: venv \
 	build/lib/submittool/__init__.py \
