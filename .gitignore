@@ -10,9 +10,7 @@ etc/state.json
 ioccc_submit_tool.egg-info/
 __pycache__/
 setup.cfg
-src/etc/iocccpasswd.json
-src/etc/.secret
-src/etc/state.json
-src/ioccc_submit_tool.egg-info
+src/
 .*.sw[a-zA-Z]
+users/
 venv/

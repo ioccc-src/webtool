@@ -33,6 +33,7 @@
 CHMOD= chmod
 CP= cp
 INSTALL= install
+MKDIR= mkdir
 PIP = pip3
 PYTHON= python3
 RM= rm
@@ -49,7 +50,7 @@ VERSION= 0.1.7
 
 DESTDIR= /usr/local/bin
 
-TARGETS= venv-install
+TARGETS= dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
 
 ######################################
 # all - default rule - must be first #
@@ -57,13 +58,26 @@ TARGETS= venv-install
 
 all: ${TARGETS}
 
-setup.cfg: template.setup.cfg
-	${RM} -f $@
-	${SED} -e 's/@@VERSION@@/${VERSION}/' < $? > $@
+#################################################
+# .PHONY list of rules that do not create files #
+#################################################
 
-venv: requirements.txt setup.cfg revenv
+.PHONY: all configure clean clobber nuke install \
+	revenv wheel venv_install
 
-revenv: requirements.txt setup.cfg
+###############
+# build rules #
+###############
+
+setup.cfg: setup.cfg.template requirements.txt
+	${RM} -f $@ tmp.requirements.txt.tmp
+	${SED} -e 's/^/    /' < requirements.txt > tmp.requirements.txt.tmp
+	${SED} -e 's/@@VERSION@@/${VERSION}/' \
+	       -e '/^install_requires =/ {' -e 'r tmp.requirements.txt.tmp' -e '}' \
+		  < setup.cfg.template > $@
+	${RM} -f tmp.requirements.txt.tmp
+
+venv: requirements.txt setup.cfg
 	${RM} -rf venv __pycache__
 	${PYTHON} -m venv venv
 	source ./venv/bin/activate && \
@@ -71,24 +85,61 @@ revenv: requirements.txt setup.cfg
 	    ${PIP} install setuptools && \
 	    ${PYTHON} -m pip install -r requirements.txt
 
-build/lib/submittool: venv setup.py setup.cfg pyproject.toml
+build/lib/submittool: venv \
+	build/lib/submittool/__init__.py \
+	build/lib/submittool/ioccc.py \
+	build/lib/submittool/ioccc_common.py
+
+build/lib/submittool/__init__.py: venv src/submittool/__init__.py \
+	setup.py setup.cfg pyproject.toml src/submittool
 	source ./venv/bin/activate && \
 	    ${PYTHON} setup.py build
 
-bdist_wheel: build/lib/submittool
+build/lib/submittool/ioccc.py: venv src/submittool/ioccc.py \
+	setup.py setup.cfg pyproject.toml src/submittool
+	source ./venv/bin/activate && \
+	    ${PYTHON} setup.py build
+
+build/lib/submittool/ioccc_common.py: venv src/submittool/ioccc_common.py \
+	setup.py setup.cfg pyproject.toml src/submittool
+	source ./venv/bin/activate && \
+	    ${PYTHON} setup.py build
+
+dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl: build/lib/submittool
 	source ./venv/bin/activate && \
 	    ${PYTHON} setup.py bdist_wheel
 
-venv-install: bdist_wheel
+src/submittool: src/submittool/__init__.py src/submittool/ioccc.py src/submittool/ioccc_common.py
+
+src/submittool/__init__.py: bin/__init__.py
+	@${MKDIR} -p -v src/submittool
+	${CP} -f $? $@
+
+src/submittool/ioccc.py: bin/ioccc.py
+	@${MKDIR} -p -v src/submittool
+	${CP} -f $? $@
+
+src/submittool/ioccc_common.py: bin/ioccc_common.py
+	@${MKDIR} -p -v src/submittool
+	${CP} -f $? $@
+
+#################
+# utility rules #
+#################
+
+wheel: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+
+revenv:
+	${RM} -rf venv __pycache__
+	${PYTHON} -m venv venv
+	source ./venv/bin/activate && \
+	    ${PIP} install --upgrade pip && \
+	    ${PIP} install setuptools && \
+	    ${PYTHON} -m pip install -r requirements.txt
+
+venv_install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
 	source ./venv/bin/activate && \
 	    ${PYTHON} setup.py install
-
-#################################################
-# .PHONY list of rules that do not create files #
-#################################################
-
-.PHONY: all configure clean clobber install \
-	revenv bdist_wheel venv-install
 
 ###################################
 # standard Makefile utility rules #
@@ -97,12 +148,17 @@ venv-install: bdist_wheel
 configure: setup.cfg
 
 clean:
-	@echo rule to clean or empty rule if nothing is built
+	${RM} -f tmp.requirements.txt.tmp
 
 clobber: clean
-	${RM} -rf venv __pycache__
+	${RM} -rf venv __pycache__ src
 	${RM} -rf dist build src/ioccc_submit_tool.egg-info
 	${RM} -f setup.cfg
+
+# remove active working elements including users
+#
+nuke: clobber
+	${RM} -rf users
 
 install: all
 	@echo TBD
