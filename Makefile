@@ -36,7 +36,6 @@ CP= cp
 ID= id
 INSTALL= install
 MKDIR= mkdir
-PIP = pip3
 PYTHON= python3
 RM= rm
 SED= sed
@@ -45,6 +44,12 @@ SHELL= bash
 ######################
 # target information #
 ######################
+
+# V=@:  do not echo debug statements (quiet mode)
+# V=@   echo debug statements (debug / verbose mode)
+#
+V=@:
+#V=@
 
 # ioccc-submit-tool package version
 #
@@ -72,109 +77,129 @@ all: ${TARGETS}
 ###############
 
 setup.cfg: setup.cfg.template etc/requirements.txt
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -f $@ tmp.requirements.txt.tmp
 	${SED} -e 's/^/    /' < etc/requirements.txt > tmp.requirements.txt.tmp
 	${SED} -e 's/@@VERSION@@/${VERSION}/' \
 	       -e '/^install_requires =/ {' -e 'r tmp.requirements.txt.tmp' -e '}' \
 		  < setup.cfg.template > $@
 	${RM} -f tmp.requirements.txt.tmp
+	${V} echo DEBUG =-= $@ end =-=
 
 venv: etc/requirements.txt setup.cfg
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf venv __pycache__
 	${PYTHON} -m venv venv
+	# was: pip install --upgrade ...
 	source ./venv/bin/activate && \
-	    ${PIP} install --upgrade pip && \
-	    ${PIP} install --upgrade setuptools && \
-	    ${PIP} install --upgrade wheel && \
+	    ${PYTHON} -m pip install --upgrade pip && \
+	    ${PYTHON} -m pip install --upgrade setuptools && \
+	    ${PYTHON} -m pip install --upgrade wheel && \
+	    ${PYTHON} -m pip install --upgrade build && \
 	    ${PYTHON} -m pip install -r etc/requirements.txt
+	${V} echo DEBUG =-= $@ end =-=
 
-build/lib/submittool: venv \
-	build/lib/submittool/__init__.py \
-	build/lib/submittool/ioccc.py \
-	build/lib/submittool/ioccc_common.py
-
-build/lib/submittool/__init__.py: venv src/submittool/__init__.py \
-	setup.py setup.cfg pyproject.toml src/submittool
+build/lib/submittool: venv src/submittool
+	${V} echo DEBUG =-= $@ start =-=
+	# was: python3 setup.py build
 	source ./venv/bin/activate && \
-	    ${PYTHON} setup.py build
+	    ${PYTHON} -c 'import setuptools; setuptools.setup()' sdist
+	${V} echo DEBUG =-= $@ end =-=
 
-build/lib/submittool/ioccc.py: venv src/submittool/ioccc.py \
-	setup.py setup.cfg pyproject.toml src/submittool
+dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl: venv src/submittool build/lib/submittool
+	${V} echo DEBUG =-= $@ start =-=
+	# was: python3 setup.py bdist_wheel
 	source ./venv/bin/activate && \
-	    ${PYTHON} setup.py build
-
-build/lib/submittool/ioccc_common.py: venv src/submittool/ioccc_common.py \
-	setup.py setup.cfg pyproject.toml src/submittool
-	source ./venv/bin/activate && \
-	    ${PYTHON} setup.py build
-
-dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl: build/lib/submittool
-	source ./venv/bin/activate && \
-	    ${PIP} install --upgrade pip && \
-	    ${PIP} install --upgrade setuptools && \
-	    ${PIP} install --upgrade wheel && \
-	    ${PYTHON} setup.py bdist_wheel
+	    ${PYTHON} -m build --sdist --wheel
+	${V} echo DEBUG =-= $@ end =-=
 
 src/submittool: src/submittool/__init__.py src/submittool/ioccc.py src/submittool/ioccc_common.py
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 src/submittool/__init__.py: bin/__init__.py
+	${V} echo DEBUG =-= $@ start =-=
 	@${MKDIR} -p -v src/submittool
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
 	fi
+	${V} echo DEBUG =-= $@ end =-=
 
 src/submittool/ioccc.py: bin/ioccc.py
+	${V} echo DEBUG =-= $@ start =-=
 	@${MKDIR} -p -v src/submittool
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
 	fi
+	${V} echo DEBUG =-= $@ end =-=
 
 src/submittool/ioccc_common.py: bin/ioccc_common.py
+	${V} echo DEBUG =-= $@ start =-=
 	@${MKDIR} -p -v src/submittool
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
 	fi
+	${V} echo DEBUG =-= $@ end =-=
 
 #################
 # utility rules #
 #################
 
 wheel: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 revenv:
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf venv __pycache__
 	${PYTHON} -m venv venv
+	# was: pip3 install --upgrade ...
 	source ./venv/bin/activate && \
-	    ${PIP} install --upgrade pip && \
-	    ${PIP} install --upgrade setuptools && \
-	    ${PIP} install --upgrade wheel && \
+	    ${PYTHON} -m pip install --upgrade pip && \
+	    ${PYTHON} -m pip install --upgrade setuptools && \
+	    ${PYTHON} -m pip install --upgrade wheel && \
+	    ${PYTHON} -m pip install --upgrade build && \
 	    ${PYTHON} -m pip install -r etc/requirements.txt
+	${V} echo DEBUG =-= $@ end =-=
 
 venv_install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+	${V} echo DEBUG =-= $@ start =-=
+	# was: python3 setup.py install
 	source ./venv/bin/activate && \
-	    ${PYTHON} setup.py install
+	    ${PYTHON} -m pip install .
+	${V} echo DEBUG =-= $@ end =-=
 
 ###################################
 # standard Makefile utility rules #
 ###################################
 
 configure: setup.cfg
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 clean:
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -f tmp.requirements.txt.tmp
+	${V} echo DEBUG =-= $@ end =-=
 
 clobber: clean
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf venv __pycache__ src
 	${RM} -rf dist build src/ioccc_submit_tool.egg-info
 	${RM} -f setup.cfg
+	${V} echo DEBUG =-= $@ end =-=
 
 # remove active working elements including users
 #
 nuke: clobber
+	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf users
+	${V} echo DEBUG =-= $@ end =-=
 
-install: venv dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
-	source ./venv/bin/activate && \
-	    ${PIP} install dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+	# was: python3 setup.py install
+	${PYTHON} -m pip install .
 	@echo TBD
+	${V} echo DEBUG =-= $@ end =-=
