@@ -82,7 +82,8 @@ venv: etc/requirements.txt setup.cfg
 	${PYTHON} -m venv venv
 	source ./venv/bin/activate && \
 	    ${PIP} install --upgrade pip && \
-	    ${PIP} install setuptools && \
+	    ${PIP} install --upgrade setuptools && \
+	    ${PIP} install --upgrade wheel && \
 	    ${PYTHON} -m pip install -r etc/requirements.txt
 
 build/lib/submittool: venv \
@@ -107,6 +108,9 @@ build/lib/submittool/ioccc_common.py: venv src/submittool/ioccc_common.py \
 
 dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl: build/lib/submittool
 	source ./venv/bin/activate && \
+	    ${PIP} install --upgrade pip && \
+	    ${PIP} install --upgrade setuptools && \
+	    ${PIP} install --upgrade wheel && \
 	    ${PYTHON} setup.py bdist_wheel
 
 src/submittool: src/submittool/__init__.py src/submittool/ioccc.py src/submittool/ioccc_common.py
@@ -134,8 +138,9 @@ revenv:
 	${PYTHON} -m venv venv
 	source ./venv/bin/activate && \
 	    ${PIP} install --upgrade pip && \
-	    ${PIP} install setuptools && \
-	    ${PYTHON} -m pip install -r requirements.txt
+	    ${PIP} install --upgrade setuptools && \
+	    ${PIP} install --upgrade wheel && \
+	    ${PYTHON} -m pip install -r etc/requirements.txt
 
 venv_install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
 	source ./venv/bin/activate && \
