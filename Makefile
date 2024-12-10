@@ -31,7 +31,9 @@
 #############
 
 CHMOD= chmod
+CMP= cmp
 CP= cp
+ID= id
 INSTALL= install
 MKDIR= mkdir
 PIP = pip3
@@ -117,15 +119,21 @@ src/submittool: src/submittool/__init__.py src/submittool/ioccc.py src/submittoo
 
 src/submittool/__init__.py: bin/__init__.py
 	@${MKDIR} -p -v src/submittool
-	${CP} -f $? $@
+	@if ! ${CMP} -s $? $@; then \
+	    ${CP} -f -v $? $@; \
+	fi
 
 src/submittool/ioccc.py: bin/ioccc.py
 	@${MKDIR} -p -v src/submittool
-	${CP} -f $? $@
+	@if ! ${CMP} -s $? $@; then \
+	    ${CP} -f -v $? $@; \
+	fi
 
 src/submittool/ioccc_common.py: bin/ioccc_common.py
 	@${MKDIR} -p -v src/submittool
-	${CP} -f $? $@
+	@if ! ${CMP} -s $? $@; then \
+	    ${CP} -f -v $? $@; \
+	fi
 
 #################
 # utility rules #
@@ -165,5 +173,8 @@ clobber: clean
 nuke: clobber
 	${RM} -rf users
 
-install: all
+install: venv dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
+	source ./venv/bin/activate && \
+	    ${PIP} install dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
 	@echo TBD
