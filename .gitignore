@@ -13,6 +13,8 @@ etc/iocccpasswd.json
 etc/.secret
 etc/state.json
 .gitconfig
+iocccsubmit/
+iocccsubmit.egg-info/
 ioccc_submit_tool.egg-info/
 .ipython/
 .lesshst
@@ -20,7 +22,6 @@ __pycache__/
 .pylint.d/
 .python_history
 setup.cfg
-src/
 .ssh/
 .*.sw[a-zA-Z]
 users/

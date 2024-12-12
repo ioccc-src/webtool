@@ -1,6 +1,6 @@
 #!/usr/bin/env make
 #
-# submit-tool - IOCCC submit server tool
+# iocccsubmit - IOCCC submit server tool
 #
 # Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -51,13 +51,13 @@ SHELL= bash
 V=@:
 #V=@
 
-# ioccc-submit-tool package version
+# iocccsubmit package version
 #
-VERSION= 0.1.7
+VERSION= 0.1.9
 
 DESTDIR= /usr/local/bin
 
-TARGETS= dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+TARGETS= dist/iocccsubmit-${VERSION}-py3-none-any.whl
 
 ######################################
 # all - default rule - must be first #
@@ -99,45 +99,48 @@ venv: etc/requirements.txt setup.cfg
 	    ${PYTHON} -m pip install -r etc/requirements.txt
 	${V} echo DEBUG =-= $@ end =-=
 
-build/lib/submittool: venv src/submittool
+build/lib/submittool: venv iocccsubmit
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py build
 	source ./venv/bin/activate && \
 	    ${PYTHON} -c 'import setuptools; setuptools.setup()' sdist
 	${V} echo DEBUG =-= $@ end =-=
 
-dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl: venv src/submittool build/lib/submittool
+dist/iocccsubmit-${VERSION}-py3-none-any.whl: venv iocccsubmit build/lib/submittool
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py bdist_wheel
 	source ./venv/bin/activate && \
 	    ${PYTHON} -m build --sdist --wheel
 	${V} echo DEBUG =-= $@ end =-=
 
-src/submittool: src/submittool/__init__.py src/submittool/ioccc.py src/submittool/ioccc_common.py
+iocccsubmit: iocccsubmit/__init__.py iocccsubmit/ioccc.py iocccsubmit/ioccc_common.py
 	${V} echo DEBUG =-= $@ start =-=
 	${V} echo DEBUG =-= $@ end =-=
 
-src/submittool/__init__.py: bin/__init__.py
+iocccsubmit/__init__.py: bin/__init__.py
 	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v src/submittool
+	@${MKDIR} -p -v iocccsubmit
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
+	    ${CHMOD} 0555 -v $? $@; \
 	fi
 	${V} echo DEBUG =-= $@ end =-=
 
-src/submittool/ioccc.py: bin/ioccc.py
+iocccsubmit/ioccc.py: bin/ioccc.py
 	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v src/submittool
+	@${MKDIR} -p -v iocccsubmit
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
+	    ${CHMOD} 0555 -v $? $@; \
 	fi
 	${V} echo DEBUG =-= $@ end =-=
 
-src/submittool/ioccc_common.py: bin/ioccc_common.py
+iocccsubmit/ioccc_common.py: bin/ioccc_common.py
 	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v src/submittool
+	@${MKDIR} -p -v iocccsubmit
 	@if ! ${CMP} -s $? $@; then \
 	    ${CP} -f -v $? $@; \
+	    ${CHMOD} 0555 -v $? $@; \
 	fi
 	${V} echo DEBUG =-= $@ end =-=
 
@@ -145,7 +148,7 @@ src/submittool/ioccc_common.py: bin/ioccc_common.py
 # utility rules #
 #################
 
-wheel: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+wheel: dist/iocccsubmit-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	${V} echo DEBUG =-= $@ end =-=
 
@@ -162,7 +165,7 @@ revenv:
 	    ${PYTHON} -m pip install -r etc/requirements.txt
 	${V} echo DEBUG =-= $@ end =-=
 
-venv_install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+venv_install: dist/iocccsubmit-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py install
 	source ./venv/bin/activate && \
@@ -184,8 +187,8 @@ clean:
 
 clobber: clean
 	${V} echo DEBUG =-= $@ start =-=
-	${RM} -rf venv __pycache__ src
-	${RM} -rf dist build src/ioccc_submit_tool.egg-info
+	${RM} -rf venv __pycache__
+	${RM} -rf dist build iocccsubmit iocccsubmit.egg-info
 	${RM} -f setup.cfg
 	${V} echo DEBUG =-= $@ end =-=
 
@@ -196,7 +199,7 @@ nuke: clobber
 	${RM} -rf users
 	${V} echo DEBUG =-= $@ end =-=
 
-install: dist/ioccc_submit_tool-${VERSION}-py3-none-any.whl
+install: dist/iocccsubmit-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install

@@ -1,7 +1,4 @@
 authlib>=1.3.2
 filelock>=3.16.1
-flask-auth>=0.85
-flask-httpauth>=4.8.0
 flask-login>=0.6.3
 pwnedpasswords>=2.0.0
-werkzeug>=3.0.3

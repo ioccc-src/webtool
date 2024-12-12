@@ -1,5 +1,5 @@
 [metadata]
-name = ioccc-submit-tool
+name = iocccsubmit
 version = @@VERSION@@
 author = IOCCC Judges
 author_email = https://www.ioccc.org/judges.html
@@ -10,14 +10,6 @@ long_description_content_type= text/markdown
 license = BSD 3-Clause License
 
 [options]
-packages = find:
-package_dir =
-   = src
+packages = iocccsubmit
 python_requires = >=3.8
 install_requires =
-
-[options.packages.find]
-where = src
-
-[options.package_data]
-submittool =
