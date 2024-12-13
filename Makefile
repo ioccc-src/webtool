@@ -203,6 +203,6 @@ install: dist/iocccsubmit-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install
-	${PYTHON} -m pip install .
+	${PYTHON} -m pip install --force-reinstall .
 	@echo TBD
 	${V} echo DEBUG =-= $@ end =-=
