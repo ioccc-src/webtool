@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-# pylint: disable=import-error
-# pylint: disable=wildcard-import
-# pylint: disable=unused-wildcard-import
-# pylint: disable=unused-import
+#
 # pylint: disable=too-many-lines
+#
 """
 Common support / utility functions needed by the IOCCC Submit Server
 and related tools.
@@ -13,7 +11,7 @@ IMPORTANT NOTE: This code must NOT assume the use of Flask, nor call
                 into utility functions that are command line and not
                 web app related.
 
-IMPORTANT NOTE: To return an error message to a caller, set: last_errmsg
+IMPORTANT NOTE: To return an error message to a caller, set: ioccc_last_errmsg
 """
 
 # import modules
@@ -34,8 +32,7 @@ import uuid
 #
 from string import Template
 from os import makedirs, umask
-from datetime import datetime, timezone, timedelta
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
 from pathlib import Path
 from random import randrange
 
@@ -57,7 +54,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import pwnedpasswords
 
 
-#.#################
+##################
 # Global constants
 ##################
 
@@ -65,7 +62,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.5 2024-12-04"
+VERSION_IOCCC_COMMON = "1.6 2024-12-13"
 
 # force password change grace time
 #
@@ -218,10 +215,11 @@ MAX_TARBALL_LEN = 3999971
 #
 LOCK_TIMEOUT = 13
 
+
 # global slot lock - lock file descriptor or none
 #
-# When last_lock_fd is not none, flock is holding a lock on the file last_lock_path.
-# When last_lock_fd is none, no flock is currently being held.
+# When ioccc_last_lock_fd is not none, flock is holding a lock on the file ioccc_last_lock_path.
+# When ioccc_last_lock_fd is none, no flock is currently being held.
 #
 # When we try lock a file via ioccc_file_lock() and we are holding a lock on another file,
 # we will force the flock to be released.
@@ -236,13 +234,13 @@ LOCK_TIMEOUT = 13
 # will force that previous lock to be unlocked.
 #
 # pylint: disable-next=global-statement,invalid-name
-last_lock_fd = None         # lock file descriptor, or None
+ioccc_last_lock_fd = None         # lock file descriptor, or None
 # pylint: disable-next=global-statement,invalid-name
-last_lock_path = None       # path of the file that is locked, or None
+ioccc_last_lock_path = None       # path of the file that is locked, or None
 # pylint: disable-next=global-statement,invalid-name
-last_errmsg = ""            # recent error message or empty string
+ioccc_last_errmsg = ""            # recent error message or empty string
 # pylint: disable-next=global-statement,invalid-name
-words = []
+ioccc_pw_words = []
 
 
 def return_last_errmsg():
@@ -250,22 +248,22 @@ def return_last_errmsg():
     Return the recent error message or empty string
 
     Returns:
-        last_errmsg as a string
+        ioccc_last_errmsg as a string
     """
 
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
 
-    # paranoia - if last_errmsg is not a string, return as string version
+    # paranoia - if ioccc_last_errmsg is not a string, return as string version
     #
-    if not isinstance(last_errmsg, str):
-        last_errmsg = str(last_errmsg)
+    if not isinstance(ioccc_last_errmsg, str):
+        ioccc_last_errmsg = str(ioccc_last_errmsg)
 
     # return string
     #
-    return last_errmsg
+    return ioccc_last_errmsg
 
 
 def change_startup_appdir(topdir):
@@ -290,7 +288,7 @@ def change_startup_appdir(topdir):
     # setup
     #
     # pylint: disable=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     global APPDIR
     global PW_FILE
     global INIT_PW_FILE
@@ -305,16 +303,16 @@ def change_startup_appdir(topdir):
     # pylint: enable=global-statement
     me = inspect.currentframe().f_code.co_name
 
-    # paranoia - if last_errmsg is not a string, return as string version
+    # paranoia - if ioccc_last_errmsg is not a string, return as string version
     #
     if not isinstance(topdir, str):
-        last_errmsg = "ERROR: in " + me + ": topdir arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": topdir arg is not a string"
         return False
 
     # topdir must be a directory
     #
     if not Path(topdir).is_dir():
-        last_errmsg = "ERROR: in " + me + ": topdir is not a directory: " + topdir
+        ioccc_last_errmsg = "ERROR: in " + me + ": topdir is not a directory: " + topdir
         return False
 
     # now modify paths to all other files and directories used in this file
@@ -362,7 +360,7 @@ def return_user_dir_path(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
@@ -371,10 +369,10 @@ def return_user_dir_path(username):
     # thus one cannot create a username with system cracking "funny business".
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        last_errmsg = "ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username not POSIX safe: <<" + username + ">>"
         return None
 
     # return user directory path
@@ -401,7 +399,7 @@ def return_slot_dir_path(username, slot_num):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - must make a user_dir value
@@ -413,7 +411,7 @@ def return_slot_dir_path(username, slot_num):
     # paranoia - must be a valid slot number
     #
     if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
-        last_errmsg = "ERROR: in " + me + ": invalid slot number: " + str(slot_num) + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid slot number: " + str(slot_num) + \
                         " for username: <<" + username + ">>"
         return None
 
@@ -477,11 +475,11 @@ def ioccc_file_lock(file_lock):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_lock_fd
+    global ioccc_last_lock_fd
     # pylint: disable-next=global-statement
-    global last_lock_path
+    global ioccc_last_lock_path
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # be sure the lock file exists for this slot
@@ -490,35 +488,35 @@ def ioccc_file_lock(file_lock):
         Path(file_lock).touch(mode=0o664, exist_ok=True)
 
     except OSError as exception:
-        last_errmsg = "ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + file_lock + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + file_lock + \
                       " exception: " + str(exception)
         return None
 
     # Force any stale slot lock to become unlocked
     #
-    if last_lock_fd:
+    if ioccc_last_lock_fd:
 
         # Carp
         #
-        if not last_lock_path:
-            last_lock_path = "((no-last_lock_path))"
-        last_errmsg = "Warning: in " + me + ": forcing stale slot unlock: " + last_lock_path
+        if not ioccc_last_lock_path:
+            ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
+        ioccc_last_errmsg = "Warning: in " + me + ": forcing stale slot unlock: " + ioccc_last_lock_path
 
         # Force previous stale slot lock to become unlocked
         #
         try:
-            last_lock_fd.release(force=True)
+            ioccc_last_lock_fd.release(force=True)
 
         except OSError as exception:
             # We give up as we cannot force the unlock
             #
-            last_errmsg = "Warning: in " + me + ": failed to force stale unlock: " + last_lock_path + \
+            ioccc_last_errmsg = "Warning: in " + me + ": failed to force stale unlock: " + ioccc_last_lock_path + \
                           " exception: " + str(exception)
 
         # clear the past lock
         #
-        last_lock_fd = None
-        last_lock_path = None
+        ioccc_last_lock_fd = None
+        ioccc_last_lock_path = None
 
     # Lock the file
     #
@@ -528,14 +526,14 @@ def ioccc_file_lock(file_lock):
 
             # note our new lock
             #
-            last_lock_fd = slot_lock_fd
-            last_lock_path = file_lock
+            ioccc_last_lock_fd = slot_lock_fd
+            ioccc_last_lock_path = file_lock
 
     except Timeout:
 
         # too too long to get the lock
         #
-        last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + last_lock_path
+        ioccc_last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + ioccc_last_lock_path
         return None
 
     # return the slot lock success
@@ -558,36 +556,36 @@ def ioccc_file_unlock():
     # declare global use
     #
     # pylint: disable-next=global-statement
-    global last_lock_fd
+    global ioccc_last_lock_fd
     # pylint: disable-next=global-statement
-    global last_lock_path
+    global ioccc_last_lock_path
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # case: no file was previously unlocked
     #
     sucess = False
-    if not last_lock_fd:
-        last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + last_lock_path
+    if not ioccc_last_lock_fd:
+        ioccc_last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + ioccc_last_lock_path
 
     # Unlock the file
     #
     else:
         try:
-            last_lock_fd.release(force=True)
+            ioccc_last_lock_fd.release(force=True)
             sucess = True
 
         except OSError as exception:
             # We give up as we cannot force the unlock
             #
-            last_errmsg = "Warning: in " + me + ": failed to unlock: " + last_lock_path + \
+            ioccc_last_errmsg = "Warning: in " + me + ": failed to unlock: " + ioccc_last_lock_path + \
                           " exception: " + str(exception)
 
     # Clear any previous lock
     #
-    last_lock_fd = None
-    last_lock_path = None
+    ioccc_last_lock_fd = None
+    ioccc_last_lock_path = None
 
     # Return the slot unlock success or failure
     #
@@ -609,7 +607,7 @@ def load_pwfile():
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the password file
@@ -624,7 +622,7 @@ def load_pwfile():
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as exception:
-            last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
+            ioccc_last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
             ioccc_file_unlock()
             return None
@@ -640,7 +638,7 @@ def load_pwfile():
             j_pw.close()
 
     except OSError as exception:
-        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
 
         # we have no JSON to return
@@ -671,7 +669,7 @@ def replace_pwfile(pw_file_json):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the password file
@@ -695,7 +693,7 @@ def replace_pwfile(pw_file_json):
 
         # unlock the password file
         #
-        last_errmsg = "ERROR: in " + me + ": unable to write password file"
+        ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file"
         ioccc_file_unlock()
         return False
 
@@ -722,47 +720,55 @@ def validate_user_dict(user_dict):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # sanity check argument
     #
     if not isinstance(user_dict, dict):
-        last_errmsg = "ERROR: in " + me + ": user_dict arg is not a python dictionary"
+        ioccc_last_errmsg = "ERROR: in " + me + ": user_dict arg is not a python dictionary"
         return False
 
     # obtain the username
     #
     if not isinstance(user_dict['username'], str):
-        last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_dict['username']) + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_dict['username']) + ">>"
         return False
     username = user_dict['username']
 
     # sanity check the information for user
     #
     if user_dict["no_comment"] != NO_COMMENT_VALUE:
-        last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
+                            username + ">>"
         return False
     if user_dict["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
-        last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + \
+                            username + ">>"
         return False
     if not user_dict['pwhash']:
-        last_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": no pwhash for username : <<" + \
+                            username + ">>"
         return False
     if not isinstance(user_dict['pwhash'], str):
-        last_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + \
+                            username + ">>"
         return False
     if not isinstance(user_dict['admin'], bool):
-        last_errmsg = "ERROR: in " + me + ": admin is not a boolean for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": admin is not a boolean for username : <<" + \
+                            username + ">>"
         return False
     if not isinstance(user_dict['force_pw_change'], bool):
-        last_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + \
+                            username + ">>"
         return False
     if user_dict['pw_change_by'] and not isinstance(user_dict['pw_change_by'], str):
-        last_errmsg = "ERROR: in " + me + ": pw_change_by is not string nor None for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": pw_change_by is not string nor None for username : <<" + \
+                            username + ">>"
         return False
     if not isinstance(user_dict['disable_login'], bool):
-        last_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + \
+                            username + ">>"
         return False
 
     # user information passed the sanity checks
@@ -789,16 +795,16 @@ def lookup_username(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return None
 
     # load JSON from the password file as a python dictionary
@@ -815,7 +821,7 @@ def lookup_username(username):
             user_dict = i
             break
     if not user_dict:
-        last_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
         return None
 
     # sanity check the user information for user
@@ -857,52 +863,52 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": username is not POSIX safe: <<" + username + ">>"
         return False
 
     # paranoia - pwhash must be a string
     #
     if not isinstance(pwhash, str):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pwhash arg is not a string for username : <<" + username + ">>"
         return None
 
     # paranoia - admin must be a boolean
     #
     if not isinstance(admin, bool):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": admin arg is not a boolean for username : <<" + username + ">>"
         return None
 
     # paranoia - force_pw_change must be a boolean
     #
     if not isinstance(force_pw_change, bool):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": force_pw_change arg is not a boolean for username : <<" + username + ">>"
         return None
 
     # paranoia - pw_change_by must None or must be be string
     #
     if not isinstance(pw_change_by, str) and pw_change_by is not None:
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pw_change_by arg is not a string nor None for username : <<" + username + ">>"
         return None
 
     # paranoia - disable_login must be a boolean
     #
     if not isinstance(disable_login, bool):
-        last_errmsg = "ERROR: in " + me + \
+        ioccc_last_errmsg = "ERROR: in " + me + \
                         ": disable_login arg is not a boolean for username : <<" + username + ">>"
         return None
 
@@ -918,7 +924,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as exception:
-            last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
+            ioccc_last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
             ioccc_file_unlock()
             return None
@@ -937,7 +943,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
         # unlock the password file
         #
-        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
         ioccc_file_unlock()
         return None
@@ -985,7 +991,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
             j_pw.close()
 
     except OSError as exception:
-        last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
 
         # unlock the password file
@@ -1024,16 +1030,16 @@ def delete_username(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return None
     if not re.match(POSIX_SAFE_RE, username):
-        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return None
 
     # Lock the password file
@@ -1048,7 +1054,7 @@ def delete_username(username):
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as exception:
-            last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
+            ioccc_last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(exception)
             ioccc_file_unlock()
             return None
@@ -1067,7 +1073,7 @@ def delete_username(username):
 
         # unlock the password file
         #
-        last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(exception)
         ioccc_file_unlock()
         return None
@@ -1103,7 +1109,7 @@ def delete_username(username):
 
         # unlock the password file
         #
-        last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(exception)
         ioccc_file_unlock()
         return None
@@ -1127,15 +1133,15 @@ def generate_password():
     # setup
     #
     # pylint: disable-next=global-statement
-    global words
+    global ioccc_pw_words
     blacklist = set('`"\\')
     punct = ''.join( c for c in string.punctuation if c not in blacklist )
 
     # load the word dictionary if it is empty
     #
-    if not words:
+    if not ioccc_pw_words:
         with open(PW_WORDS, "r", encoding="utf-8") as f:
-            words = [word.strip() for word in f]
+            ioccc_pw_words = [word.strip() for word in f]
         f.close()
 
     # generate a 2-word password with random separators and an f9.4 number
@@ -1148,7 +1154,7 @@ def generate_password():
     #
     #   log2(104944)*2 + log2(30)*2 + log2(1000) + log2(1000)
     #
-    password = secrets.choice(words) + random.choice(punct) + secrets.choice(words)
+    password = secrets.choice(ioccc_pw_words) + random.choice(punct) + secrets.choice(ioccc_pw_words)
     password = password + random.choice(punct) + str(randrange(1000)) + "." + str(randrange(1000))
     return password
 
@@ -1167,13 +1173,13 @@ def hash_password(password):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
         return None
 
     return generate_password_hash(password)
@@ -1196,19 +1202,19 @@ def verify_hashed_password(password, pwhash):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
         return False
 
     # firewall - pwhash must be a string
     #
     if not isinstance(pwhash, str):
-        last_errmsg = "ERROR: in " + me + ": pwhash arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": pwhash arg is not a string"
         return False
 
     # return if the pwhash matches the password
@@ -1235,19 +1241,19 @@ def verify_user_password(username, password):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # firewall - password must be a string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string"
         return False
 
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
         return False
 
     # fail if user login is disabled or missing from the password file
@@ -1294,33 +1300,33 @@ def is_proper_password(password):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
         return False
 
     # password must be at at least MIN_PASSWORD_LENGTH long
     #
     if len(password) < MIN_PASSWORD_LENGTH:
-        last_errmsg = "ERROR: password must be at least " + str(MIN_PASSWORD_LENGTH) + \
+        ioccc_last_errmsg = "ERROR: password must be at least " + str(MIN_PASSWORD_LENGTH) + \
                       " characters long"
         return False
 
     # password must be a sane length
     #
     if len(password) > MAX_PASSWORD_LENGTH:
-        last_errmsg = "ERROR: password must not be longer than " + str(MAX_PASSWORD_LENGTH) + \
+        ioccc_last_errmsg = "ERROR: password must not be longer than " + str(MAX_PASSWORD_LENGTH) + \
                       " characters"
         return False
 
     # password must not have been Pwned
     #
     if pwnedpasswords.check(password) > 0:
-        last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
+        ioccc_last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
         return False
 
     # until we have password rules, allow any string
@@ -1355,25 +1361,25 @@ def update_password(username, old_password, new_password):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # firewall - password must be a string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string"
         return False
 
     # firewall - old_password must be a string
     #
     if not isinstance(old_password, str):
-        last_errmsg = "ERROR: in " + me + ": old_password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": old_password arg is not a string"
         return False
 
     # firewall - new_password must be a string
     #
     if not isinstance(new_password, str):
-        last_errmsg = "ERROR: in " + me + ": new_password arg is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": new_password arg is not a string"
         return False
 
     # new_password must be a proper password
@@ -1404,7 +1410,7 @@ def update_password(username, old_password, new_password):
 
         # old_password is not correct
         #
-        last_errmsg = "ERROR: invalid old password"
+        ioccc_last_errmsg = "ERROR: invalid old password"
         return False
 
     # update user entry in the password database
@@ -1444,7 +1450,7 @@ def user_allowed_to_login(user_dict):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
 
     # sanity check the user information
     #
@@ -1457,7 +1463,7 @@ def user_allowed_to_login(user_dict):
 
         # login disabled
         #
-        last_errmsg = "ERROR: user login has been disabled"
+        ioccc_last_errmsg = "ERROR: user login has been disabled"
         return False
 
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit
@@ -1475,7 +1481,7 @@ def user_allowed_to_login(user_dict):
         # failed to change the password in time
         #
         if now > pw_change_by:
-            last_errmsg = "ERROR: user failed to change the password in time"
+            ioccc_last_errmsg = "ERROR: user failed to change the password in time"
             return False
 
     # user login attempt is allowed
@@ -1522,16 +1528,16 @@ def username_login_allowed(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # paranoia - username must be a POSIX safe filename string
     #
     if not isinstance(username, str):
-        last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
         return False
     if not re.match(POSIX_SAFE_RE, username):
-        last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
         return False
 
     # fail if user login is disabled or missing from the password file
@@ -1573,7 +1579,7 @@ def lock_slot(username, slot_num):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     umask(0o022)
 
@@ -1594,7 +1600,7 @@ def lock_slot(username, slot_num):
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
     except OSError:
-        last_errmsg = "ERROR: in " + me + ": failed to create for username: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": failed to create for username: <<" + username + ">>"
         return None
 
     # be sure the slot directory exits
@@ -1602,7 +1608,7 @@ def lock_slot(username, slot_num):
     try:
         makedirs(slot_dir, mode=0o2770, exist_ok=True)
     except OSError:
-        last_errmsg = "ERROR: in " + me + ": failed to create slot: " + slot_num_str + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": failed to create slot: " + slot_num_str + \
                         "for username: <<" + username + ">>"
         return None
 
@@ -1653,7 +1659,7 @@ def write_slot_json(slots_json_file, slot_json):
     # declare global use
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
 
     # write JSON file for slot
     #
@@ -1663,7 +1669,7 @@ def write_slot_json(slots_json_file, slot_json):
             slot_file_fp.write('\n')
             slot_file_fp.close()
     except OSError:
-        last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
+        ioccc_last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
         return False
     return True
 
@@ -1696,7 +1702,7 @@ def initialize_user_tree(username):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # setup
@@ -1713,7 +1719,7 @@ def initialize_user_tree(username):
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
     except OSError as exception:
-        last_errmsg = "ERROR: in " + me + ": cannot form user directory for user: <<" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot form user directory for user: <<" + \
                         username + ">> exception: " + str(exception)
         return None
 
@@ -1734,7 +1740,7 @@ def initialize_user_tree(username):
         try:
             makedirs(slot_dir, mode=0o2770, exist_ok=True)
         except OSError as exception:
-            last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
+            ioccc_last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
                             slot_dir + " exception: " + str(exception)
             return None
 
@@ -1759,12 +1765,12 @@ def initialize_user_tree(username):
                 slots[slot_num] = json.load(slot_file_fp)
                 slot_file_fp.close()
                 if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                    last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
+                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
                                     username + ">> for slot: " + slot_num_str
                     unlock_slot()
                     return None
                 if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                    last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #0"
+                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #0"
                     unlock_slot()
                     return None
         except OSError:
@@ -1773,12 +1779,12 @@ def initialize_user_tree(username):
                                                          'SLOT_VERSION_VALUE': SLOT_VERSION_VALUE, \
                                                          'slot_num': slot_num_str } ))
             if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
-                last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1 username : <<" + \
+                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #1 username : <<" + \
                                 username + ">> for slot: " + slot_num_str
                 unlock_slot()
                 return None
             if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
-                last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #1"
+                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #1"
                 unlock_slot()
                 return None
             try:
@@ -1787,7 +1793,7 @@ def initialize_user_tree(username):
                     slot_file_fp.write('\n')
                     slot_file_fp.close()
             except OSError as exception:
-                last_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
+                ioccc_last_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
                                 slot_json_file + " exception: " + str(exception)
                 unlock_slot()
                 return None
@@ -1921,7 +1927,7 @@ def update_slot(username, slot_num, slot_file):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # initialize user if needed
@@ -1938,7 +1944,7 @@ def update_slot(username, slot_num, slot_file):
             result = hashlib.sha256(file_fp.read())
             file_fp.close()
     except OSError:
-        last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
                         slot_num_str + " file: " + slot_file
         return False
 
@@ -1976,7 +1982,7 @@ def update_slot(username, slot_num, slot_file):
         old_file = slot_dir + "/" + slot['filename']
         if slot_file != old_file and os.path.isfile(old_file):
             os.remove(old_file)
-            last_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
+            ioccc_last_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
                             " file: " + slot['filename']
 
     # record and report SHA256 hash of file
@@ -2080,7 +2086,7 @@ def read_json_file(json_file):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # try to read JSON contents
@@ -2091,7 +2097,7 @@ def read_json_file(json_file):
             #
             return json.load(j_fp)
     except OSError as exception:
-        last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
                         json_file + " exception: " + str(exception)
         return []
 
@@ -2119,7 +2125,7 @@ def read_state():
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
     # Lock the state file
@@ -2135,7 +2141,7 @@ def read_state():
             shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
 
         except OSError as exception:
-            last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
+            ioccc_last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
                             " " + STATE_FILE + " exception: " + str(exception)
             ioccc_file_unlock()
             return None
@@ -2156,42 +2162,42 @@ def read_state():
     # state file sanity checks
     #
     if not state["no_comment"]:
-        last_errmsg = "ERROR: in " + me + ": no JSON no_comment in state file"
+        ioccc_last_errmsg = "ERROR: in " + me + ": no JSON no_comment in state file"
     if state["no_comment"] != NO_COMMENT_VALUE:
-        last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment in state file: <<" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment in state file: <<" + \
                       state["no_comment"] + ">> != <<" + NO_COMMENT_VALUE + ">>"
         return None
     if not state["state_JSON_format_version"]:
-        last_errmsg = "ERROR: in " + me + ": no JSON state_JSON_format_version in state file"
+        ioccc_last_errmsg = "ERROR: in " + me + ": no JSON state_JSON_format_version in state file"
     if state["state_JSON_format_version"] != STATE_VERSION_VALUE:
-        last_errmsg = "ERROR: in " + me + ": invalid state_JSON_format_version no_comment in state file: <<" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid state_JSON_format_version no_comment in state file: <<" + \
                       state["state_JSON_format_version"] + ">> != <<" + STATE_VERSION_VALUE + ">>"
         return None, None
 
     # convert open and close date strings into datetime values
     #
     if not state['open_date']:
-        last_errmsg = "ERROR: in " + me + ": state file missing open_date"
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file missing open_date"
         return None, None
     if not isinstance(state['open_date'], str):
-        last_errmsg = "ERROR: in " + me + ": state file open_date is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file open_date is not a string"
         return None, None
     try:
         open_datetime = datetime.strptime(state['open_date'], DATETIME_FORMAT)
     except ValueError:
-        last_errmsg = "ERROR: in " + me + ": state file open_date is not in proper datetime format: <<" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file open_date is not in proper datetime format: <<" + \
                       state['open_date'] + ">>"
         return None, None
     if not state['close_date']:
-        last_errmsg = "ERROR: in " + me + ": state file missing close_date"
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file missing close_date"
         return None, None
     if not isinstance(state['close_date'], str):
-        last_errmsg = "ERROR: in " + me + ": state file close_date is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file close_date is not a string"
         return None, None
     try:
         close_datetime = datetime.strptime(state['close_date'], DATETIME_FORMAT)
     except ValueError:
-        last_errmsg = "ERROR: in " + me + ": state file close_date is not in proper datetime format: <<" + \
+        ioccc_last_errmsg = "ERROR: in " + me + ": state file close_date is not in proper datetime format: <<" + \
                       state['close_date'] + ">>"
         return None, None
 
@@ -2220,29 +2226,29 @@ def update_state(open_date, close_date):
     # setup
     #
     # pylint: disable-next=global-statement
-    global last_errmsg
+    global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     write_sucessful = True
 
     # firewall - args must be strings in DATETIME_FORMAT format
     #
     if not isinstance(open_date, str):
-        last_errmsg = "ERROR: in " + me + ": open_date is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": open_date is not a string"
         return False
     try:
         # pylint: disable=unused-variable
         open_datetime = datetime.strptime(open_date, DATETIME_FORMAT)
     except ValueError:
-        last_errmsg = "ERROR: in " + me + ": open_date is not in proper datetime format: <<" + open_date + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": open_date is not in proper datetime format: <<" + open_date + ">>"
         return False
     if not isinstance(close_date, str):
-        last_errmsg = "ERROR: in " + me + ": close_date is not a string"
+        ioccc_last_errmsg = "ERROR: in " + me + ": close_date is not a string"
         return False
     try:
         # pylint: disable=unused-variable
         close_datetime = datetime.strptime(close_date, DATETIME_FORMAT)
     except ValueError:
-        last_errmsg = "ERROR: in " + me + ": close_date is not in proper datetime format: <<" + close_date + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": close_date is not in proper datetime format: <<" + close_date + ">>"
         return False
 
     # Lock the state file
@@ -2267,7 +2273,7 @@ def update_state(open_date, close_date):
             sf_fp.close()
 
     except OSError:
-        last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
+        ioccc_last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
         write_sucessful = False
         # fall thru
 

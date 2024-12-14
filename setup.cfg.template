@@ -1,5 +1,5 @@
 [metadata]
-name = iocccsubmit
+name = @@PKG_NAME@@
 version = @@VERSION@@
 author = IOCCC Judges
 author_email = https://www.ioccc.org/judges.html
@@ -10,6 +10,6 @@ long_description_content_type= text/markdown
 license = BSD 3-Clause License
 
 [options]
-packages = iocccsubmit
+packages = @@PKG_NAME@@
 python_requires = >=3.8
 install_requires =

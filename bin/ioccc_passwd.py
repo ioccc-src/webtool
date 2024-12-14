@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable=import-error
-# pylint: disable=wildcard-import
-# pylint: disable=unused-wildcard-import
-# pylint: disable=unused-import
+#
 """
 Functions to implement adding, updating and deleting of IOCCC contestants.
 """
@@ -10,25 +7,36 @@ Functions to implement adding, updating and deleting of IOCCC contestants.
 # system imports
 #
 import sys
-import json
 import argparse
-from os import listdir, remove, rmdir
+import os
+import uuid
+
+
+# import from modules
+#
+from datetime import datetime, timezone, timedelta
 
 
 # import the ioccc python utility code
 #
-# NOTE: This in turn imports a lot of other stuff, and sets global constants.
+# Sort the import list with: sort -d -u
 #
-# TO DO: Change wild card import into specific import set
-#
-from ioccc_common import *
+from iocccsubmit import \
+        DEFAULT_GRACE_PERIOD, \
+        change_startup_appdir, \
+        delete_username, \
+        generate_password, \
+        hash_password, \
+        lookup_username, \
+        return_last_errmsg, \
+        update_username
 
 
 # ioccc_passwd.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.6.1 2024-12-07"
+VERSION = "1.7 2024-12-13"
 
 
 # pylint: disable=too-many-locals

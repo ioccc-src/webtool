@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-# pylint: disable=import-error
-# pylint: disable=wildcard-import
-# pylint: disable=unused-wildcard-import
-# pylint: disable=unused-import
+#
+# pylint: disable=invalid-overridden-method
+#
 """
-The IOCCC submit server
+The IOCCC submit tool
 
-NOTE: This code is modeled after:
+This code is used to upload submissions to an open IOCCC (International
+Obfuscated C Code Contest) to the submit.ioccc.org server.
+
+This code is based on code originally written by Eliot Lear (@elear) in late 2021.
+The [IOCCC judges](https://www.ioccc.org/judges.html) heavily modified
+Eliot's code, so any fault you find should be blamed on them 😉 (that is, the
+IOCCC Judges :-) ).
+
+NOTE: This flask-login was loosly modeled after:
 
     https://github.com/costa-rica/webApp01-Flask-Login/tree/github-main
     https://nrodrig1.medium.com/flask-login-no-flask-sqlalchemy-d62310bb43e3
@@ -19,11 +26,8 @@ import sys
 # sys.path.insert(0,"/var/www/ioccc/bin")
 import inspect
 import argparse
-
-
-# import from modules
-#
-from typing import Dict, Optional
+import os
+import re
 
 
 # 3rd party imports
@@ -35,18 +39,35 @@ from flask_login import current_user
 
 # import the ioccc python utility code
 #
-# NOTE: This in turn imports a lot of other stuff, and sets global constants.
+# Sort the import list with: sort -d -u
 #
-# TO DO: Change wild card import into specific import set
-#
-from ioccc_common import *
+from iocccsubmit.ioccc_common import \
+    MAX_PASSWORD_LENGTH, \
+    MAX_TARBALL_LEN, \
+    MIN_PASSWORD_LENGTH, \
+    TCP_PORT, \
+    change_startup_appdir, \
+    contest_is_open, \
+    get_all_json_slots, \
+    initialize_user_tree, \
+    is_proper_password, \
+    lookup_username, \
+    must_change_password, \
+    return_last_errmsg, \
+    return_secret, \
+    return_slot_dir_path, \
+    return_user_dir_path, \
+    update_password, \
+    update_slot, \
+    user_allowed_to_login, \
+    verify_hashed_password
 
 
 # ioccc.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.5.2 2024-12-08"
+VERSION = "1.6 2024-12-13"
 
 
 # Configure the application

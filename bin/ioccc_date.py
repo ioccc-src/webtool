@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable=wildcard-import
-# pylint: disable=unused-wildcard-import
+#
 """
 Functions to set the open and close data of the IOCCC.
 """
@@ -9,22 +8,24 @@ Functions to set the open and close data of the IOCCC.
 #
 import sys
 import argparse
-
+import os
 
 # import the ioccc python utility code
 #
-# NOTE: This in turn imports a lot of other stuff, and sets global constants.
+# Sort the import list with: sort -d -u
 #
-# TO DO: Change wild card import into specific import set
-#
-from ioccc_common import *
+from iocccsubmit import \
+        change_startup_appdir, \
+        read_state, \
+        return_last_errmsg, \
+        update_state
 
 
 # ioccc_date.py version
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.1 2024-12-04"
+VERSION = "1.2 2024-12-13"
 
 
 def main():

@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables referenced in the usage message
 #
-export VERSION="1.1 2024-12-04"
+export VERSION="1.2 2024-12-13"
 NAME=$(basename "$0")
 export NAME
 export TOPDIR="."
@@ -174,20 +174,39 @@ if [[ -n $CD_FAILED ]]; then
 fi
 
 
-# pylint critical bin files
+# pylint iocccsubmit module files
 #
-for i in ioccc_common.py ioccc.py ioccc_date.py ioccc_passwd.py set_slot_status.py; do
+for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py ; do
 
     # announce
     #
-    echo "=-=-= $TOPDIR/bin/$i =-=-="
+    echo "=-=-= $TOPDIR/$i =-=-="
 
     # pylint file
     #
-    pylint --source-roots bin "bin/$i"
+    python3 -m pylint "$i"
     status="$?"
     if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: pylint $$ failed, error: $status" 1>&2
+	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
+	exit 1
+    fi
+
+done
+
+# pylint critical bin files
+#
+for i in bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
+
+    # announce
+    #
+    echo "=-=-= $TOPDIR/$i =-=-="
+
+    # pylint file
+    #
+    python3 -m pylint "$i"
+    status="$?"
+    if [[ $status -ne 0 ]]; then
+	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
 	exit 1
     fi
 done

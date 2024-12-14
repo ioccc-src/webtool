@@ -51,13 +51,72 @@ SHELL= bash
 V=@:
 #V=@
 
-# iocccsubmit package version
+# package version
 #
-VERSION= 0.1.9
+VERSION= 0.2.0
 
+# Python package name
+#
+PKG_NAME= iocccsubmit
+
+# Python package source
+#
+PKG_SRC= ${PKG_NAME}/__init__.py ${PKG_NAME}/ioccc.py ${PKG_NAME}/ioccc_common.py
+
+# etc read-only directory source owned by root
+#
+ETC_RO_ROOT_SRC= etc/init.iocccpasswd.json etc/init.state.json etc/pw.words \
+	etc/requirements.txt
+
+# etc read-write directory source owned by root
+#
+ETC_RW_SRC= etc/iocccpasswd.lock etc/state.lock
+
+# all etc src
+#
+ETC_SRC= ${ETC_RO_ROOT_SRC} ${ETC_RW_SRC}
+
+# static directory source
+#
+STATIC_SRC= static/ioccc.css static/ioccc.js static/ioccc.png static/login-example.jpg \
+	    static/favicon.ico static/robots.txt
+
+# templates directory source
+#
+TEMPLATES_SRC= templates/login.html templates/not-open.html templates/passwd.html \
+	templates/submit.html
+
+# wsgi code to install for apache to execute
+#
+WSGI_SRC= wsgi/ioccc.wsgi
+
+# files to install under ${DOCROOT}
+#
+INSTALL_UNDER_DOCROOT= ${ETC_SRC} ${STATIC_SRC} ${TEMPLATES_SRC} ${WSGI_SRC}
+
+# Apache document root directory where non-python python package files are installed under
+# 
+# We install ${INSTALL_UNDER_DOCROOT} files under this directory, sometimes in sub-directories.
+#
+DOCROOT= /var/www/ioccc
+
+# executable scripts that are not part of the python module.
+#
+# Executable files to install under ${DESTDIR}.
+#
+# NOTE: bin/pychk.sh is only needed for testing and thus is not needed under ${DESTDIR}.
+#
+BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py
+
+# Where to install programs that are not part of the python module.
+#
+# We install ${BIN_SRC} executables under this directory.
+#
 DESTDIR= /usr/local/bin
 
-TARGETS= dist/iocccsubmit-${VERSION}-py3-none-any.whl
+# what to build
+#
+TARGETS= dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 
 ######################################
 # all - default rule - must be first #
@@ -70,7 +129,7 @@ all: ${TARGETS}
 #################################################
 
 .PHONY: all configure clean clobber nuke install \
-	revenv wheel venv_install
+	root_install revenv wheel venv_install
 
 ###############
 # build rules #
@@ -81,6 +140,7 @@ setup.cfg: setup.cfg.template etc/requirements.txt
 	${RM} -f $@ tmp.requirements.txt.tmp
 	${SED} -e 's/^/    /' < etc/requirements.txt > tmp.requirements.txt.tmp
 	${SED} -e 's/@@VERSION@@/${VERSION}/' \
+	       -e 's/@@PKG_NAME@@/${PKG_NAME}/' \
 	       -e '/^install_requires =/ {' -e 'r tmp.requirements.txt.tmp' -e '}' \
 		  < setup.cfg.template > $@
 	${RM} -f tmp.requirements.txt.tmp
@@ -92,84 +152,58 @@ venv: etc/requirements.txt setup.cfg
 	${PYTHON} -m venv venv
 	# was: pip install --upgrade ...
 	source ./venv/bin/activate && \
-	    ${PYTHON} -m pip install --upgrade pip && \
-	    ${PYTHON} -m pip install --upgrade setuptools && \
-	    ${PYTHON} -m pip install --upgrade wheel && \
-	    ${PYTHON} -m pip install --upgrade build && \
+	    ${PYTHON} -m pip install --upgrade pylint pip setuptools wheel build && \
 	    ${PYTHON} -m pip install -r etc/requirements.txt
 	${V} echo DEBUG =-= $@ end =-=
 
-build/lib/submittool: venv iocccsubmit
+build/lib/submittool: ${PKG_SRC} venv
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py build
 	source ./venv/bin/activate && \
 	    ${PYTHON} -c 'import setuptools; setuptools.setup()' sdist
 	${V} echo DEBUG =-= $@ end =-=
 
-dist/iocccsubmit-${VERSION}-py3-none-any.whl: venv iocccsubmit build/lib/submittool
+dist/${PKG_NAME}-${VERSION}-py3-none-any.whl: ${PKG_SRC} venv build/lib/submittool
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py bdist_wheel
 	source ./venv/bin/activate && \
 	    ${PYTHON} -m build --sdist --wheel
 	${V} echo DEBUG =-= $@ end =-=
 
-iocccsubmit: iocccsubmit/__init__.py iocccsubmit/ioccc.py iocccsubmit/ioccc_common.py
-	${V} echo DEBUG =-= $@ start =-=
-	${V} echo DEBUG =-= $@ end =-=
-
-iocccsubmit/__init__.py: bin/__init__.py
-	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v iocccsubmit
-	@if ! ${CMP} -s $? $@; then \
-	    ${CP} -f -v $? $@; \
-	    ${CHMOD} 0555 -v $? $@; \
-	fi
-	${V} echo DEBUG =-= $@ end =-=
-
-iocccsubmit/ioccc.py: bin/ioccc.py
-	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v iocccsubmit
-	@if ! ${CMP} -s $? $@; then \
-	    ${CP} -f -v $? $@; \
-	    ${CHMOD} 0555 -v $? $@; \
-	fi
-	${V} echo DEBUG =-= $@ end =-=
-
-iocccsubmit/ioccc_common.py: bin/ioccc_common.py
-	${V} echo DEBUG =-= $@ start =-=
-	@${MKDIR} -p -v iocccsubmit
-	@if ! ${CMP} -s $? $@; then \
-	    ${CP} -f -v $? $@; \
-	    ${CHMOD} 0555 -v $? $@; \
-	fi
-	${V} echo DEBUG =-= $@ end =-=
 
 #################
 # utility rules #
 #################
 
-wheel: dist/iocccsubmit-${VERSION}-py3-none-any.whl
+# wheel - make the python package wheel
+#
+wheel: dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	${V} echo DEBUG =-= $@ end =-=
 
+# revenv - force to rebuild the python virtual environment
+#
 revenv:
 	${V} echo DEBUG =-= $@ start =-=
 	${RM} -rf venv __pycache__
 	${PYTHON} -m venv venv
 	# was: pip3 install --upgrade ...
 	source ./venv/bin/activate && \
-	    ${PYTHON} -m pip install --upgrade pip && \
-	    ${PYTHON} -m pip install --upgrade setuptools && \
-	    ${PYTHON} -m pip install --upgrade wheel && \
-	    ${PYTHON} -m pip install --upgrade build && \
+	    ${PYTHON} -m pip install --upgrade pylint pip setuptools wheel build && \
 	    ${PYTHON} -m pip install -r etc/requirements.txt
 	${V} echo DEBUG =-= $@ end =-=
 
-venv_install: dist/iocccsubmit-${VERSION}-py3-none-any.whl
+# install the python package under the python virtual environment
+#
+venv_install: venv dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	# was: python3 setup.py install
 	source ./venv/bin/activate && \
 	    ${PYTHON} -m pip install .
+	@echo 'Do not forget to:'
+	@echo
+	@echo '    source venv/bin/activate'
+	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
 ###################################
@@ -187,8 +221,8 @@ clean:
 
 clobber: clean
 	${V} echo DEBUG =-= $@ start =-=
-	${RM} -rf venv __pycache__
-	${RM} -rf dist build iocccsubmit iocccsubmit.egg-info
+	${RM} -rf venv __pycache__ ${PKG_NAME}/__pycache__
+	${RM} -rf dist build ${PKG_NAME}.egg-info
 	${RM} -f setup.cfg
 	${V} echo DEBUG =-= $@ end =-=
 
@@ -199,10 +233,31 @@ nuke: clobber
 	${RM} -rf users
 	${V} echo DEBUG =-= $@ end =-=
 
-install: dist/iocccsubmit-${VERSION}-py3-none-any.whl
+install: venv_install
+	${V} echo DEBUG =-= $@ start =-=
+	@echo 'This only installed locally into a python virtual environment.'
+	@echo 'To setup on the server under ${DOCROOT}, as root run:'
+	@echo
+	@echo '    make root_install'
+	@echo
+	${V} echo DEBUG =-= $@ end =-=
+
+root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install
 	${PYTHON} -m pip install --force-reinstall .
-	@echo TBD
+	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}
+	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/etc
+	${INSTALL} -o ioccc -g ioccc -m 0444 ${ETC_RO_ROOT_SRC} ${DOCROOT}/etc
+	${INSTALL} -o ioccc -g ioccc -m 0644 ${ETC_RW_SRC} ${DOCROOT}/etc
+	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/static
+	${INSTALL} -o ioccc -g ioccc -m 0444 ${STATIC_SRC} ${DOCROOT}/static
+	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/templates
+	${INSTALL} -o ioccc -g ioccc -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
+	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/users
+	${INSTALL} -o ioccc -g ioccc -m 0555 ${WSGI_SRC} ${DOCROOT}
+	${INSTALL} -o ioccc -g ioccc -m 0444 static/favicon.ico static/robots.txt ${DOCROOT}
+	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
+	${INSTALL} -u root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${V} echo DEBUG =-= $@ end =-=
