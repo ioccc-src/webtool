@@ -259,5 +259,5 @@ root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} dist/${PKG_NAME}-${VERSION}-py
 	${INSTALL} -o ioccc -g ioccc -m 0555 ${WSGI_SRC} ${DOCROOT}
 	${INSTALL} -o ioccc -g ioccc -m 0444 static/favicon.ico static/robots.txt ${DOCROOT}
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
-	${INSTALL} -u root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
+	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${V} echo DEBUG =-= $@ end =-=
