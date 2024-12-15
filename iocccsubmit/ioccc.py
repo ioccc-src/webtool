@@ -42,6 +42,7 @@ from flask_login import current_user
 # Sort the import list with: sort -d -u
 #
 from iocccsubmit.ioccc_common import \
+    APPDIR, \
     MAX_PASSWORD_LENGTH, \
     MAX_TARBALL_LEN, \
     MIN_PASSWORD_LENGTH, \
@@ -67,14 +68,14 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.6 2024-12-13"
+VERSION = "1.6.1 2024-12-14"
 
 
 # Configure the application
 #
 application = Flask(__name__,
-            template_folder='templates',
-            root_path='./')
+            template_folder=APPDIR + '/templates',
+            root_path=APPDIR)
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "iocccsubmit"
 application.debug = True

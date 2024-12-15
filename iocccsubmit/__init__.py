@@ -25,6 +25,7 @@ NOTE: This flask-login was loosly modeled after:
 from .ioccc_common import \
     ADM_FILE, \
     ADM_FILE_RELATIVE_PATH, \
+    APPDIR, \
     DATETIME_FORMAT, \
     DEFAULT_GRACE_PERIOD, \
     DEFAULT_JSON_STATE_TEMPLATE, \
