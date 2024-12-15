@@ -65,16 +65,35 @@ PKG_SRC= ${PKG_NAME}/__init__.py ${PKG_NAME}/ioccc.py ${PKG_NAME}/ioccc_common.p
 
 # etc read-only directory source owned by root
 #
-ETC_RO_ROOT_SRC= etc/init.iocccpasswd.json etc/init.state.json etc/pw.words \
-	etc/requirements.txt
+ETC_RO_SRC= etc/pw.words etc/requirements.txt
+
+# IOCCC submit server password file
+#
+# If ${PW} does not list, during install copy it from ${INIT_PW}
+#
+# IMPORTANT: Do NOT add ${PW} to ${ETC_RW_SRC}, it is created by
+#	     make install and installed by make root_install.
+#
+INIT_PW= etc/init.iocccpasswd.json
+PW= etc/iocccpasswd.json
+
+# IOCCC submit server IOCCC open and close dates
+#
+# If ${STATE} does not list, during install copy it from ${INIT_STATE}
+#
+# IMPORTANT: Do NOT add ${STATE} to ${ETC_RW_SRC}, it is created by
+#	     make install and installed by make root_install.
+#
+INIT_STATE= etc/init.state.json
+STATE= etc/state.json
 
 # etc read-write directory source owned by root
 #
-ETC_RW_SRC= etc/iocccpasswd.lock etc/state.lock
+ETC_RW_SRC= ${INIT_PW} ${INIT_STATE} etc/iocccpasswd.lock etc/state.lock
 
 # all etc src
 #
-ETC_SRC= ${ETC_RO_ROOT_SRC} ${ETC_RW_SRC}
+ETC_SRC= ${ETC_RO_SRC} ${ETC_RW_SRC}
 
 # static directory source
 #
@@ -96,7 +115,7 @@ WSGI_SRC= wsgi/ioccc.wsgi
 INSTALL_UNDER_DOCROOT= ${ETC_SRC} ${STATIC_SRC} ${TEMPLATES_SRC} ${WSGI_SRC}
 
 # Apache document root directory where non-python python package files are installed under
-# 
+#
 # We install ${INSTALL_UNDER_DOCROOT} files under this directory, sometimes in sub-directories.
 #
 DOCROOT= /var/www/ioccc
@@ -221,7 +240,7 @@ venv_install: venv dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 # Flask secret key - generate if missing or empty
 #
 # NOTE: Because we do not use -F, this rule will do nothing
-# 	if ${FLASK_KEY} is a non-empty file.
+#	if ${FLASK_KEY} is a non-empty file.
 #
 ${FLASK_KEY}:
 	${V} echo DEBUG =-= $@ start =-=
@@ -260,12 +279,24 @@ clobber: clean
 #
 nuke: clobber
 	${V} echo DEBUG =-= $@ start =-=
-	${RM} -rf users 
+	${RM} -rf users
 	${RM} -f ${FLASKKEY}
 	${V} echo DEBUG =-= $@ end =-=
 
-install: ${FLASK_KEY} venv_install
+install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	${V} echo DEBUG =-= $@ start =-=
+	@if [[ ! -s ${PW} ]]; then \
+	    echo ${CP} -v -f ${INIT_PW} ${PW}; \
+	    ${CP} -v -f ${INIT_PW} ${PW}; \
+	    echo ${CHMOD} -v 0644 ${PW}; \
+	    ${CHMOD} -v 0644 ${PW}; \
+	fi
+	@if [[ ! -s ${STATE} ]]; then \
+	    echo ${CP} -v -f ${INIT_STATE} ${STATE}; \
+	    ${CP} -v -f ${INIT_STATE} ${STATE}; \
+	    echo ${CHMOD} -v 0644 ${STATE}; \
+	    ${CHMOD} -v 0644 ${STATE}; \
+	fi
 	@echo 'This only installs locally into a python virtual environment.'
 	@echo
 	@echo 'If you are on the submit sever, as root run:'
@@ -274,15 +305,15 @@ install: ${FLASK_KEY} venv_install
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
-root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
+root_install: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install
 	${PYTHON} -m pip install --force-reinstall .
 	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}
 	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/etc
-	${INSTALL} -o ioccc -g ioccc -m 0444 ${ETC_RO_ROOT_SRC} ${DOCROOT}/etc
-	${INSTALL} -o ioccc -g ioccc -m 0644 ${ETC_RW_SRC} ${DOCROOT}/etc
+	${INSTALL} -o ioccc -g ioccc -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
+	${INSTALL} -o ioccc -g ioccc -m 0644 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
 	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/static
 	${INSTALL} -o ioccc -g ioccc -m 0444 ${STATIC_SRC} ${DOCROOT}/static
 	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/templates
