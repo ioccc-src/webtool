@@ -62,7 +62,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.6 2024-12-13"
+VERSION_IOCCC_COMMON = "1.6.1 2024-12-14"
 
 # force password change grace time
 #
@@ -92,13 +92,17 @@ TCP_PORT = "8191"
 
 # determine the default APPDIR
 #
-# case: We have /app a directory, assume Docker container directory layout
-if Path("/app").is_dir():
-    APPDIR = "/app"
+# case: We have template sub-directory, assume our APPDIR is .
+#       (likely testing from the command line)
+#
+if Path("./templates").is_dir():
+    APPDIR = "."
 
-# case: assume we are testing in . and so assume ./app is a symlink to app
+# case: assume are are running under the Apache server, and
+#       APPDIR is /var/www/ioccc
+#
 else:
-    APPDIR = "./app"
+    APPDIR = "/var/www/ioccc"
 
 # important directories and files that are relative to APPDIR
 #
