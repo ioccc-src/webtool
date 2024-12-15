@@ -79,7 +79,8 @@ ETC_SRC= ${ETC_RO_ROOT_SRC} ${ETC_RW_SRC}
 # static directory source
 #
 STATIC_SRC= static/ioccc.css static/ioccc.js static/ioccc.png static/login-example.jpg \
-	    static/favicon.ico static/robots.txt static/apple-touch-icon.png
+	    static/favicon.ico static/robots.txt static/apple-touch-icon.png \
+	    static/apple-touch-icon-precomposed.png
 
 # templates directory source
 #
