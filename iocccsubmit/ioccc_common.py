@@ -83,9 +83,10 @@ DEFAULT_GRACE_PERIOD = 72*3600
 #
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f%z"
 
-# default IP and port
+# IP and port when running this code from the command line.
 #
-# TO DO: Figure out how what HOST_NAME and TCP_PORT we should use.
+# When this code be being run under Apache, the wsgi module takes
+# care of the hostname and port and this these two settings do not apply.
 #
 HOST_NAME = "127.0.0.1"
 TCP_PORT = "8191"
@@ -100,6 +101,8 @@ if Path("./templates").is_dir():
 
 # case: assume are are running under the Apache server, and
 #       APPDIR is /var/www/ioccc
+#
+# Tests suggest that Apache seems to run applications from the / directory.
 #
 else:
     APPDIR = "/var/www/ioccc"
