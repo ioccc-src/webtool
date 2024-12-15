@@ -53,7 +53,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.2.1
+VERSION= 0.2.2
 
 # Python package name
 #
@@ -109,6 +109,16 @@ DOCROOT= /var/www/ioccc
 #
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py
 
+# tool to generate the secret Flask key
+#
+GENFLASHKEY= bin/genflaskkey.sh
+
+# location of the secret Flask key
+#
+FLASK_KEY= etc/.secret
+
+# location of the secret
+
 # Where to install programs that are not part of the python module.
 #
 # We install ${BIN_SRC} executables under this directory.
@@ -130,7 +140,7 @@ all: ${TARGETS}
 #################################################
 
 .PHONY: all configure clean clobber nuke install \
-	root_install revenv wheel venv_install
+	root_install revenv wheel venv_install reflaskkey
 
 ###############
 # build rules #
@@ -201,11 +211,30 @@ venv_install: venv dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	# was: python3 setup.py install
 	source ./venv/bin/activate && \
 	    ${PYTHON} -m pip install .
+	@echo
 	@echo 'Do not forget to:'
 	@echo
 	@echo '    source venv/bin/activate'
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
+
+# Flask secret key - generate if missing or empty
+#
+# NOTE: Because we do not use -F, this rule will do nothing
+# 	if ${FLASK_KEY} is a non-empty file.
+#
+${FLASK_KEY}:
+	${V} echo DEBUG =-= $@ start =-=
+	${GENFLASHKEY} ${FLASK_KEY}
+	${V} echo DEBUG =-= $@ end =-=
+
+# force Flask secret key to be re-generated
+#
+reflaskkey:
+	${V} echo DEBUG =-= $@ start =-=
+	${GENFLASHKEY} -F ${FLASK_KEY}
+	${V} echo DEBUG =-= $@ end =-=
+
 
 ###################################
 # standard Makefile utility rules #
@@ -231,19 +260,21 @@ clobber: clean
 #
 nuke: clobber
 	${V} echo DEBUG =-= $@ start =-=
-	${RM} -rf users
+	${RM} -rf users 
+	${RM} -f ${FLASKKEY}
 	${V} echo DEBUG =-= $@ end =-=
 
-install: venv_install
+install: ${FLASK_KEY} venv_install
 	${V} echo DEBUG =-= $@ start =-=
-	@echo 'This only installed locally into a python virtual environment.'
-	@echo 'To setup on the server under ${DOCROOT}, as root run:'
+	@echo 'This only installs locally into a python virtual environment.'
+	@echo
+	@echo 'If you are on the submit sever, as root run:'
 	@echo
 	@echo '    make root_install'
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
-root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
+root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install
@@ -259,6 +290,7 @@ root_install: ${INSTALL_UNDER_DOCROOT} ${BIN_SRC} dist/${PKG_NAME}-${VERSION}-py
 	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/users
 	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/wsgi
 	${INSTALL} -o ioccc -g ioccc -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
+	${INSTALL} -o ioccc -g ioccc -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
 	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${V} echo DEBUG =-= $@ end =-=

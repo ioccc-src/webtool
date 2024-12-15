@@ -17,7 +17,7 @@ where you cloned the [submit tool repo](https://github.com/ioccc-src/submit-tool
 First, make sure to clean out the cache and then build the python virtual environment:
 
 ```sh
-make clobber all venv_install
+make clobber all install
 ```
 
 Now, in each tab/terminal window/console you need to do something (like running
