@@ -100,12 +100,12 @@ if Path("./templates").is_dir():
     APPDIR = "."
 
 # case: assume are are running under the Apache server, and
-#       APPDIR is /var/www/html
+#       APPDIR is /var/ioccc
 #
 # Tests suggest that Apache seems to run applications from the / directory.
 #
 else:
-    APPDIR = "/var/www/html"
+    APPDIR = "/var/ioccc"
 
 # important directories and files that are relative to APPDIR
 #

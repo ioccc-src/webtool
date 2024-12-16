@@ -23,9 +23,9 @@ NOTE: This flask-login was loosly modeled after:
 # system imports
 #
 import sys
-# sys.path.insert(0,"/var/www/html/venv/lib/python3.9/site-packages")
-# sys.path.insert(0,"/var/www/html/wsrc")
-# sys.path.insert(0,"/var/www/html")
+# sys.path.insert(0,"/var/ioccc/venv/lib/python3.9/site-packages")
+# sys.path.insert(0,"/var/ioccc/wsrc")
+# sys.path.insert(0,"/var/ioccc")
 import inspect
 import argparse
 import os
@@ -183,14 +183,19 @@ def login():
     debug_now = datetime.datetime.now()   # DEBUG - remove when finished
     # pylint: disable-next=line-too-long    # DEBUG - remove when finished
     ls_output = str(glob.glob("*"))         # DEBUG - remove when finished
-    flash(f'{debug_now}: file in current directory: {ls_output}')    # DEBUG - remove when finished
+    flash(f'{debug_now}: files in current directory: {ls_output}')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: ls -lZa /var/ioccc/etc: {os.system("ls -lZa /var/ioccc/etc")}')    # DEBUG - remove when finished
     try:    # DEBUG - remove when finished
-        Path("/var/www/html/etc/RMME.foo3").touch(mode=0o664, exist_ok=True) # DEBUG - remove when finished
-        flash("touched /var/www/html/etc/RMME.foo3") # DEBUG - remove when finished
+        Path("/var/ioccc/etc/RMME.foo4").touch(mode=0o664, exist_ok=True) # DEBUG - remove when finished
+    try:    # DEBUG - remove when finished
+        Path("/var/ioccc/etc/RMME.foo4").touch(mode=0o664, exist_ok=True) # DEBUG - remove when finished
+        flash("touched /var/ioccc/etc/RMME.foo3") # DEBUG - remove when finished
     # DEBUG - remove when finished
     except OSError as exception:    # DEBUG - remove when finished
         # pylint: disable-next=line-too-long    # DEBUG - remove when finished
-        flash("ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + "/var/www/html/etc/RMME.foo3" + \
+        flash("ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + "/var/ioccc/etc/RMME.foo3" + \
                       " exception: " + str(exception))   # DEBUG - remove when finished
 
     # case: process / POST

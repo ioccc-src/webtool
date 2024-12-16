@@ -53,7 +53,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.2.3
+VERSION= 0.2.4
 
 # Python package name
 #
@@ -118,7 +118,7 @@ INSTALL_UNDER_DOCROOT= ${ETC_SRC} ${STATIC_SRC} ${TEMPLATES_SRC} ${WSGI_SRC}
 #
 # We install ${INSTALL_UNDER_DOCROOT} files under this directory, sometimes in sub-directories.
 #
-DOCROOT= /var/www/html
+DOCROOT= /var/ioccc
 
 # executable scripts that are not part of the python module.
 #
@@ -298,14 +298,14 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@if [[ ! -s ${PW} ]]; then \
 	    echo ${CP} -v -f ${INIT_PW} ${PW}; \
 	    ${CP} -v -f ${INIT_PW} ${PW}; \
-	    echo ${CHMOD} -v 0644 ${PW}; \
-	    ${CHMOD} -v 0644 ${PW}; \
+	    echo ${CHMOD} -v 0664 ${PW}; \
+	    ${CHMOD} -v 0664 ${PW}; \
 	fi
 	@if [[ ! -s ${STATE} ]]; then \
 	    echo ${CP} -v -f ${INIT_STATE} ${STATE}; \
 	    ${CP} -v -f ${INIT_STATE} ${STATE}; \
-	    echo ${CHMOD} -v 0644 ${STATE}; \
-	    ${CHMOD} -v 0644 ${STATE}; \
+	    echo ${CHMOD} -v 0664 ${STATE}; \
+	    ${CHMOD} -v 0664 ${STATE}; \
 	fi
 	@echo 'This only installs locally into a python virtual environment.'
 	@echo
@@ -323,7 +323,7 @@ root_install: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dis
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
-	${INSTALL} -o ${USER} -g ${GROUP} -m 0644 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0664 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${STATIC_SRC} ${DOCROOT}/static
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/templates
