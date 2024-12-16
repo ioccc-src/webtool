@@ -527,9 +527,8 @@ def ioccc_file_lock(file_lock):
 
     # Lock the file
     #
-    lock_fd = FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True)
     try:
-        with lock_fd:
+        with FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True) as lock_fd:
 
             # note our new lock
             #
@@ -541,6 +540,12 @@ def ioccc_file_lock(file_lock):
         # too too long to get the lock
         #
         ioccc_last_errmsg = "Warning: in " + me + ": timeout on lock for: " + ioccc_last_lock_path
+        return None
+
+    except OSError as exp:
+        ioccc_last_errmsg = "ERROR: in " + me + \
+                            ": failed to FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True): " + \
+                            file_lock + " exception: " + str(exp)
         return None
 
     # return the lock success

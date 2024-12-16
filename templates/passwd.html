@@ -72,15 +72,15 @@
           {% if current_user.id %}
             <form method="POST" action="/passwd">
               <label for="password"><b style="font-size: 20px;">Current Password: </b></label>
-              <input type="text" id="old_password" name="old_password" placeholder="Enter current Password"
+              <input type="password" id="old_password" name="old_password" placeholder="Enter current Password"
                      style="background-color:#AEC6CF; min-width:50%; font-size: 20px; -webkit-text-security: circle">
 	      <br><br>
               <label for="password"><b style="font-size: 20px;">New Password: </b></label>
-              <input type="text" id="new_password" name="new_password" placeholder="Enter a new password"
+              <input type="password" id="new_password" name="new_password" placeholder="Enter a new password"
                      style="background-color:#AEC6CF; min-width:50%; font-size: 20px; -webkit-text-security: circle">
 	      <br><br>
               <label for="password"><b style="font-size: 20px;">Reenter New Password: </b></label>
-              <input type="text" id="reenter_new_password" name="reenter_new_password" placeholder="Reenter the new password"
+              <input type="password" id="reenter_new_password" name="reenter_new_password" placeholder="Reenter the new password"
                      style="background-color:#AEC6CF; min-width:50%; font-size: 20px; -webkit-text-security: circle">
 	      '<br><br>
               <input type="submit" value="Change Password" class="button"
