@@ -53,7 +53,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.2.4
+VERSION= 0.9.0
 
 # Python package name
 #
@@ -120,13 +120,19 @@ INSTALL_UNDER_DOCROOT= ${ETC_SRC} ${STATIC_SRC} ${TEMPLATES_SRC} ${WSGI_SRC}
 #
 DOCROOT= /var/ioccc
 
+# The tool to perform SELinux setup
+#
+SELINUX_SET= bin/selinux.set.sh
+SELINUX_UNSET= bin/selinux.unset.sh
+
 # executable scripts that are not part of the python module.
 #
 # Executable files to install under ${DESTDIR}.
 #
 # NOTE: bin/pychk.sh is only needed for testing and thus is not needed under ${DESTDIR}.
 #
-BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py
+BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
+	 ${SELINUX_SET} ${SELINUX_UNSET}
 
 # tool to generate the secret Flask key
 #
@@ -169,7 +175,7 @@ all: ${TARGETS}
 #################################################
 
 .PHONY: all configure clean clobber nuke install \
-	root_install revenv wheel venv_install reflaskkey
+	root_install root_setup revenv wheel venv_install reflaskkey
 
 ###############
 # build rules #
@@ -315,7 +321,23 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	@echo
 	${V} echo DEBUG =-= $@ end =-=
 
-root_install: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
+# as root: after root_setup, setup ${DOCROOT} for SELinux
+#
+root_install: ${SELINUX_SET} root_setup
+	${V} echo DEBUG =-= $@ start =-=
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
+	@echo
+	@echo About to setup ${DOCROOT} for SELinux
+	@echo
+	${SELINUX_SET}
+	@echo
+	@echo finished setup ${DOCROOT} for SELinux
+	@echo
+	${V} echo DEBUG =-= $@ start =-=
+
+# as root: setup directories and permissions
+#
+root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/${PKG_NAME}-${VERSION}-py3-none-any.whl
 	${V} echo DEBUG =-= $@ start =-=
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install

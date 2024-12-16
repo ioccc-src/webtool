@@ -45,7 +45,7 @@
         "username": "87654321-1234-4321-fedc-ba9876543210",
         "pwhash": "scrypt:32768:8:1$DPeMDzgPPsVviMrM$cbe9f49f43bd4483df24d6b7eb528141f69d13b711809bb1ae5062b8f84b6325bdd0c2d38a16a241682f4d368354e3b23ccd34ea8243bc1182ca03f62bddabc6",
         "admin": false,
-        "force_pw_change": false,
+        "force_pw_change": true,
         "pw_change_by": "2025-03-25 06:47:07.388274+00:00",
         "disable_login": false
     }

@@ -62,7 +62,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.6.3 2024-12-15"
+VERSION_IOCCC_COMMON = "2.0.0 2024-12-16"
 
 # force password change grace time
 #

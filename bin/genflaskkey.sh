@@ -40,7 +40,7 @@
 
 # setup
 #
-export VERSION="1.1 2024-10-07"
+export VERSION="2.0.0 2024-12-16"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0

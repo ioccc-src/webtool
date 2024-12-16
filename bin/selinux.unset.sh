@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# pychk.sh - check the pylint status of python code under bin
+# selinux.unset.sh - undo the effects of selinux.set.sh
 #
 # usage:
 #
-#   bin/pychk.sh
+#   sudo selinux.unset.sh
 #
 # Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -85,131 +85,39 @@ shopt -u extglob        # enable extended globbing patterns
 shopt -s globstar       # enable ** to match all files and zero or more directories and subdirectories
 
 
-# setup variables referenced in the usage message
+# setup variables
 #
 export VERSION="2.0.0 2024-12-16"
 NAME=$(basename "$0")
 export NAME
-export TOPDIR="."
 
 
-# usage
+# must be root
 #
-export USAGE="usage: $0 [-t appdir]
-
-	-h		    print help message and exit
-
-	-t appdir	app directory path (def: $TOPDIR)
-
-Exit codes:
-     0         all OK
-     2         -h and help string printed or -V and version string printed
-     3         command line error
-     4         bash version is too old
-     6         invalid topdir
- >= 10         internal error
-
-$NAME version: $VERSION"
-
-
-# parse command line
-#
-while getopts :ht: flag; do
-  case "$flag" in
-    h) echo "$USAGE" 1>&2
-        exit 2
-        ;;
-    t) TOPDIR="$OPTARG"
-        ;;
-    \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-    :) echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-    *) echo "$0: ERROR: unexpected value from getopts: $flag" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-  esac
-done
-
-
-# remove the options
-#
-shift $(( OPTIND - 1 ));
-#
-if [[ $# -ne 0 ]]; then
-    echo "$0: ERROR: expected 0 args, found: $#" 1>&2
-    echo 1>&2
-    echo "$USAGE" 1>&2
-    exit 3
+MY_UID=$(id -u)
+export MY_UID
+if [[ $MY_UID -ne 0 ]]; then
+    echo "$0: ERROR: must be root to run this code" 1>&2
+    exit 1
 fi
 
 
-# cd to topdir
+# undo the setup /var/ioccc for SELinux
 #
-if [[ -z $TOPDIR ]]; then
-    echo "$0: ERROR: topdir is empty: $TOPDIR" 1>&2
-    exit 6
-fi
-if [[ ! -e $TOPDIR ]]; then
-    echo "$0: ERROR: topdir does not exist: $TOPDIR" 1>&2
-    exit 6
-fi
-if [[ ! -d $TOPDIR ]]; then
-    echo "$0: ERROR: cannot cd to a non-directory: $TOPDIR" 1>&2
-    exit 6
-fi
-export CD_FAILED
-cd "$TOPDIR" || CD_FAILED="true"
-if [[ -n $CD_FAILED ]]; then
-    echo "$0: ERROR: cd $TOPDIR failed" 1>&2
-    exit 6
-fi
-
-
-# pylint iocccsubmit module files
-#
-for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py ; do
-
-    # announce
-    #
-    echo "=-=-= $TOPDIR/$i =-=-="
-
-    # pylint file
-    #
-    python3 -m pylint "$i"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
-	exit 1
-    fi
-
-done
-
-# pylint critical bin files
-#
-for i in bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
-
-    # announce
-    #
-    echo "=-=-= $TOPDIR/$i =-=-="
-
-    # pylint file
-    #
-    python3 -m pylint "$i"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
-	exit 1
-    fi
-done
+set -x
+semanage fcontext --list --locallist --noheading
+chown -Rv root:root /var/ioccc
+ls -lRZa /var/ioccc
+semanage fcontext --delete '/var/ioccc(/.*)?'
+semanage fcontext --delete '/var/ioccc/etc(/.*)?'
+semanage fcontext --delete '/var/ioccc/static(/.*)?'
+semanage fcontext --delete '/var/ioccc/templates(/.*)?'
+semanage fcontext --delete '/var/ioccc/users(/.*)?'
+semanage fcontext --delete '/var/ioccc/wsgi(/.*)?'
+restorecon -vR /var/ioccc
+ls -lRZa /var/ioccc
+semanage fcontext --list --locallist --noheading
+set +x
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2
