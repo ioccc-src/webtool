@@ -37,7 +37,7 @@ from pathlib import Path
 from random import randrange
 
 
-# For user slot locking
+# For user locking
 #
 # We use the python filelock module.  See:
 #
@@ -62,7 +62,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "1.6.1 2024-12-14"
+VERSION_IOCCC_COMMON = "1.6.3 2024-12-15"
 
 # force password change grace time
 #
@@ -100,12 +100,12 @@ if Path("./templates").is_dir():
     APPDIR = "."
 
 # case: assume are are running under the Apache server, and
-#       APPDIR is /var/www/ioccc
+#       APPDIR is /var/www/html
 #
 # Tests suggest that Apache seems to run applications from the / directory.
 #
 else:
-    APPDIR = "/var/www/ioccc"
+    APPDIR = "/var/www/html"
 
 # important directories and files that are relative to APPDIR
 #
@@ -223,7 +223,7 @@ MAX_TARBALL_LEN = 3999971
 LOCK_TIMEOUT = 13
 
 
-# global slot lock - lock file descriptor or none
+# lock state - lock file descriptor or none
 #
 # When ioccc_last_lock_fd is not none, flock is holding a lock on the file ioccc_last_lock_path.
 # When ioccc_last_lock_fd is none, no flock is currently being held.
@@ -231,12 +231,12 @@ LOCK_TIMEOUT = 13
 # When we try lock a file via ioccc_file_lock() and we are holding a lock on another file,
 # we will force the flock to be released.
 #
-# The lock file only needs to be locked during a brief slot operation,
+# The lock file only needs to be locked during a brief operation,
 # which are brief in duration.  Moreover this server is NOT multi-threaded.
 # We NEVER want to lock more than one file at a time.
 #
 # Nevertheless if, before we start, say. a slot operation AND before we attempt
-# to lock the slot, we discover that some other slot is still locked
+# to lock the slot lock file, we discover that some other file is still locked
 # (due to unexpected asynchronous event or exception, or code bug), we
 # will force that previous lock to be unlocked.
 #
@@ -489,7 +489,7 @@ def ioccc_file_lock(file_lock):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    # be sure the lock file exists for this slot
+    # be sure the lock file exists
     #
     try:
         Path(file_lock).touch(mode=0o664, exist_ok=True)
@@ -499,7 +499,7 @@ def ioccc_file_lock(file_lock):
                       " exception: " + str(exception)
         return None
 
-    # Force any stale slot lock to become unlocked
+    # Force any stale lock to become unlocked
     #
     if ioccc_last_lock_fd:
 
@@ -507,9 +507,9 @@ def ioccc_file_lock(file_lock):
         #
         if not ioccc_last_lock_path:
             ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
-        ioccc_last_errmsg = "Warning: in " + me + ": forcing stale slot unlock: " + ioccc_last_lock_path
+        ioccc_last_errmsg = "Warning: in " + me + ": forcing stale unlock: " + ioccc_last_lock_path
 
-        # Force previous stale slot lock to become unlocked
+        # Force previous stale lock to become unlocked
         #
         try:
             ioccc_last_lock_fd.release(force=True)
@@ -527,25 +527,25 @@ def ioccc_file_lock(file_lock):
 
     # Lock the file
     #
-    slot_lock_fd = FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True)
+    lock_fd = FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True)
     try:
-        with slot_lock_fd:
+        with lock_fd:
 
             # note our new lock
             #
-            ioccc_last_lock_fd = slot_lock_fd
+            ioccc_last_lock_fd = lock_fd
             ioccc_last_lock_path = file_lock
 
     except Timeout:
 
         # too too long to get the lock
         #
-        ioccc_last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + ioccc_last_lock_path
+        ioccc_last_errmsg = "Warning: in " + me + ": timeout on lock for: " + ioccc_last_lock_path
         return None
 
-    # return the slot lock success
+    # return the lock success
     #
-    return slot_lock_fd
+    return lock_fd
 
 
 def ioccc_file_unlock():
@@ -574,7 +574,7 @@ def ioccc_file_unlock():
     #
     sucess = False
     if not ioccc_last_lock_fd:
-        ioccc_last_errmsg = "Warning: in " + me + ": timeout on slot lock for: " + ioccc_last_lock_path
+        ioccc_last_errmsg = "Warning: in " + me + ": timeout on lock for: " + ioccc_last_lock_path
 
     # Unlock the file
     #
@@ -594,7 +594,7 @@ def ioccc_file_unlock():
     ioccc_last_lock_fd = None
     ioccc_last_lock_path = None
 
-    # Return the slot unlock success or failure
+    # Return the unlock success or failure
     #
     return sucess
 

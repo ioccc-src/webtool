@@ -53,7 +53,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.2.2
+VERSION= 0.2.3
 
 # Python package name
 #
@@ -118,7 +118,7 @@ INSTALL_UNDER_DOCROOT= ${ETC_SRC} ${STATIC_SRC} ${TEMPLATES_SRC} ${WSGI_SRC}
 #
 # We install ${INSTALL_UNDER_DOCROOT} files under this directory, sometimes in sub-directories.
 #
-DOCROOT= /var/www/ioccc
+DOCROOT= /var/www/html
 
 # executable scripts that are not part of the python module.
 #
@@ -143,6 +143,16 @@ FLASK_KEY= etc/.secret
 # We install ${BIN_SRC} executables under this directory.
 #
 DESTDIR= /usr/local/bin
+
+# user to root_install under
+#
+#USER= ioccc
+USER= apache
+
+# user to root_install under
+#
+#GROUP= ioccc
+GROUP= apache
 
 # what to build
 #
@@ -310,18 +320,18 @@ root_install: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dis
 	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to $@"; exit 1; fi
 	# was: python3 setup.py install
 	${PYTHON} -m pip install --force-reinstall .
-	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}
-	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/etc
-	${INSTALL} -o ioccc -g ioccc -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
-	${INSTALL} -o ioccc -g ioccc -m 0644 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
-	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/static
-	${INSTALL} -o ioccc -g ioccc -m 0444 ${STATIC_SRC} ${DOCROOT}/static
-	${INSTALL} -o ioccc -g ioccc -m 0555 -d ${DOCROOT}/templates
-	${INSTALL} -o ioccc -g ioccc -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
-	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/users
-	${INSTALL} -o ioccc -g ioccc -m 0755 -d ${DOCROOT}/wsgi
-	${INSTALL} -o ioccc -g ioccc -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
-	${INSTALL} -o ioccc -g ioccc -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${ETC_RO_SRC} ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0644 ${ETC_RW_SRC} ${PW} ${STATE} ${DOCROOT}/etc
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/static
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${STATIC_SRC} ${DOCROOT}/static
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 -d ${DOCROOT}/templates
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0444 ${TEMPLATES_SRC} ${DOCROOT}/templates
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/users
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0755 -d ${DOCROOT}/wsgi
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0555 ${WSGI_SRC} ${DOCROOT}/wsgi
+	${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
 	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
 	${V} echo DEBUG =-= $@ end =-=

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # pylint: disable=invalid-overridden-method
+# pylint: disable=too-many-statements
 #
 """
 The IOCCC submit tool
@@ -22,12 +23,18 @@ NOTE: This flask-login was loosly modeled after:
 # system imports
 #
 import sys
-# sys.path.insert(0,"/var/www/ioccc/venv/lib/python3.9/site-packages")
-# sys.path.insert(0,"/var/www/ioccc/bin")
+# sys.path.insert(0,"/var/www/html/venv/lib/python3.9/site-packages")
+# sys.path.insert(0,"/var/www/html/wsrc")
+# sys.path.insert(0,"/var/www/html")
 import inspect
 import argparse
 import os
 import re
+import datetime # DEBUG - remove when finished
+import getpass # DEBUG - remove when finished
+import threading # DEBUG - remove when finished
+import glob # DEBUG - remove when finished
+from pathlib import Path # DEBUG - remove when finished
 
 
 # 3rd party imports
@@ -68,7 +75,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "1.6.1 2024-12-14"
+VERSION = "1.6.2 2024-12-15"
 
 
 # Configure the application
@@ -149,20 +156,87 @@ def login():
     # setup
     #
     me = inspect.currentframe().f_code.co_name
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: starting: {me}')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: getpass.getuser() returns: {getpass.getuser()}')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: os.geteuid() returns: {os.geteuid() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: os.getuid() returns: {os.getuid() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: os.getpid() returns: {os.getpid() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: os.getppid() returns: {os.getppid() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: threading.get_ident() returns: {threading.get_ident() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: os.getcwd() returns: {os.getcwd() }')    # DEBUG - remove when finished
+    debug_now = datetime.datetime.now()   # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    ls_output = str(glob.glob("*"))         # DEBUG - remove when finished
+    flash(f'{debug_now}: file in current directory: {ls_output}')    # DEBUG - remove when finished
+    try:    # DEBUG - remove when finished
+        Path("/var/www/html/etc/RMME.foo3").touch(mode=0o664, exist_ok=True) # DEBUG - remove when finished
+        flash("touched /var/www/html/etc/RMME.foo3") # DEBUG - remove when finished
+    # DEBUG - remove when finished
+    except OSError as exception:    # DEBUG - remove when finished
+        # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+        flash("ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + "/var/www/html/etc/RMME.foo3" + \
+                      " exception: " + str(exception))   # DEBUG - remove when finished
 
     # case: process / POST
     #
     if request.method == 'POST':
+        debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+        # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+        flash(f'{debug_now}: request.method: POST: {me}')    # DEBUG - remove when finished
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
+        debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+        # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+        flash(f'{debug_now}: username: {username}: {me}')    # DEBUG - remove when finished
 
         # If the user is allowed to login
         #
         user = User(username)
+        if user.id:  # DEBUG - remove when finished
+            debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+            # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+            flash(f'{debug_now}: have user.id: {me}')    # DEBUG - remove when finished
+            if user_allowed_to_login(user.user_dict):  # DEBUG - remove when finished
+                debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+                # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+                flash(f'{debug_now}: allowed to login: username: {username}: {me}')    # DEBUG - remove when finished
+            else:  # DEBUG - remove when finished
+                debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+                # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+                flash(f'{debug_now}: NOT allowed to login: username: {username}: {me}')    # DEBUG - remove when finished
+                debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+                # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+                flash(f'{debug_now}: NOT allowed to login: last errormsg: <<{return_last_errmsg()}>>')
+        else:  # DEBUG - remove when finished
+            debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+            # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+            flash(f'{debug_now}: have NO user.id: {me}')    # DEBUG - remove when finished
+            debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+            # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+            flash(f'{debug_now}: have NO user.id: last errormsg: <<{return_last_errmsg()}>>')
         if user.id and user_allowed_to_login(user.user_dict):
 
             # validate password
             #
+            debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+            # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+            flash(f'{debug_now}: have user.id, allowed to login: username: {username}: {me}')    # DEBUG - remove when finished
             if verify_hashed_password(form_dict.get('password'),
                                       user.user_dict['pwhash']):
                 user.authenticated = True
@@ -209,6 +283,9 @@ def login():
 
     # case: process / GET
     #
+    debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: request.method: GET: {me}')    # DEBUG - remove when finished
     return render_template('login.html')
 
 
@@ -225,6 +302,9 @@ def submit():
     # setup
     #
     me = inspect.currentframe().f_code.co_name
+    debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: starting: {me}')    # DEBUG - remove when finished
 
     # get username
     #
@@ -374,6 +454,9 @@ def upload():
     # setup
     #
     me = inspect.currentframe().f_code.co_name
+    debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: starting: {me}')    # DEBUG - remove when finished
 
     # get username
     #
@@ -531,6 +614,9 @@ def passwd():
     # setup
     #
     me = inspect.currentframe().f_code.co_name
+    debug_now = datetime.datetime.now()  # DEBUG - remove when finished
+    # pylint: disable-next=line-too-long    # DEBUG - remove when finished
+    flash(f'{debug_now}: starting: {me}')    # DEBUG - remove when finished
 
     # get username
     #
