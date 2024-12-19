@@ -51,7 +51,6 @@ from filelock import Timeout, FileLock
 # 3rd party imports
 #
 from werkzeug.security import check_password_hash, generate_password_hash
-import pwnedpasswords
 
 
 ##################
@@ -62,7 +61,7 @@ import pwnedpasswords
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.0.0 2024-12-16"
+VERSION_IOCCC_COMMON = "2.1.0 2024-12-18"
 
 # force password change grace time
 #
@@ -189,6 +188,40 @@ DEFAULT_JSON_STATE_TEMPLATE = '''{
 MIN_PASSWORD_LENGTH = 15
 MAX_PASSWORD_LENGTH = 64
 
+# Full path of the startup current working directory
+#
+STARTUP_CWD = os.getcwd()
+
+# determine the default Pwned password tree
+#
+# If we have a pwned.pw.tree directory (or symlink to a directory) under the current
+# working directory (i.e., "." but using the full path).
+#
+if Path(f"{STARTUP_CWD}/pwned.pw.tree").is_dir():
+    PWNED_PW_TREE = f"{STARTUP_CWD}/pwned.pw.tree"
+
+# Otherwise if we have a pwned.pw.tree directory (or symlink to a directory) under APPDIR,
+# then use that as Pwned password tree.
+#
+elif Path(f"{APPDIR}/pwned.pw.tree").is_dir():
+    PWNED_PW_TREE = f"{APPDIR}/pwned.pw.tree"
+
+# Assume the system default Pwned password
+#
+# This tree was downloaded by:
+#
+#   /usr/local/bin/pwned-pw-download /usr/local/share/pwned.pw.tree
+#
+# where /usr/local/bin/pwned-pw-download was installed from:
+#
+#   https://github.com/lcn2/pwned-pw-download
+#
+else:
+    PWNED_PW_TREE = "/usr/local/share/pwned.pw.tree"
+
+# length of a SHA1 hash in ASCII hex characters
+#
+SHA1_HEXLEN = 40
 
 # slot numbers from 0 to MAX_SUBMIT_SLOT
 #
@@ -494,9 +527,9 @@ def ioccc_file_lock(file_lock):
     try:
         Path(file_lock).touch(mode=0o664, exist_ok=True)
 
-    except OSError as exception:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + file_lock + \
-                      " exception: " + str(exception)
+                      " exception: " + str(errcode)
         return None
 
     # Force any stale lock to become unlocked
@@ -514,11 +547,11 @@ def ioccc_file_lock(file_lock):
         try:
             ioccc_last_lock_fd.release(force=True)
 
-        except OSError as exception:
+        except OSError as errcode:
             # We give up as we cannot force the unlock
             #
             ioccc_last_errmsg = "Warning: in " + me + ": failed to force stale unlock: " + ioccc_last_lock_path + \
-                          " exception: " + str(exception)
+                          " exception: " + str(errcode)
 
         # clear the past lock
         #
@@ -542,10 +575,10 @@ def ioccc_file_lock(file_lock):
         ioccc_last_errmsg = "Warning: in " + me + ": timeout on lock for: " + ioccc_last_lock_path
         return None
 
-    except OSError as exp:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + \
                             ": failed to FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True): " + \
-                            file_lock + " exception: " + str(exp)
+                            file_lock + " exception: " + str(errcode)
         return None
 
     # return the lock success
@@ -588,11 +621,11 @@ def ioccc_file_unlock():
             ioccc_last_lock_fd.release(force=True)
             sucess = True
 
-        except OSError as exception:
+        except OSError as errcode:
             # We give up as we cannot force the unlock
             #
             ioccc_last_errmsg = "Warning: in " + me + ": failed to unlock: " + ioccc_last_lock_path + \
-                          " exception: " + str(exception)
+                          " exception: " + str(errcode)
 
     # Clear any previous lock
     #
@@ -633,9 +666,9 @@ def load_pwfile():
     if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
-        except OSError as exception:
+        except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
-                            " " + PW_FILE + " exception: " + str(exception)
+                            " " + PW_FILE + " exception: " + str(errcode)
             ioccc_file_unlock()
             return None
 
@@ -647,11 +680,17 @@ def load_pwfile():
 
             # close and unlock the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+                # fall thru
 
-    except OSError as exception:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
-                        " exception: " + str(exception)
+                        " errcode: " + str(errcode)
+        # fall thru
 
         # we have no JSON to return
         #
@@ -699,7 +738,12 @@ def replace_pwfile(pw_file_json):
 
             # close and unlock the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+                return False
 
     except OSError:
 
@@ -883,7 +927,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     if not isinstance(username, str):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": username arg is not a string: <<" + str(username) + ">>"
-        return None
+        return False
     if not re.match(POSIX_SAFE_RE, username):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": username is not POSIX safe: <<" + username + ">>"
@@ -894,52 +938,52 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     if not isinstance(pwhash, str):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pwhash arg is not a string for username : <<" + username + ">>"
-        return None
+        return False
 
     # paranoia - admin must be a boolean
     #
     if not isinstance(admin, bool):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": admin arg is not a boolean for username : <<" + username + ">>"
-        return None
+        return False
 
     # paranoia - force_pw_change must be a boolean
     #
     if not isinstance(force_pw_change, bool):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": force_pw_change arg is not a boolean for username : <<" + username + ">>"
-        return None
+        return False
 
     # paranoia - pw_change_by must None or must be be string
     #
     if not isinstance(pw_change_by, str) and pw_change_by is not None:
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pw_change_by arg is not a string nor None for username : <<" + username + ">>"
-        return None
+        return False
 
     # paranoia - disable_login must be a boolean
     #
     if not isinstance(disable_login, bool):
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": disable_login arg is not a boolean for username : <<" + username + ">>"
-        return None
+        return False
 
     # Lock the password file
     #
     pw_lock_fd = ioccc_file_lock(PW_LOCK)
     if not pw_lock_fd:
-        return None
+        return False
 
     # If there is no password file, or if the password file is empty, copy it from the initial password file
     #
     if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
-        except OSError as exception:
+        except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
-                            " " + PW_FILE + " exception: " + str(exception)
+                            " " + PW_FILE + " exception: " + str(errcode)
             ioccc_file_unlock()
-            return None
+            return False
 
     # load the password file and unlock
     #
@@ -949,16 +993,21 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
             # close the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+                return False
 
-    except OSError as exception:
+    except OSError as errcode:
 
         # unlock the password file
         #
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
-                        " exception: " + str(exception)
+                        " exception: " + str(errcode)
         ioccc_file_unlock()
-        return None
+        return False
 
     # scan through the password file, looking for the user
     #
@@ -1000,16 +1049,21 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
             # close and unlock the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+                return False
 
-    except OSError as exception:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
-                        " exception: " + str(exception)
+                        " exception: " + str(errcode)
 
         # unlock the password file
         #
         ioccc_file_unlock()
-        return None
+        return False
 
     # password updated with new username information
     #
@@ -1065,9 +1119,9 @@ def delete_username(username):
     if not os.path.isfile(PW_FILE) or os.path.getsize(PW_FILE) <= 0:
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
-        except OSError as exception:
+        except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
-                            " " + PW_FILE + " exception: " + str(exception)
+                            " " + PW_FILE + " exception: " + str(errcode)
             ioccc_file_unlock()
             return None
 
@@ -1079,14 +1133,19 @@ def delete_username(username):
 
             # close the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+            return None
 
-    except OSError as exception:
+    except OSError as errcode:
 
         # unlock the password file
         #
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
-                        " exception: " + str(exception)
+                        " exception: " + str(errcode)
         ioccc_file_unlock()
         return None
 
@@ -1115,14 +1174,19 @@ def delete_username(username):
 
             # close and unlock the password file
             #
-            j_pw.close()
+            try:
+                j_pw.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
+                                    " exception: " + str(errcode)
+            return None
 
-    except OSError as exception:
+    except OSError as errcode:
 
         # unlock the password file
         #
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
-                        " exception: " + str(exception)
+                        " exception: " + str(errcode)
         ioccc_file_unlock()
         return None
 
@@ -1146,6 +1210,9 @@ def generate_password():
     #
     # pylint: disable-next=global-statement
     global ioccc_pw_words
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
     blacklist = set('`"\\')
     punct = ''.join( c for c in string.punctuation if c not in blacklist )
 
@@ -1154,7 +1221,12 @@ def generate_password():
     if not ioccc_pw_words:
         with open(PW_WORDS, "r", encoding="utf-8") as f:
             ioccc_pw_words = [word.strip() for word in f]
-        f.close()
+        try:
+            f.close()
+        except OSError as errcode:
+            ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_WORDS + \
+                                " exception: " + str(errcode)
+            # fall thru
 
     # generate a 2-word password with random separators and an f9.4 number
     #
@@ -1290,6 +1362,136 @@ def verify_user_password(username, password):
     return verify_hashed_password(password, user_dict['pwhash'])
 
 
+# pylint: disable=too-many-return-statements
+#
+def is_pw_pwned(password):
+    """
+    Determine if a password has bee pwned by doing a lookup
+    in the Pwned password tree.
+
+    Given:
+        password    plaintext password
+
+    Returns:
+        True ==> password found in the Pwned password tree with a pwned count > 0, or
+                  failed to SHA-1 hash the password in UPPER CASE hex characters,
+                  failed to open or read the required Pwned password tree file,
+                  non-string arg was found
+        False ==> password not found in the Pwned password tree, or
+                  pwned count <= 0
+
+    Regarding the Pwned password tree:
+
+    The pwned password tree has 4 levels.  Files are of the form:
+
+        i/j/k/ikjxy
+
+    where i, j, k, x, y are UPPER CASE hex digits:
+
+        0 1 2 3 4 5 6 7 8 9 A B C D E F
+
+    Each file is of the form:
+
+    35-UPPER-CASE-HEX-digits, followed by a colon (":"), followed by an integer > 0
+
+    For eample, all pwned passwords with a SHA-1 that begin with `12345` will be found in:
+
+        1/2/3/12345
+
+    NOTE: The first 1 SHA-1 HEX characters are duplicated in the 3 directory levels.
+
+    Example: a line from 1/2/3/12345
+
+    The 1/2/3/12345 file contains the following line:
+
+        00772720168B19640759677862AD5350374:4
+
+    The SHA-1 hash of the pwned password is the 1st 5 HEX digits from the file,
+    plus the 35 hex digits of the line before the colon (":").  Thus the
+    SHA-1 hash of the pwned password is:
+
+        1234500772720168B19640759677862AD5350374
+
+    The "4" after the colon (":") means that the given password has been pwned at
+    least 4 times and should NOT be used.
+
+    Consider the password:
+
+        password
+
+    The SHA-1 hash of "password" is:
+
+        5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8
+
+    Using the first 5 hex digits, open the file:
+
+        5/B/A/5BAA6
+
+    Using Unix tools, we can look for the remaining 35 hex digits followed by a ":"
+
+        grep -F 1E4C9B93F3F0682250B6CF8331B7EE68FD8: 5/B/A/5BAA6
+
+    This will produce the line:
+
+        1E4C9B93F3F0682250B6CF8331B7EE68FD8:10437277
+
+    This indicates that the password "`password`", has been pwned at least 10437277 times!
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    # firewall - password must be a string
+    #
+    if not isinstance(password, str):
+        ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        return True
+
+    # compute the SHA-1 of the password in UPPER CASE hex
+    #
+    m = hashlib.sha1()
+    if not m:
+        ioccc_last_errmsg = "ERROR: in " + me + ": unable to form a context for SHA-1 hashing"
+        return True
+    m.update(bytes(password, 'utf-8'))
+    sha1_hex = m.hexdigest().upper()
+    if not sha1_hex or len(sha1_hex) != SHA1_HEXLEN:
+        ioccc_last_errmsg = "ERROR: in " + me + ": SHA-1 hash return was invalid"
+        return True
+
+    # determine the Pwned password tree file we need to read
+    #
+    pwned_file = PWNED_PW_TREE + "/" + sha1_hex[0] + "/" + sha1_hex[1] + "/" + sha1_hex[2] + "/" + sha1_hex[0:5]
+    #
+    try:
+        with open(pwned_file, 'r', encoding="utf8") as input_file:
+
+            # read the lines in the Pwned password tree file
+            #
+            lines = input_file.readlines()
+
+            # scan the Pwned password tree file for the hash
+            #
+            scan_for = sha1_hex[5:] + ":"
+            for line in lines:
+                if line.startswith(scan_for):
+                    return True
+
+    except OSError as errcode:
+        ioccc_last_errmsg = "ERROR: in " + me + ": failed using: " + pwned_file + \
+                            " exception: " + str(errcode)
+        return True
+
+    # As presume that the password is not Pwned
+    #
+    return False
+#
+# pylint: enable=too-many-return-statements
+
+
 def is_proper_password(password):
     """
     Determine if a password is proper.  That is, if the password
@@ -1337,7 +1539,7 @@ def is_proper_password(password):
 
     # password must not have been Pwned
     #
-    if pwnedpasswords.check(password) > 0:
+    if is_pw_pwned(password):
         ioccc_last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
         return False
 
@@ -1668,10 +1870,12 @@ def write_slot_json(slots_json_file, slot_json):
         True    slot JSON file updated
         False   failed to update slot JSON file
     """
-    # declare global use
+
+    # setup
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
 
     # write JSON file for slot
     #
@@ -1679,10 +1883,18 @@ def write_slot_json(slots_json_file, slot_json):
         with open(slots_json_file, mode="w", encoding="utf-8") as slot_file_fp:
             slot_file_fp.write(json.dumps(slot_json, ensure_ascii=True, indent=4))
             slot_file_fp.write('\n')
-            slot_file_fp.close()
+
+            try:
+                slot_file_fp.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slots_json_file + \
+                                    " exception: " + str(errcode)
+            return False
+
     except OSError:
         ioccc_last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
         return False
+
     return True
 
 
@@ -1730,9 +1942,9 @@ def initialize_user_tree(username):
     #
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
-    except OSError as exception:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot form user directory for user: <<" + \
-                        username + ">> exception: " + str(exception)
+                        username + ">> exception: " + str(errcode)
         return None
 
     # process each slot for this user
@@ -1751,9 +1963,9 @@ def initialize_user_tree(username):
         #
         try:
             makedirs(slot_dir, mode=0o2770, exist_ok=True)
-        except OSError as exception:
+        except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
-                            slot_dir + " exception: " + str(exception)
+                            slot_dir + " exception: " + str(errcode)
             return None
 
         # Lock the slot
@@ -1775,16 +1987,25 @@ def initialize_user_tree(username):
         try:
             with open(slot_json_file, "r", encoding="utf-8") as slot_file_fp:
                 slots[slot_num] = json.load(slot_file_fp)
-                slot_file_fp.close()
+
+                try:
+                    slot_file_fp.close()
+                except OSError as errcode:
+                    ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_json_file + \
+                                        " exception: " + str(errcode)
+                    return None
+
                 if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
                     ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment #0 username : <<" + \
                                     username + ">> for slot: " + slot_num_str
                     unlock_slot()
                     return None
+
                 if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
                     ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version #0"
                     unlock_slot()
                     return None
+
         except OSError:
             t = Template(EMPTY_JSON_SLOT_TEMPLATE)
             slots[slot_num] = json.loads(t.substitute( { 'NO_COMMENT_VALUE': NO_COMMENT_VALUE, \
@@ -1803,10 +2024,17 @@ def initialize_user_tree(username):
                 with open(slot_json_file, mode="w", encoding="utf-8") as slot_file_fp:
                     slot_file_fp.write(json.dumps(slots[slot_num], ensure_ascii=True, indent=4))
                     slot_file_fp.write('\n')
-                    slot_file_fp.close()
-            except OSError as exception:
+
+                    try:
+                        slot_file_fp.close()
+                    except OSError as errcode:
+                        ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_json_file + \
+                                            " exception: " + str(errcode)
+                        return None
+
+            except OSError as errcode:
                 ioccc_last_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
-                                slot_json_file + " exception: " + str(exception)
+                                slot_json_file + " exception: " + str(errcode)
                 unlock_slot()
                 return None
 
@@ -1921,6 +2149,7 @@ def get_all_json_slots(username):
 
 
 # pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
 #
 def update_slot(username, slot_num, slot_file):
     """
@@ -1954,7 +2183,13 @@ def update_slot(username, slot_num, slot_file):
     try:
         with open(slot_file, "rb") as file_fp:
             result = hashlib.sha256(file_fp.read())
-            file_fp.close()
+            try:
+                file_fp.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_file + \
+                                    " exception: " + str(errcode)
+            return False
+
     except OSError:
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
                         slot_num_str + " file: " + slot_file
@@ -1964,18 +2199,18 @@ def update_slot(username, slot_num, slot_file):
     #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
-        return None
+        return False
 
     # read the JSON file for the user's slot
     #
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
         unlock_slot()
-        return None
+        return False
     slot = read_json_file(slot_json_file)
     if not slot:
         unlock_slot()
-        return None
+        return False
 
     # If the slot previously saved file that has a different name than the new file,
     # then remove the old file
@@ -2022,6 +2257,7 @@ def update_slot(username, slot_num, slot_file):
     return True
 #
 # pylint: enable=too-many-return-statements
+# pylint: enable=too-many-locals
 
 
 # pylint: disable=too-many-return-statements
@@ -2108,9 +2344,9 @@ def read_json_file(json_file):
             # return slot information as a python dictionary
             #
             return json.load(j_fp)
-    except OSError as exception:
+    except OSError as errcode:
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
-                        json_file + " exception: " + str(exception)
+                        json_file + " exception: " + str(errcode)
         return []
 
 
@@ -2152,9 +2388,9 @@ def read_state():
         try:
             shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
 
-        except OSError as exception:
+        except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
-                            " " + STATE_FILE + " exception: " + str(exception)
+                                " " + STATE_FILE + " exception: " + str(errcode)
             ioccc_file_unlock()
             return None
 
@@ -2282,7 +2518,14 @@ def update_state(open_date, close_date):
                                    ensure_ascii = True,
                                    indent = 4))
             sf_fp.write('\n')
-            sf_fp.close()
+
+            try:
+                sf_fp.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + STATE_FILE + \
+                                    " exception: " + str(errcode)
+                write_sucessful = False
+                # fall thru
 
     except OSError:
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot write state file: " + STATE_FILE
@@ -2340,12 +2583,23 @@ def return_secret():
         secret randomly generated string or about 64 bytes in length.
     """
 
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
     # Try read the 1st line of the SECRET_FILE, ignoring the newline:
     #
     try:
         with open(SECRET_FILE, 'r', encoding="utf-8") as secret:
             secret_key = secret.read().rstrip()
-            secret.close()
+            try:
+                secret.close()
+            except OSError as errcode:
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + SECRET_FILE + \
+                                    " exception: " + str(errcode)
+                # fall thru
 
     except OSError:
         # FALLBACK: generate on a secret the fly for testing

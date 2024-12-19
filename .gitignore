@@ -11,6 +11,7 @@ etc/state.json
 .gitconfig
 iocccsubmit.egg-info/
 ioccc_submit_tool.egg-info/
+pwned.pw.tree
 __pycache__
 setup.cfg
 .*.sw[a-zA-Z]

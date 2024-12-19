@@ -47,11 +47,14 @@ from .ioccc_common import \
     PW_FILE_RELATIVE_PATH, \
     PW_LOCK, \
     PW_LOCK_RELATIVE_PATH, \
+    PWNED_PW_TREE, \
     PW_WORDS, \
     PW_WORDS_RELATIVE_PATH, \
     SECRET_FILE, \
     SECRET_FILE_RELATIVE_PATH, \
+    SHA1_HEXLEN, \
     SLOT_VERSION_VALUE, \
+    STARTUP_CWD, \
     STATE_FILE, \
     STATE_FILE_LOCK, \
     STATE_FILE_LOCK_RELATIVE_PATH, \
@@ -72,6 +75,7 @@ from .ioccc_common import \
     ioccc_file_lock, \
     ioccc_file_unlock, \
     is_proper_password, \
+    is_pw_pwned, \
     load_pwfile, \
     lock_slot, \
     lookup_username, \
