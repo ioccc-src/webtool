@@ -142,6 +142,8 @@ def user_loader(user_id):
     return None
 
 
+# pylint: disable=too-many-return-statements
+#
 @application.route('/', methods = ['GET', 'POST'])
 def login():
     """
@@ -158,60 +160,76 @@ def login():
         form_dict = request.form.to_dict()
         username = form_dict.get('username')
 
-        # If the user is allowed to login
+        # case: If the user is valid known user
         #
         user = User(username)
-        if user.id and user_allowed_to_login(user.user_dict):
+        if not user.id:
+            flash("ERROR: invalid username and/or password")
+            return render_template('login.html')
 
-            # validate password
+        # validate password
+        #
+        if verify_hashed_password(form_dict.get('password'),
+                                  user.user_dict['pwhash']):
+
+            # case: If the user is not allowed to login
             #
-            if verify_hashed_password(form_dict.get('password'),
-                                      user.user_dict['pwhash']):
-                user.authenticated = True
-                flask_login.login_user(user)
-            else:
-                flash("invalid password")
+            if not user_allowed_to_login(user.user_dict):
+                flash("ERROR: Sorry (tm Canada 🇨🇦) you cannot login at this time")
                 return render_template('login.html')
 
-            # get the JSON slots for the user and verify we have slots
+            # case: username and password are good, complete the login
             #
-            slots = initialize_user_tree(username)
-            if not slots:
-                flash("ERROR: in: " + me + ": initialize_user_tree() failed: <<" + \
-                      return_last_errmsg() + ">>")
-                flask_login.logout_user()
-                return redirect(url_for('login'))
+            user.authenticated = True
+            flask_login.login_user(user)
 
-            # case: user is required to change password
+        # case: invalid password
+        #
+        else:
+            flash("ERROR: invalid username and/or password")
+            return render_template('login.html')
+
+        # get the JSON slots for the user and verify we have slots
+        #
+        slots = initialize_user_tree(username)
+        if not slots:
+            flash("ERROR: in: " + me + ": initialize_user_tree() failed: <<" + \
+                  return_last_errmsg() + ">>")
+            flask_login.logout_user()
+            return render_template('login.html')
+
+        # case: user is required to change password
+        #
+        if must_change_password(user.user_dict):
+            flash("Notice: You are required to change your password")
+            return redirect(url_for('passwd'))
+
+        # render based on if the contest is open or not
+        #
+        close_datetime = contest_is_open()
+        if close_datetime:
+
+            # case: contest open - both login and user setup are successful
             #
-            if must_change_password(user.user_dict):
-                flash("User is required to change their password")
-                return redirect(url_for('passwd'))
-
-            # render based on if the contest is open or not
-            #
-            close_datetime = contest_is_open()
-            if close_datetime:
-
-                # case: contest open - both login and user setup are successful
-                #
-                return render_template('submit.html',
-                                       flask_login = flask_login,
-                                       username = username,
-                                       etable = slots,
-                                       date=str(close_datetime).replace('+00:00', ''))
-
-            # case: contest is not open - both login and user setup are successful
-            #
-            flash("The IOCCC is not open")
-            return render_template('not-open.html',
+            return render_template('submit.html',
                                    flask_login = flask_login,
                                    username = username,
-                                   etable = slots)
+                                   etable = slots,
+                                   date=str(close_datetime).replace('+00:00', ''))
+
+        # case: contest is not open - both login and user setup are successful
+        #
+        flash("The IOCCC is not open")
+        return render_template('not-open.html',
+                               flask_login = flask_login,
+                               username = username,
+                               etable = slots)
 
     # case: process / GET
     #
     return render_template('login.html')
+#
+# pylint: enable=too-many-return-statements
 
 
 # pylint: disable=too-many-branches

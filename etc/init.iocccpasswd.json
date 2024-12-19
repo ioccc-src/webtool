@@ -3,7 +3,7 @@
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
         "iocccpasswd_format_version": "1.1 2024-10-18",
         "username": "eliot",
-        "pwhash": "scrypt:32768:8:1$fUzmBruGALYSg9jO$85fc2473f35d77f48081bd8fd91609db269f91ba388154a5e0ee5d54436183c7d3ddf3b6ed9a39eeed5215a83ad30a2044abc3c10028c95e42b390c4644b932c",
+        "pwhash": "scrypt:32768:8:1$6AQroKJMya2Djehu$c6485d88f4be05886445e13e3e2f794fe4178133c7a19371d8ad8c44768518638019771858603a914defc13616b13acedc73ba916da74ce851425b723b554c18",
         "admin": true,
         "force_pw_change": false,
         "pw_change_by": null,
