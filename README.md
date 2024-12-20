@@ -160,7 +160,7 @@ The usage message of the `./bin/ioccc_passwd.py` is as follows:
 
 ```
 usage: ioccc_passwd.py [-h] [-t appdir] [-a USER] [-u USER] [-d USER] [-p PW]
-                       [-c] [-g SECS] [-n] [-A] [-U]
+                       [-c] [-C] [-g SECS] [-n] [-A] [-U]
 
 Manage IOCCC submit server password file and state file
 
@@ -172,12 +172,13 @@ options:
   -d, --delete USER    delete an exist user
   -p, --password PW    specify the password (def: generate random password)
   -c, --change         force a password change at next login
+  -C, --nochange       clear the requirement to change password
   -g, --grace SECS     grace seconds to change the password (def: 259200)
   -n, --nologin        disable login (def: login not explicitly disabled)
   -A, --admin          user is an admin (def: not an admin)
   -U, --UUID           generate a new UUID username and password
 
-ioccc_passwd.py version: 1.6 2024-12-04
+ioccc_passwd.py version: 2.1.0 2024-12-20
 ```
 
 
@@ -249,7 +250,7 @@ options:
   -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
                         HH:MM:SS.micros+hh:mm format
 
-ioccc_date.py version: 1.1 2024-12-04
+ioccc_date.py version: 2.0.0 2024-12-16
 ```
 
 **NOTE**: When neither `-s DateTime` nor `-S DateTime` is given, then the current
@@ -295,7 +296,7 @@ options:
   -h, --help           show this help message and exit
   -t, --topdir appdir  app directory path
 
-set_slot_status.py version: 1.1 2024-12-04
+set_slot_status.py version: 2.0.0 2024-12-16
 ```
 
 

@@ -36,7 +36,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.0 2024-12-16"
+VERSION = "2.1.0 2024-12-20"
 
 
 # pylint: disable=too-many-locals
@@ -87,6 +87,9 @@ def main():
     parser.add_argument('-c', '--change',
                         help='force a password change at next login',
                         action='store_true')
+    parser.add_argument('-C', '--nochange',
+                        help='clear the requirement to change password',
+                        action='store_true')
     parser.add_argument('-g', '--grace',
                         help='grace seconds to change the password ' + \
                              f'(def: {DEFAULT_GRACE_PERIOD})',
@@ -116,6 +119,19 @@ def main():
     if args.grace:
         pw_change_by = str(now + timedelta(seconds=args.grace[0]))
 
+    # -c and -C conflict
+    #
+    if args.change and args.nochange:
+        print("ERROR: -C conflicts with -c")
+        sys.exit(4)
+
+    # -C and -g secs conflict
+    #
+    if args.grace and args.nochange:
+        print("ERROR: -c conflicts with -C")
+        print("ERROR: -C conflicts with -g secs")
+        sys.exit(5)
+
     # -c - force user to change their password at the next login
     #
     if args.change:
@@ -128,6 +144,15 @@ def main():
         #
         if not args.grace:
             pw_change_by = str(now + timedelta(seconds=DEFAULT_GRACE_PERIOD))
+
+    # -C - disable password change at next login
+    #
+    if args.nochange:
+
+        # require the password to change at first login
+        #
+        force_pw_change = False
+        pw_change_by = None
 
     # -p password - use password supplied in the command line
     #
@@ -213,12 +238,14 @@ def main():
             # case: -c was not given, keep the existing force_pw_change
             #
             if not args.change:
-                force_pw_change = user_dict['force_pw_change']
+                if not args.nochange:
+                    force_pw_change = user_dict['force_pw_change']
 
             # case: -c nor -g was not given, keep the existing pw_change_by
             #
             if not pw_change_by:
-                pw_change_by = user_dict['pw_change_by']
+                if not args.nochange:
+                    pw_change_by = user_dict['pw_change_by']
 
             # case: -n was not given, keep the existing disable_login
             #
