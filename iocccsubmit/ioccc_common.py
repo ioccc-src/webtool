@@ -1193,7 +1193,7 @@ def delete_username(username):
             except OSError as errcode:
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
                                     " exception: " + str(errcode)
-            return None
+                return None
 
     except OSError as errcode:
 
@@ -1901,12 +1901,17 @@ def write_slot_json(slots_json_file, slot_json):
             try:
                 slot_file_fp.close()
             except OSError as errcode:
+                error(f'{me}: slots_json_file: {slots_json_file}: '
+                      f'close: failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slots_json_file + \
                                     " exception: " + str(errcode)
-            return False
+                return False
 
-    except OSError:
-        ioccc_last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file
+    except OSError as errcode:
+        error(f'{me}: slots_json_file: {slots_json_file}: '
+              f'open: failed: <<{str(errcode)}>>')
+        ioccc_last_errmsg = "ERROR: failed to write out slot file: " + slots_json_file + \
+                            " exception: " + str(errcode)
         return False
 
     return True
@@ -2161,6 +2166,7 @@ def get_all_json_slots(username):
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 #
 def update_slot(username, slot_num, slot_file):
     """
@@ -2197,29 +2203,39 @@ def update_slot(username, slot_num, slot_file):
             try:
                 file_fp.close()
             except OSError as errcode:
+                error(f'{me}: username: {username}: slot_num: {slot_num} '
+                      f'close {slot_file} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_file + \
                                     " exception: " + str(errcode)
-            return False
+                return False
 
-    except OSError:
+    except OSError as errcode:
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'open {slot_file} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
-                        slot_num_str + " file: " + slot_file
+                        slot_num_str + " file: " + slot_file + " exception: " + str(errcode)
         return False
 
     # lock the slot because we are about to change it
     #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'lock_slot failed')
         return False
 
     # read the JSON file for the user's slot
     #
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'return_slot_json_filename failed')
         unlock_slot()
         return False
     slot = read_json_file(slot_json_file)
     if not slot:
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'read_json_file failed')
         unlock_slot()
         return False
 
@@ -2232,6 +2248,8 @@ def update_slot(username, slot_num, slot_file):
         #
         slot_dir = return_slot_dir_path(username, slot_num)
         if not slot_dir:
+            error(f'{me}: username: {username}: slot_num: {slot_num} '
+                  f'return_slot_dir_path failed')
             unlock_slot()
             return False
 
@@ -2243,7 +2261,7 @@ def update_slot(username, slot_num, slot_file):
                 os.remove(old_file)
             except OSError as errcode:
                 error(f'{me}: username: {username}: slot_num: {slot_num}'
-                      f'os.remove({old_file}  failed: <<{str(errcode)}>>')
+                      f'os.remove({old_file} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to remove old file: " + \
                                     old_file + " from slot: " + slot_num_str + " file: " + \
                                     slot['filename'] + " exception: " + str(errcode)
@@ -2263,9 +2281,13 @@ def update_slot(username, slot_num, slot_file):
     #
     slots_json_file = return_slot_json_filename(username, slot_num)
     if not slots_json_file:
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'return_slot_json_filename failed')
         unlock_slot()
         return False
     if not write_slot_json(slots_json_file, slot):
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'write_slot_json failed')
         unlock_slot()
         return False
 
@@ -2276,6 +2298,7 @@ def update_slot(username, slot_num, slot_file):
 #
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-locals
+# pylint: enable=too-many-statements
 
 
 # pylint: disable=too-many-return-statements
@@ -2332,11 +2355,13 @@ def update_slot_status(username, slot_num, status):
     #
     slots_json_file = return_slot_json_filename(username, slot_num)
     if not slots_json_file:
-        debug(f'{me}: return_slot_json_filename failed')
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'return_slot_json_filename failed')
         unlock_slot()
         return False
     if not write_slot_json(slots_json_file, slot):
-        debug(f'{me}: write_slot_json failed')
+        error(f'{me}: username: {username}: slot_num: {slot_num} '
+              f'write_slot_json failed')
         unlock_slot()
         return False
 
