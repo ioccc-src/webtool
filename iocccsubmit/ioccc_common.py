@@ -294,7 +294,7 @@ ioccc_pw_words = []
 # NOTE: Until setup_logger(Bool) is called, ioccc_logger is None,
 #       and no logging will occur.
 #
-# pylint: disable-next=global-statement,invalid-name
+# pylint: disable-next=invalid-name
 ioccc_logger = None
 
 
@@ -2757,6 +2757,13 @@ def setup_logger(logtype, dbglvl) -> None:
         ioccc_logger = None
         return
 
+    # paranoia
+    #
+    if not ioccc_logger:
+        print(f'ERROR via print: logtype: {logtype}: ioccc_logger was set to None')
+        ioccc_logger = None
+        return
+
     # case: logtype is "stdout"
     #
     # log to stdout
@@ -2952,6 +2959,10 @@ def warning(msg, *args, **kwargs):
 
         except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.warning failed, exception: " + str(errcode)
+
+    # TO DO: remove this else and DEBUG
+    else:
+        print(f'DEBUG via print: in {me}: ioccc_logger is None')
 
 
 def warn(msg, *args, **kwargs):
