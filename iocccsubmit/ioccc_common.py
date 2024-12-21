@@ -2287,26 +2287,35 @@ def update_slot_status(username, slot_num, status):
         False       some error was detected
     """
 
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+
     # must be a valid user
     #
+    debug(f'{me}: start')
     if not lookup_username(username):
+        debug(f'{me}: lookup_username failed')
         return False
     slot_json_file = return_slot_json_filename(username, slot_num)
     if not slot_json_file:
+        debug(f'{me}: return_slot_json_filename failed')
         return False
 
     # lock the slot because we are about to change it
     #
     slot_lock_fd = lock_slot(username, slot_num)
     if not slot_lock_fd:
-        return None
+        debug(f'{me}: lock_slot failed')
+        return False
 
     # read the JSON file for the user's slot
     #
     slot = read_json_file(slot_json_file)
     if not slot:
+        debug(f'{me}: read_json_file failed')
         unlock_slot()
-        return None
+        return False
 
     # update the status
     #
@@ -2316,9 +2325,11 @@ def update_slot_status(username, slot_num, status):
     #
     slots_json_file = return_slot_json_filename(username, slot_num)
     if not slots_json_file:
+        debug(f'{me}: return_slot_json_filename failed')
         unlock_slot()
         return False
     if not write_slot_json(slots_json_file, slot):
+        debug(f'{me}: write_slot_json failed')
         unlock_slot()
         return False
 
