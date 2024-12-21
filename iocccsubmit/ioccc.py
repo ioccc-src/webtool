@@ -797,3 +797,6 @@ if __name__ == '__main__':
     # launch the application if run from the command line
     #
     application.run(host=args.ip, port=args.port, debug=True)
+
+else:
+    setup_logger("syslog", "info")

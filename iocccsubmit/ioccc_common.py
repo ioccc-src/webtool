@@ -2670,6 +2670,7 @@ def return_secret():
 
 
 # pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
 #
 def setup_logger(logtype, dbglvl) -> None:
     """
@@ -2712,7 +2713,8 @@ def setup_logger(logtype, dbglvl) -> None:
 
         # do not change the log state
         #
-        #print("DEBUG: unknown logtype: ioccc_logger unchanged")
+        # TO DO: remove this DEBUG
+        print("DEBUG: unknown logtype: ioccc_logger unchanged")
         return
 
     # case: logtype is "none"
@@ -2722,7 +2724,8 @@ def setup_logger(logtype, dbglvl) -> None:
         # do not log
         #
         ioccc_logger = None
-        #print(f'DEBUG: none code: logtype: {logtype}: set ioccc_logger to None')
+        # TO DO: remove this DEBUG
+        print(f'DEBUG: none code: logtype: {logtype}: set ioccc_logger to None')
         return
 
     # set the debug level based on dbglvl
@@ -2744,18 +2747,20 @@ def setup_logger(logtype, dbglvl) -> None:
         # pylint: disable-next=consider-using-in
         elif dbglvl.lower() == "crit" or dbglvl.lower() == "critical":
             logging_level = logging.CRITICAL
+    # TO DO: remove this DEBUG
+    print(f'DEBUG: logging_level: {logging_level}')
 
     # create the logger, which will change the state
     #
     # As this point we know that that logtype of an allowed string.
     #
-    ioccc_logger = logging.getLogger('ioccc')
+    my_logger = logging.getLogger('ioccc')
 
     # paranoia
     #
-    if not ioccc_logger:
-        print(f'ERROR via print: logtype: {logtype}: ioccc_logger set to None after logging.getLogger call')
-        ioccc_logger = None
+    if not my_logger:
+        print(f'ERROR via print: logtype: {logtype}: my_logger set to None after logging.getLogger call')
+        my_logger = None
         return
 
     # case: logtype is "stdout"
@@ -2764,7 +2769,7 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     if logtype.lower() == "stdout":
 
-        # set logging file format
+        # set logging format
         #
         formatter = logging.Formatter(
                 '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
@@ -2783,11 +2788,10 @@ def setup_logger(logtype, dbglvl) -> None:
         #
         # To avoid duplicate messages, we do not call:
         #
-        #   ioccc_logger.addHandler(stdout_handler)
+        #   my_logger.addHandler(stdout_handler)
         #
         logging.basicConfig(level=logging_level, handlers=[stdout_handler])
-        #print(f'DEBUG: stdout code: logtype: {logtype} setup: ioccc_logger for stdout')
-        return
+        #print(f'DEBUG: stdout code: logtype: {logtype} setup: my_logger for stdout')
 
     # case: logtype is "stderr"
     #
@@ -2795,7 +2799,7 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     if logtype.lower() == "stderr":
 
-        # set logging file format
+        # set logging format
         #
         formatter = logging.Formatter(
                 '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
@@ -2814,59 +2818,67 @@ def setup_logger(logtype, dbglvl) -> None:
         #
         # To avoid duplicate messages, we do not call:
         #
-        #   ioccc_logger.addHandler(stderr_handler)
+        #   my_logger.addHandler(stderr_handler)
         #
         logging.basicConfig(level=logging_level, handlers=[stderr_handler])
-        #print(f'DEBUG: stderr code: logtype: {logtype} setup: ioccc_logger for stderr')
-        return
+        #print(f'DEBUG: stderr code: logtype: {logtype} setup: my_logger for stderr')
 
-    # fallthru case: logtype is "syslog"
+    # case: logtype is "syslog"
     #
     # log via syslog local5 facility
     #
-    # TO DO: remove this DEBUG
-    print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
-    formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
+    if logtype.lower() == "syslog":
 
-    # determine the logging address
-    #
-    if Path("/var/run/syslog"):
-        # macOS
-        log_address = "/var/run/syslog"
-    elif Path("/run/systemd/journal/dev-log"):
-        # Linux and related friends
-        log_address = "/run/systemd/journal/dev-log"
-    elif Path("/dev/log"):
-        # Linux and related friends symlink
-        log_address = "/dev/log"
-    else:
-        # FreeBSD and NetBSD - must be last
-        log_address = "/var/run/log"
+        # set logging format
+        #
+        # TO DO: remove this DEBUG
+        print(f'DEBUG via print: starting syslog setup for my_logger for: logtype: {logtype}')
+        formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
 
-    # setup the syslog handler
-    #
-    syslog_handler = SysLogHandler(address = log_address,
-                                   facility = SysLogHandler.LOG_LOCAL5)
-    syslog_handler.setLevel(logging_level)
-    syslog_handler.setFormatter(formatter)
+        # determine the logging address
+        #
+        if Path("/var/run/syslog").exists():
+            # macOS
+            log_address = "/var/run/syslog"
+        elif Path("/run/systemd/journal/dev-log").exists():
+            # Linux and related friends
+            log_address = "/run/systemd/journal/dev-log"
+        elif Path("/dev/log").exists():
+            # Linux and related friends symlink
+            log_address = "/dev/log"
+        else:
+            # FreeBSD and NetBSD - must be last
+            log_address = "/var/run/log"
 
-    # add the file logging handler to the logger
-    #
-    # To avoid duplicate messages, we do not call:
-    #
-    #   ioccc_logger.addHandler(syslog_handler)
-    #
-    logging.basicConfig(level=logging_level, handlers=[syslog_handler])
-    # TO DO: remove this DEBUG
-    print(f'DEBUG via print: syslog code: logtype: {logtype} '
-          f'log_address: {log_address} setup: ioccc_logger for syslog')
+        # setup the syslog handler
+        #
+        syslog_handler = SysLogHandler(address = log_address,
+                                       facility = SysLogHandler.LOG_LOCAL5)
+        syslog_handler.setLevel(logging_level)
+        syslog_handler.setFormatter(formatter)
+
+        # add the file logging handler to the logger
+        #
+        # To avoid duplicate messages, we do not call:
+        #
+        #   my_logger.addHandler(syslog_handler)
+        #
+        logging.basicConfig(level=logging_level, handlers=[syslog_handler])
+        # TO DO: remove this DEBUG
+        print(f'DEBUG via print: syslog code: logtype: {logtype} '
+              f'log_address: {log_address} setup: my_logger for syslog')
 
     # more paranoia
     #
-    if not ioccc_logger:
-        print(f'ERROR via print: logtype: {logtype}: about to return and ioccc_logger is None')
+    if not my_logger:
+        print(f'ERROR via print: logtype: {logtype}: about to return and my_logger is None')
+
+    # save the newly configured logger
+    #
+    ioccc_logger = my_logger
 #
 # pylint: enable=too-many-branches
+# pylint: enable=too-many-statements
 
 
 def debug(msg, *args, **kwargs):
@@ -2920,6 +2932,8 @@ def info(msg, *args, **kwargs):
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    # pylint: disable-next=global-statement,global-variable-not-assigned
+    global ioccc_logger
     me = inspect.currentframe().f_code.co_name
 
     # TO DO: remove DEBUG
