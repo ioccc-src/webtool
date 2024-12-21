@@ -35,7 +35,6 @@ from .ioccc_common import \
     INIT_PW_FILE_RELATIVE_PATH, \
     INIT_STATE_FILE, \
     INIT_STATE_FILE_RELATIVE_PATH, \
-    IOCCC_LOGGER, \
     LOCK_TIMEOUT, \
     MAX_PASSWORD_LENGTH, \
     MAX_SUBMIT_SLOT, \
@@ -44,11 +43,11 @@ from .ioccc_common import \
     NO_COMMENT_VALUE, \
     PASSWORD_VERSION_VALUE, \
     POSIX_SAFE_RE, \
+    PWNED_PW_TREE, \
     PW_FILE, \
     PW_FILE_RELATIVE_PATH, \
     PW_LOCK, \
     PW_LOCK_RELATIVE_PATH, \
-    PWNED_PW_TREE, \
     PW_WORDS, \
     PW_WORDS_RELATIVE_PATH, \
     SECRET_FILE, \
@@ -79,6 +78,7 @@ from .ioccc_common import \
     initialize_user_tree, \
     ioccc_file_lock, \
     ioccc_file_unlock, \
+    ioccc_logger, \
     is_proper_password, \
     is_pw_pwned, \
     load_pwfile, \

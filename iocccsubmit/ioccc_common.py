@@ -288,13 +288,14 @@ ioccc_pw_words = []
 
 # IOCCC logger - how we log events
 #
-# When IOCCC_LOGGER is None, no logging is performed,
-# otherwise IOCCC_LOGGER is a logging facility setup via setup_logger(string).
+# When ioccc_logger is None, no logging is performed,
+# otherwise ioccc_logger is a logging facility setup via setup_logger(string).
 #
-# NOTE: Until setup_logger(Bool) is called, IOCCC_LOGGER is None,
+# NOTE: Until setup_logger(Bool) is called, ioccc_logger is None,
 #       and no logging will occur.
 #
-IOCCC_LOGGER = None
+# pylint: disable-next=global-statement,invalid-name
+ioccc_logger = None
 
 
 def return_last_errmsg():
@@ -2693,7 +2694,7 @@ def setup_logger(logtype, dbglvl) -> None:
                 "critical" ==> use logging.CRITICAL,
                  all other values ==> use logging.INFO
 
-    NOTE: Until setup_logger(logtype) is called, IOCCC_LOGGER default None and no logging will occur.
+    NOTE: Until setup_logger(logtype) is called, ioccc_logger default None and no logging will occur.
 
     NOTE: The logtype is case insensitive, so "syslog", "Syslog", "SYSLOG" are treated the same.
     NOTE: The dbglvl is case insensitive, so "info", "Info", "INFO" are treated the same.
@@ -2702,7 +2703,7 @@ def setup_logger(logtype, dbglvl) -> None:
     # setup
     #
     # pylint: disable-next=global-statement
-    global IOCCC_LOGGER
+    global ioccc_logger
     logging_level = logging.INFO
 
     # case: logtype is not a string (such as None) or unknown logtype string
@@ -2711,7 +2712,7 @@ def setup_logger(logtype, dbglvl) -> None:
 
         # do not change the log state
         #
-        #print("DEBUG: unknown logtype: IOCCC_LOGGER unchanged")
+        #print("DEBUG: unknown logtype: ioccc_logger unchanged")
         return
 
     # case: logtype is "none"
@@ -2720,8 +2721,8 @@ def setup_logger(logtype, dbglvl) -> None:
 
         # do not log
         #
-        IOCCC_LOGGER = None
-        #print(f'DEBUG: none code: logtype: {logtype}: set IOCCC_LOGGER to None')
+        ioccc_logger = None
+        #print(f'DEBUG: none code: logtype: {logtype}: set ioccc_logger to None')
         return
 
     # set the debug level based on dbglvl
@@ -2743,14 +2744,18 @@ def setup_logger(logtype, dbglvl) -> None:
         # pylint: disable-next=consider-using-in
         elif dbglvl.lower() == "crit" or dbglvl.lower() == "critical":
             logging_level = logging.CRITICAL
-    #print(f'DEBUG: logtype: {logtype} dbglvl: {dbglvl} '
-    #      f'logging_level: {logging.getLevelName(logging_level)}')
 
     # create the logger, which will change the state
     #
     # As this point we know that that logtype of an allowed string.
     #
-    IOCCC_LOGGER = logging.getLogger('ioccc')
+    try:
+        ioccc_logger = logging.getLogger('ioccc')
+
+    except OSError as errcode:
+        print(f'ERROR via print: logtype: {logtype}: logging.getLogger failed: <<{str(errcode)}>>')
+        ioccc_logger = None
+        return
 
     # case: logtype is "stdout"
     #
@@ -2777,10 +2782,10 @@ def setup_logger(logtype, dbglvl) -> None:
         #
         # To avoid duplicate messages, we do not call:
         #
-        #   IOCCC_LOGGER.addHandler(stdout_handler)
+        #   ioccc_logger.addHandler(stdout_handler)
         #
         logging.basicConfig(level=logging_level, handlers=[stdout_handler])
-        #print(f'DEBUG: stdout code: logtype: {logtype} setup: IOCCC_LOGGER for stdout')
+        #print(f'DEBUG: stdout code: logtype: {logtype} setup: ioccc_logger for stdout')
         return
 
     # case: logtype is "stderr"
@@ -2808,29 +2813,31 @@ def setup_logger(logtype, dbglvl) -> None:
         #
         # To avoid duplicate messages, we do not call:
         #
-        #   IOCCC_LOGGER.addHandler(stderr_handler)
+        #   ioccc_logger.addHandler(stderr_handler)
         #
         logging.basicConfig(level=logging_level, handlers=[stderr_handler])
-        #print(f'DEBUG: stderr code: logtype: {logtype} setup: IOCCC_LOGGER for stderr')
+        #print(f'DEBUG: stderr code: logtype: {logtype} setup: ioccc_logger for stderr')
         return
 
     # fallthru case: logtype is "syslog"
     #
     # log via syslog local5 facility
     #
+    # TO DO: remove this DEBUG
+    print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
     formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
 
     # determine the logging address
     #
     if Path("/var/run/syslog"):
-        # macOS - must be first
+        # macOS
         log_address = "/var/run/syslog"
-    elif Path("/dev/log"):
-        # Linux and related friends symlink
-        log_address = "/dev/log"
     elif Path("/run/systemd/journal/dev-log"):
         # Linux and related friends
         log_address = "/run/systemd/journal/dev-log"
+    elif Path("/dev/log"):
+        # Linux and related friends symlink
+        log_address = "/dev/log"
     else:
         # FreeBSD and NetBSD - must be last
         log_address = "/var/run/log"
@@ -2846,22 +2853,23 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     # To avoid duplicate messages, we do not call:
     #
-    #   IOCCC_LOGGER.addHandler(syslog_handler)
+    #   ioccc_logger.addHandler(syslog_handler)
     #
     logging.basicConfig(level=logging_level, handlers=[syslog_handler])
-    print(f'DEBUG: syslog code: logtype: {logtype} setup: IOCCC_LOGGER for syslog')
+    # TO DO: remove this DEBUG
+    print(f'DEBUG via print: stderr code: logtype: {logtype} setup: ioccc_logger for syslog')
 #
 # pylint: enable=too-many-branches
 
 
 def debug(msg, *args, **kwargs):
     """
-    Write a DEBUG message or not depending on IOCCC_LOGGER
+    Write a DEBUG message or not depending on ioccc_logger
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     # setup
@@ -2870,22 +2878,22 @@ def debug(msg, *args, **kwargs):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    if IOCCC_LOGGER:
+    if ioccc_logger:
         try:
-            IOCCC_LOGGER.debug(msg, *args, **kwargs)
+            ioccc_logger.debug(msg, *args, **kwargs)
 
         except OSError as errcode:
-            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.debug failed, exception: " + str(errcode)
+            ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.debug failed, exception: " + str(errcode)
 
 
 def dbg(msg, *args, **kwargs):
     """
-    Write a DEBUG message if we have called setup_logger to setup IOCCC_LOGGER.
+    Write a DEBUG message if we have called setup_logger to setup ioccc_logger.
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     debug(msg, *args, **kwargs)
@@ -2893,12 +2901,12 @@ def dbg(msg, *args, **kwargs):
 
 def info(msg, *args, **kwargs):
     """
-    Write a INFO message if we have called setup_logger to setup IOCCC_LOGGER.
+    Write a INFO message if we have called setup_logger to setup ioccc_logger.
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     # setup
@@ -2907,22 +2915,25 @@ def info(msg, *args, **kwargs):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    if IOCCC_LOGGER:
+    if ioccc_logger:
         try:
-            IOCCC_LOGGER.info(msg, *args, **kwargs)
+            ioccc_logger.info(msg, *args, **kwargs)
 
         except OSError as errcode:
-            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.info failed, exception: " + str(errcode)
+            ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.info failed, exception: " + str(errcode)
+    # TO DO: remove this else and DEBUG
+    else:
+        print('DEBUG via print: info code: ioccc_logger is None')
 
 
 def warning(msg, *args, **kwargs):
     """
-    Write a WARNING message if we have called setup_logger to setup IOCCC_LOGGER.
+    Write a WARNING message if we have called setup_logger to setup ioccc_logger.
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     # setup
@@ -2931,22 +2942,22 @@ def warning(msg, *args, **kwargs):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    if IOCCC_LOGGER:
+    if ioccc_logger:
         try:
-            IOCCC_LOGGER.warning(msg, *args, **kwargs)
+            ioccc_logger.warning(msg, *args, **kwargs)
 
         except OSError as errcode:
-            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.warning failed, exception: " + str(errcode)
+            ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.warning failed, exception: " + str(errcode)
 
 
 def warn(msg, *args, **kwargs):
     """
-    Write a WARNING message if we have called setup_logger to setup IOCCC_LOGGER.
+    Write a WARNING message if we have called setup_logger to setup ioccc_logger.
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     warning(msg, *args, **kwargs)
@@ -2954,12 +2965,12 @@ def warn(msg, *args, **kwargs):
 
 def error(msg, *args, **kwargs):
     """
-    Write an ERROR message if we have called setup_logger to setup IOCCC_LOGGER.
+    Write an ERROR message if we have called setup_logger to setup ioccc_logger.
 
-    If not IOCCC_LOGGER, then
+    If not ioccc_logger, then
         do not log (do nothing),
     else
-        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+        Use ioccc_logger as a logging facility that was setup  by setup_logger(Bool)
     """
 
     # setup
@@ -2968,9 +2979,9 @@ def error(msg, *args, **kwargs):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
-    if IOCCC_LOGGER:
+    if ioccc_logger:
         try:
-            IOCCC_LOGGER.error(msg, *args, **kwargs)
+            ioccc_logger.error(msg, *args, **kwargs)
 
         except OSError as errcode:
-            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.error failed, exception: " + str(errcode)
+            ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.error failed, exception: " + str(errcode)
