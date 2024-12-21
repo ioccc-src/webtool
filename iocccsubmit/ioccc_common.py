@@ -2917,11 +2917,15 @@ def info(msg, *args, **kwargs):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
 
+    # TO DO: remove DEBUG
+    print(f'DEBUG via print: in {me}: start')
     if ioccc_logger:
         try:
             ioccc_logger.info(msg, *args, **kwargs)
 
         except OSError as errcode:
+            # TO DO: remove DEBUG
+            print(f'DEBUG via print: in {me}: ioccc_logger.info failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.info failed, exception: " + str(errcode)
 
     # TO DO: remove this else and DEBUG
