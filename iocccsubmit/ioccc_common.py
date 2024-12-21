@@ -2239,9 +2239,16 @@ def update_slot(username, slot_num, slot_file):
         #
         old_file = slot_dir + "/" + slot['filename']
         if slot_file != old_file and os.path.isfile(old_file):
-            os.remove(old_file)
-            ioccc_last_errmsg = "ERROR: in " + me + ": removed from slot: " + slot_num_str + \
-                            " file: " + slot['filename']
+            try:
+                os.remove(old_file)
+            except OSError as errcode:
+                error(f'{me}: username: {username}: slot_num: {slot_num}'
+                      f'os.remove({old_file}  failed: <<{str(errcode)}>>')
+                ioccc_last_errmsg = "ERROR: in " + me + ": failed to remove old file: " + \
+                                    old_file + " from slot: " + slot_num_str + " file: " + \
+                                    slot['filename'] + " exception: " + str(errcode)
+                unlock_slot()
+                return False
 
     # record and report SHA256 hash of file
     #
