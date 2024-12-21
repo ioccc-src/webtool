@@ -2857,7 +2857,8 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     logging.basicConfig(level=logging_level, handlers=[syslog_handler])
     # TO DO: remove this DEBUG
-    print(f'DEBUG via print: stderr code: logtype: {logtype} setup: ioccc_logger for syslog')
+    print(f'DEBUG via print: syslog code: logtype: {logtype} '
+          f'log_address: {log_address} setup: ioccc_logger for syslog')
 #
 # pylint: enable=too-many-branches
 
