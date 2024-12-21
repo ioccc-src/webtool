@@ -2754,7 +2754,7 @@ def setup_logger(logtype, dbglvl) -> None:
     # paranoia
     #
     if not ioccc_logger:
-        print(f'ERROR via print: logtype: {logtype}: ioccc_logger was set to None')
+        print(f'ERROR via print: logtype: {logtype}: ioccc_logger set to None after logging.getLogger call')
         ioccc_logger = None
         return
 
@@ -2825,7 +2825,7 @@ def setup_logger(logtype, dbglvl) -> None:
     # log via syslog local5 facility
     #
     # TO DO: remove this DEBUG
-    #print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
+    print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
     formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
 
     # determine the logging address
@@ -2858,8 +2858,13 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     logging.basicConfig(level=logging_level, handlers=[syslog_handler])
     # TO DO: remove this DEBUG
-    #print(f'DEBUG via print: syslog code: logtype: {logtype} '
-    #      f'log_address: {log_address} setup: ioccc_logger for syslog')
+    print(f'DEBUG via print: syslog code: logtype: {logtype} '
+          f'log_address: {log_address} setup: ioccc_logger for syslog')
+
+    # more paranoia
+    #
+    if not ioccc_logger:
+        print(f'ERROR via print: logtype: {logtype}: about to return and ioccc_logger is None')
 #
 # pylint: enable=too-many-branches
 
