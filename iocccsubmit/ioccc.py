@@ -27,6 +27,7 @@ import inspect
 import argparse
 import os
 import re
+import logging
 
 
 # 3rd party imports
@@ -75,7 +76,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.1.0 2024-12-20"
+VERSION = "2.1.1 2024-12-20"
 
 
 # Configure the application
@@ -85,9 +86,12 @@ application = Flask(__name__,
             root_path=APPDIR)
 application.config['MAX_CONTENT_LENGTH'] = MAX_TARBALL_LEN
 application.config['FLASH_APP'] = "iocccsubmit"
-application.debug = True
-application.config['FLASK_ENV'] = "development"
-application.config['TEMPLATES_AUTO_RELOAD'] = True
+#application.debug = True
+application.debug = False
+#application.config['FLASK_ENV'] = "development"
+application.config['FLASK_ENV'] = "production"
+#application.config['TEMPLATES_AUTO_RELOAD'] = True
+application.config['TEMPLATES_AUTO_RELOAD'] = False
 application.secret_key = return_secret()
 
 # set application file paths
@@ -739,6 +743,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
                 description="IOCCC submit server tool",
                 epilog=f'{program} version: {VERSION}')
+    parser.add_argument('-i', '--ip',
+                        help="IP address to connect (def: 127.0.0.1)",
+                        default="127.0.0.1",
+                        action="store",
+                        metavar='ip',
+                        type=str)
     parser.add_argument('-l', '--log',
                         help="log via: stdout stderr syslog none (def: syslog)",
                         default="syslog",
@@ -751,8 +761,14 @@ if __name__ == '__main__':
                         action="store",
                         metavar='dbglvl',
                         type=str)
+    parser.add_argument('-p', '--port',
+                        help="open port (def: 8191)",
+                        default=8191,
+                        action="store",
+                        metavar='port',
+                        type=int)
     parser.add_argument('-t', '--topdir',
-                        help="application directory path",
+                        help="application directory path: tree under appdir must be setup correctly",
                         metavar='appdir',
                         type=str)
     args = parser.parse_args()
@@ -760,6 +776,10 @@ if __name__ == '__main__':
     # setup logging according to -l logtype -L dbglvl
     #
     setup_logger(args.log, args.level)
+
+    # disable werkzeug logging
+    #
+    werkzeug_log = logging.getLogger('werkzeug')
 
     # -t topdir - set the path to the top level application direcory
     #
@@ -770,4 +790,4 @@ if __name__ == '__main__':
 
     # launch the application if run from the command line
     #
-    application.run(host='0.0.0.0', port=TCP_PORT)
+    application.run(host=args.ip, port=args.port, debug=True)

@@ -60,25 +60,23 @@ before your prompt (the `PS1` variable).
 To run the **IOCCC submit tool** server interactively on the command line:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L info
+./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
 ```
 
 **NOTE**: If the `./iocccsubmit/ioccc.py` is not executable, try: `python3 ./iocccsubmit/ioccc.py`.
 
-The initial output will look something like (timestamps and text colour may vary):
+The initial output will look something like (timestamps, text colour, and PIN will vary):
 
 ```sh
-$ ./iocccsubmit/ioccc.py -l stdout -L info
+$ ./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
  * Serving Flask app 'ioccc'
  * Debug mode: on
-2024-12-20 15:56:24.273: werkzeug: INFO: WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
- * Running on all addresses (0.0.0.0)
+2024-12-20 22:41:54.863: werkzeug: INFO: WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on http://127.0.0.1:8191
- * Running on http://192.168.1.71:8191
-2024-12-20 15:56:24.273: werkzeug: INFO: Press CTRL+C to quit
-2024-12-20 15:56:24.274: werkzeug: INFO:  * Restarting with stat
-2024-12-20 15:56:24.459: werkzeug: WARNING:  * Debugger is active!
-2024-12-20 15:56:24.465: werkzeug: INFO:  * Debugger PIN: 108-721-038
+2024-12-20 22:41:54.864: werkzeug: INFO: Press CTRL+C to quit
+2024-12-20 22:41:54.864: werkzeug: INFO:  * Restarting with stat
+2024-12-20 22:41:55.054: werkzeug: WARNING:  * Debugger is active!
+2024-12-20 22:41:55.060: werkzeug: INFO:  * Debugger PIN: 108-721-038
 ```
 
 .. where the last blank line is not a command line but rather the server running.
@@ -112,13 +110,20 @@ In your browser, it should look something like:
 At the console (where the server is running), you should see something like:
 
 ```
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.css HTTP/1.1" 304 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.js HTTP/1.1" 304 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.png HTTP/1.1" 304 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.css HTTP/1.1" 304 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.js HTTP/1.1" 304 -
-127.0.0.1 - - [07/Dec/2024 06:22:47] "GET /static/ioccc.png HTTP/1.1" 304 -
+2024-12-20 22:48:53.589: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:48:53] "GET / HTTP/1.1" 200 -
+2024-12-20 22:48:53.612: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:48:53] "GET /static/ioccc.css HTTP/1.1" 200 -
+2024-12-20 22:48:53.613: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:48:53] "GET /static/ioccc.js HTTP/1.1" 200 -
+2024-12-20 22:48:53.616: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:48:53] "GET /static/ioccc.png HTTP/1.1" 200 -
+```
+
+After logging in, should see something like:
+
+```
+2024-12-20 22:49:10.521: ioccc: INFO: login: success: username: -your-username-here-
+2024-12-20 22:49:10.528: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:49:10] "POST / HTTP/1.1" 200 -
+2024-12-20 22:49:10.536: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:49:10] "GET /static/ioccc.css HTTP/1.1" 304 -
+2024-12-20 22:49:10.537: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:49:10] "GET /static/ioccc.js HTTP/1.1" 304 -
+2024-12-20 22:49:10.537: werkzeug: INFO: 127.0.0.1 - - [20/Dec/2024 22:49:10] "GET /static/ioccc.png HTTP/1.1" 304 -
 ```
 
 When needed, to deactivate the above python environment from the submit server
@@ -135,29 +140,31 @@ rm -rf __pycache__ venv
 The usage message of the `./iocccsubmit/ioccc.py` is as follows:
 
 ```
-usage: ioccc.py [-h] [-l logtype] [-L dbglvl] [-t appdir]
+usage: ioccc.py [-h] [-i ip] [-l logtype] [-L dbglvl] [-p port] [-t appdir]
 
 IOCCC submit server tool
 
 options:
   -h, --help           show this help message and exit
+  -i, --ip ip          IP address to connect (def: 127.0.0.1)
   -l, --log logtype    log via: stdout stderr syslog none (def: syslog)
   -L, --level dbglvl   set log level: dbg debug info warn warning error crit critical (def: info)
-  -t, --topdir appdir  application directory path
+  -p, --port port      open port (def: 8191)
+  -t, --topdir appdir  application directory path: tree under appdir must be setup correctly
 
-ioccc.py version: 2.1.0 2024-12-20
+ioccc.py version: 2.1.1 2024-12-20
 ```
 
 For command line interactive debugging try:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L info
+./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
 ```
 
 For more verbose interactive debugging:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L debug
+./iocccsubmit/ioccc.py -l stdout -L debug -i 127.0.0.1 -p 8191
 ```
 
 **NOTE**: An unknown `-l logtype` results in the default `-l syslog` being used.
