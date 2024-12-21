@@ -2824,7 +2824,7 @@ def setup_logger(logtype, dbglvl) -> None:
     # log via syslog local5 facility
     #
     # TO DO: remove this DEBUG
-    print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
+    #print('DEBUG via print: starting syslog setup for ioccc_logger for: logtype: {logtype}')
     formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
 
     # determine the logging address
@@ -2857,8 +2857,8 @@ def setup_logger(logtype, dbglvl) -> None:
     #
     logging.basicConfig(level=logging_level, handlers=[syslog_handler])
     # TO DO: remove this DEBUG
-    print(f'DEBUG via print: syslog code: logtype: {logtype} '
-          f'log_address: {log_address} setup: ioccc_logger for syslog')
+    #print(f'DEBUG via print: syslog code: logtype: {logtype} '
+    #      f'log_address: {log_address} setup: ioccc_logger for syslog')
 #
 # pylint: enable=too-many-branches
 
@@ -2877,6 +2877,8 @@ def debug(msg, *args, **kwargs):
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    # pylint: disable-next=global-statement,global-variable-not-assigned
+    global ioccc_logger
     me = inspect.currentframe().f_code.co_name
 
     if ioccc_logger:
@@ -2914,6 +2916,8 @@ def info(msg, *args, **kwargs):
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    # pylint: disable-next=global-statement,global-variable-not-assigned
+    global ioccc_logger
     me = inspect.currentframe().f_code.co_name
 
     if ioccc_logger:
@@ -2922,9 +2926,6 @@ def info(msg, *args, **kwargs):
 
         except OSError as errcode:
             ioccc_last_errmsg = "ERROR: in " + me + ": ioccc_logger.info failed, exception: " + str(errcode)
-    # TO DO: remove this else and DEBUG
-    else:
-        print('DEBUG via print: info code: ioccc_logger is None')
 
 
 def warning(msg, *args, **kwargs):
@@ -2941,6 +2942,8 @@ def warning(msg, *args, **kwargs):
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    # pylint: disable-next=global-statement,global-variable-not-assigned
+    global ioccc_logger
     me = inspect.currentframe().f_code.co_name
 
     if ioccc_logger:
@@ -2978,6 +2981,8 @@ def error(msg, *args, **kwargs):
     #
     # pylint: disable-next=global-statement
     global ioccc_last_errmsg
+    # pylint: disable-next=global-statement,global-variable-not-assigned
+    global ioccc_logger
     me = inspect.currentframe().f_code.co_name
 
     if ioccc_logger:
