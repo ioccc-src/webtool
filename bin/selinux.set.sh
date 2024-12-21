@@ -87,7 +87,7 @@ shopt -s globstar       # enable ** to match all files and zero or more director
 
 # setup variables
 #
-export VERSION="2.0.0 2024-12-16"
+export VERSION="2.0.1 2024-12-20"
 NAME=$(basename "$0")
 export NAME
 
@@ -114,7 +114,9 @@ semanage fcontext --add --ftype a --type httpd_sys_content_t '/var/ioccc/static(
 semanage fcontext --add --ftype a --type httpd_sys_content_t '/var/ioccc/templates(/.*)?'
 semanage fcontext --add --ftype a --type httpd_sys_rw_content_t '/var/ioccc/users(/.*)?'
 semanage fcontext --add --ftype a --type httpd_sys_script_exec_t '/var/ioccc/wsgi(/.*)?'
+semanage fcontext --add --ftype f --type httpd_log_t '/var/log/ioccc'
 restorecon -vR /var/ioccc
+restorecon -v /var/log/ioccc
 ls -lRZa /var/ioccc
 semanage fcontext --list --locallist --noheading
 set +x

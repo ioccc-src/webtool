@@ -31,11 +31,13 @@
 #############
 
 CHMOD= chmod
+CHOWN= chown
 CMP= cmp
 CP= cp
 ID= id
 INSTALL= install
 MKDIR= mkdir
+TOUCH= touch
 PYTHON= python3
 RM= rm
 SED= sed
@@ -159,6 +161,10 @@ USER= apache
 #
 #GROUP= ioccc
 GROUP= apache
+
+# ioccc syslog file
+#
+IOCCC_SYSLOG= /var/log/ioccc
 
 # what to build
 #
@@ -356,4 +362,7 @@ root_setup: ${INSTALL_UNDER_DOCROOT} ${PW} ${STATE} ${BIN_SRC} ${FLASHKEY} dist/
 	${INSTALL} -o ${USER} -g ${GROUP} -m 0440 ${FLASK_KEY} ${DOCROOT}/etc/.secret
 	${INSTALL} -o root -g root -m 0755 -d ${DESTDIR}
 	${INSTALL} -o root -g root -m 0555 ${BIN_SRC} ${DESTDIR}
+	${TOUCH} ${IOCCC_SYSLOG}
+	${CHOWN} root:root ${IOCCC_SYSLOG}
+	${CHMOD} 0600 ${IOCCC_SYSLOG}
 	${V} echo DEBUG =-= $@ end =-=
