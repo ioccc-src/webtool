@@ -2627,7 +2627,7 @@ def return_secret():
 
 # pylint: disable=too-many-branches
 #
-def setup_logger(logtype: str | None, dbglvl: str | None) -> None:
+def setup_logger(logtype, dbglvl) -> None:
     """
     setup_logger - Setup the logging facility.
 
