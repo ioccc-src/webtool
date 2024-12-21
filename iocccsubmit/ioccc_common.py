@@ -16,6 +16,7 @@ IMPORTANT NOTE: To return an error message to a caller, set: ioccc_last_errmsg
 
 # import modules
 #
+import sys
 import re
 import json
 import os
@@ -26,6 +27,7 @@ import random
 import shutil
 import hashlib
 import uuid
+import logging
 
 
 # import from modules
@@ -35,6 +37,7 @@ from os import makedirs, umask
 from datetime import datetime, timezone
 from pathlib import Path
 from random import randrange
+from logging.handlers import SysLogHandler
 
 
 # For user locking
@@ -61,7 +64,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.1.0 2024-12-18"
+VERSION_IOCCC_COMMON = "2.1.1 2024-12-20"
 
 # force password change grace time
 #
@@ -283,6 +286,17 @@ ioccc_last_errmsg = ""            # recent error message or empty string
 ioccc_pw_words = []
 
 
+# IOCCC logger - how we log events
+#
+# When IOCCC_LOGGER is None, no logging is performed,
+# otherwise IOCCC_LOGGER is a logging facility setup via setup_logger(string).
+#
+# NOTE: Until setup_logger(Bool) is called, IOCCC_LOGGER is None,
+#       and no logging will occur.
+#
+IOCCC_LOGGER = None
+
+
 def return_last_errmsg():
     """
     Return the recent error message or empty string
@@ -430,7 +444,7 @@ def return_slot_dir_path(username, slot_num):
         slot_num    slot number for a given username
 
     Returns:
-        None ==> invalid slot number or Null user_dir
+        None ==> invalid slot number or invalid user directory
         != None ==> slot directory path (may not yet exist)
 
     It is up the caller to create, if needed, the slot directory.
@@ -470,7 +484,7 @@ def return_slot_json_filename(username, slot_num):
         slot_num    slot number for a given username
 
     Returns:
-        None ==> invalid slot number or Null user_dir
+        None ==> invalid slot number or invalid user directory
         != None ==> path of the JSON filename for this user's slot (may not yet exist)
 
     It is up the caller to create, if needed, the JSON filename.
@@ -1918,8 +1932,7 @@ def initialize_user_tree(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> invalid slot number, or
-                 Null user_dir
+        None ==> invalid slot number or invalid user directory
         != None ==> array of slot user data as a python dictionary
     """
 
@@ -2062,8 +2075,7 @@ def get_json_slot(username, slot_num):
         slot_num    slot number for a given username
 
     Returns:
-        None ==> invalid slot number, or
-                 user_dir is Null
+        None ==> invalid slot number or invalid user directory
         != None ==> slot information as a python dictionary
     """
 
@@ -2120,8 +2132,7 @@ def get_all_json_slots(username):
         username    IOCCC submit server username
 
     Returns:
-        None ==> invalid slot number, or
-                 user_dir is Null
+        None ==> invalid slot number or invalid user directory
         != None ==> array of slot user data as a python dictionary
     """
 
@@ -2612,3 +2623,311 @@ def return_secret():
     # return secret key
     #
     return secret_key
+
+
+# pylint: disable=too-many-branches
+#
+def setup_logger(logtype: str | None, dbglvl: str | None) -> None:
+    """
+    setup_logger - Setup the logging facility.
+
+    Given:
+
+    logtype      "stdout" ==> log to stdout,
+                 "stderr" ==> log to stderr,
+                 "syslog" ==> log via syslog,
+                 "none" ==> do not log,
+                 None ==> do not change the log state,
+                 all other values ==> do not change the log state
+
+    dbglvl      "dbg" ==> use logging.DEBUG,
+                "debug" ==> use logging.DEBUG,
+                "info" ==> use logging.INFO,
+                "warn" ==> use logging.WARNING,
+                "warning" ==> use logging.WARNING,
+                "error" ==> use logging.ERROR,
+                "crit" ==> use logging.CRITICAL,
+                "critical" ==> use logging.CRITICAL,
+                 all other values ==> use logging.INFO
+
+    NOTE: Until setup_logger(logtype) is called, IOCCC_LOGGER default None and no logging will occur.
+
+    NOTE: The logtype is case insensitive, so "syslog", "Syslog", "SYSLOG" are treated the same.
+    NOTE: The dbglvl is case insensitive, so "info", "Info", "INFO" are treated the same.
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global IOCCC_LOGGER
+    logging_level = logging.INFO
+
+    # case: logtype is not a string (such as None) or unknown logtype string
+    #
+    if not logtype or not isinstance(logtype, str) or not logtype.lower() in {'stdout', 'stderr', 'syslog', 'none'}:
+
+        # do not change the log state
+        #
+        #print("DEBUG: unknown logtype: IOCCC_LOGGER unchanged")
+        return
+
+    # case: logtype is "none"
+    #
+    if logtype.lower() == "none":
+
+        # do not log
+        #
+        IOCCC_LOGGER = None
+        #print(f'DEBUG: none code: logtype: {logtype}: set IOCCC_LOGGER to None')
+        return
+
+    # set the debug level based on dbglvl
+    #
+    # We default to logging.INFO is dbglvl is not a string (such as None) or unknown dbglvl string
+    #
+    if isinstance(dbglvl, str):
+        # pylint: disable-next=consider-using-in
+        if dbglvl.lower() == "dbg" or dbglvl.lower() == "debug":
+            logging_level = logging.DEBUG
+        elif dbglvl.lower() == "info":
+            logging_level = logging.INFO
+        # pylint: disable-next=consider-using-in
+        elif dbglvl.lower() == "warn" or dbglvl.lower() == "warning":
+            logging_level = logging.WARNING
+        # pylint: disable-next=consider-using-in
+        elif dbglvl.lower() == "err" or dbglvl.lower() == "error":
+            logging_level = logging.ERROR
+        # pylint: disable-next=consider-using-in
+        elif dbglvl.lower() == "crit" or dbglvl.lower() == "critical":
+            logging_level = logging.CRITICAL
+    #print(f'DEBUG: logtype: {logtype} dbglvl: {dbglvl} '
+    #      f'logging_level: {logging.getLevelName(logging_level)}')
+
+    # create the logger, which will change the state
+    #
+    # As this point we know that that logtype of an allowed string.
+    #
+    IOCCC_LOGGER = logging.getLogger('ioccc')
+
+    # case: logtype is "stdout"
+    #
+    # log to stdout
+    #
+    if logtype.lower() == "stdout":
+
+        # set logging file format
+        #
+        formatter = logging.Formatter(
+                '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
+              datefmt='%Y-%m-%d %H:%M:%S')
+
+        # setup stdout logging handler
+        #
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setLevel(logging_level)
+        stdout_handler.setFormatter(formatter)
+
+        # configure the logger
+        #
+        # There is BUG in logging where logging requires
+        # an additional call to the logging.basicConfig function.
+        #
+        # To avoid duplicate messages, we do not call:
+        #
+        #   IOCCC_LOGGER.addHandler(stdout_handler)
+        #
+        logging.basicConfig(level=logging_level, handlers=[stdout_handler])
+        #print(f'DEBUG: stdout code: logtype: {logtype} setup: IOCCC_LOGGER for stdout')
+        return
+
+    # case: logtype is "stderr"
+    #
+    # log to stderr
+    #
+    if logtype.lower() == "stderr":
+
+        # set logging file format
+        #
+        formatter = logging.Formatter(
+                '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
+              datefmt='%Y-%m-%d %H:%M:%S')
+
+        # setup stderr logging handler
+        #
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setLevel(logging_level)
+        stderr_handler.setFormatter(formatter)
+
+        # configure the logger
+        #
+        # There is BUG in logging where logging requires
+        # an additional call to the logging.basicConfig function.
+        #
+        # To avoid duplicate messages, we do not call:
+        #
+        #   IOCCC_LOGGER.addHandler(stderr_handler)
+        #
+        logging.basicConfig(level=logging_level, handlers=[stderr_handler])
+        #print(f'DEBUG: stderr code: logtype: {logtype} setup: IOCCC_LOGGER for stderr')
+        return
+
+    # fallthru case: logtype is "syslog"
+    #
+    # log via syslog local5 facility
+    #
+    formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
+
+    # determine the logging address
+    #
+    if Path("/var/run/syslog"):
+        # macOS - must be first
+        log_address = "/var/run/syslog"
+    elif Path("/dev/log"):
+        # Linux and related friends symlink
+        log_address = "/dev/log"
+    elif Path("/run/systemd/journal/dev-log"):
+        # Linux and related friends
+        log_address = "/run/systemd/journal/dev-log"
+    else:
+        # FreeBSD and NetBSD - must be last
+        log_address = "/var/run/log"
+
+    # setup the syslog handler
+    #
+    syslog_handler = SysLogHandler(address = log_address,
+                                   facility = SysLogHandler.LOG_LOCAL5)
+    syslog_handler.setLevel(logging_level)
+    syslog_handler.setFormatter(formatter)
+
+    # add the file logging handler to the logger
+    #
+    # To avoid duplicate messages, we do not call:
+    #
+    #   IOCCC_LOGGER.addHandler(syslog_handler)
+    #
+    logging.basicConfig(level=logging_level, handlers=[syslog_handler])
+    print(f'DEBUG: syslog code: logtype: {logtype} setup: IOCCC_LOGGER for syslog')
+#
+# pylint: enable=too-many-branches
+
+
+def debug(msg, *args, **kwargs):
+    """
+    Write a DEBUG message or not depending on IOCCC_LOGGER
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    if IOCCC_LOGGER:
+        try:
+            IOCCC_LOGGER.debug(msg, *args, **kwargs)
+
+        except OSError as errcode:
+            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.debug failed, exception: " + str(errcode)
+
+
+def dbg(msg, *args, **kwargs):
+    """
+    Write a DEBUG message if we have called setup_logger to setup IOCCC_LOGGER.
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    debug(msg, *args, **kwargs)
+
+
+def info(msg, *args, **kwargs):
+    """
+    Write a INFO message if we have called setup_logger to setup IOCCC_LOGGER.
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    if IOCCC_LOGGER:
+        try:
+            IOCCC_LOGGER.info(msg, *args, **kwargs)
+
+        except OSError as errcode:
+            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.info failed, exception: " + str(errcode)
+
+
+def warning(msg, *args, **kwargs):
+    """
+    Write a WARNING message if we have called setup_logger to setup IOCCC_LOGGER.
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    if IOCCC_LOGGER:
+        try:
+            IOCCC_LOGGER.warning(msg, *args, **kwargs)
+
+        except OSError as errcode:
+            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.warning failed, exception: " + str(errcode)
+
+
+def warn(msg, *args, **kwargs):
+    """
+    Write a WARNING message if we have called setup_logger to setup IOCCC_LOGGER.
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    warning(msg, *args, **kwargs)
+
+
+def error(msg, *args, **kwargs):
+    """
+    Write an ERROR message if we have called setup_logger to setup IOCCC_LOGGER.
+
+    If not IOCCC_LOGGER, then
+        do not log (do nothing),
+    else
+        Use IOCCC_LOGGER as a logging facility that was setup  by setup_logger(Bool)
+    """
+
+    # setup
+    #
+    # pylint: disable-next=global-statement
+    global ioccc_last_errmsg
+    me = inspect.currentframe().f_code.co_name
+
+    if IOCCC_LOGGER:
+        try:
+            IOCCC_LOGGER.error(msg, *args, **kwargs)
+
+        except OSError as errcode:
+            ioccc_last_errmsg = "ERROR: in " + me + ": IOCCC_LOGGER.error failed, exception: " + str(errcode)

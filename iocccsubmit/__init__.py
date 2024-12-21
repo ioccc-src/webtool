@@ -35,6 +35,7 @@ from .ioccc_common import \
     INIT_PW_FILE_RELATIVE_PATH, \
     INIT_STATE_FILE, \
     INIT_STATE_FILE_RELATIVE_PATH, \
+    IOCCC_LOGGER, \
     LOCK_TIMEOUT, \
     MAX_PASSWORD_LENGTH, \
     MAX_SUBMIT_SLOT, \
@@ -66,11 +67,15 @@ from .ioccc_common import \
     VERSION_IOCCC_COMMON, \
     change_startup_appdir, \
     contest_is_open, \
+    dbg, \
+    debug, \
     delete_username, \
+    error, \
     generate_password, \
     get_all_json_slots, \
     get_json_slot, \
     hash_password, \
+    info, \
     initialize_user_tree, \
     ioccc_file_lock, \
     ioccc_file_unlock, \
@@ -88,6 +93,7 @@ from .ioccc_common import \
     return_slot_dir_path, \
     return_slot_json_filename, \
     return_user_dir_path, \
+    setup_logger, \
     unlock_slot, \
     update_password, \
     update_slot, \
@@ -99,6 +105,8 @@ from .ioccc_common import \
     validate_user_dict, \
     verify_hashed_password, \
     verify_user_password, \
+    warn, \
+    warning, \
     write_slot_json
 
 

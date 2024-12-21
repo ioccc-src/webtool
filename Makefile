@@ -53,7 +53,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.9.1
+VERSION= 0.9.3
 
 # Python package name
 #
@@ -315,7 +315,7 @@ install: ${FLASK_KEY} ${INIT_PW} ${INIT_STATE} venv_install
 	fi
 	@echo 'This only installs locally into a python virtual environment.'
 	@echo
-	@echo 'If you are on the submit sever, as root run:'
+	@echo 'If you are on the submit sever, next as root, run:'
 	@echo
 	@echo '    make root_install'
 	@echo

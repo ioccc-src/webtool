@@ -57,30 +57,28 @@ before your prompt (the `PS1` variable).
 
 **NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
-To run the **IOCCC submit tool** server:
+To run the **IOCCC submit tool** server interactively on the command line:
 
 ```sh
-./iocccsubmit/ioccc.py
+./iocccsubmit/ioccc.py -l stdout -L info
 ```
 
 **NOTE**: If the `./iocccsubmit/ioccc.py` is not executable, try: `python3 ./iocccsubmit/ioccc.py`.
 
-**NOTE**: at this time (Sat Dec 14 07:32:08 UTC 2024), you will see a notice in
-the output, with the warning in red:
+The initial output will look something like (timestamps and text colour may vary):
 
 ```sh
-$ ./iocccsubmit/ioccc.py
+$ ./iocccsubmit/ioccc.py -l stdout -L info
  * Serving Flask app 'ioccc'
  * Debug mode: on
-WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2024-12-20 15:56:24.273: werkzeug: INFO: WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:8191
  * Running on http://192.168.1.71:8191
-Press CTRL+C to quit
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 920-182-908
-
+2024-12-20 15:56:24.273: werkzeug: INFO: Press CTRL+C to quit
+2024-12-20 15:56:24.274: werkzeug: INFO:  * Restarting with stat
+2024-12-20 15:56:24.459: werkzeug: WARNING:  * Debugger is active!
+2024-12-20 15:56:24.465: werkzeug: INFO:  * Debugger PIN: 108-721-038
 ```
 
 .. where the last blank line is not a command line but rather the server running.
@@ -130,6 +128,45 @@ top level directory, make sure the server is no longer running and then execute:
 deactivate
 rm -rf __pycache__ venv
 ```
+
+
+## iocccsubmit/ioccc.py - usage message
+
+The usage message of the `./iocccsubmit/ioccc.py` is as follows:
+
+```
+usage: ioccc.py [-h] [-l logtype] [-L dbglvl] [-t appdir]
+
+IOCCC submit server tool
+
+options:
+  -h, --help           show this help message and exit
+  -l, --log logtype    log via: stdout stderr syslog none (def: syslog)
+  -L, --level dbglvl   set log level: dbg debug info warn warning error crit critical (def: info)
+  -t, --topdir appdir  application directory path
+
+ioccc.py version: 2.1.0 2024-12-20
+```
+
+For command line interactive debugging try:
+
+```sh
+./iocccsubmit/ioccc.py -l stdout -L info
+```
+
+For more verbose interactive debugging:
+
+```sh
+./iocccsubmit/ioccc.py -l stdout -L debug
+```
+
+**NOTE**: An unknown `-l logtype` results in the default `-l syslog` being used.
+
+**NOTE**: An unknown `-L dbglvl` results in the default `-L info` being used.
+
+**NOTE**: When logging with syslog, the _local5_ facility is used.
+
+**NOTE**: Use of `-t appdir` will likely fail unless you have the directory tree under `appdir` setup properly.
 
 
 # bin/pychk.sh - use of pylint
