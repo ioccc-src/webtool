@@ -48,5 +48,25 @@
         "force_pw_change": true,
         "pw_change_by": "2025-03-25 06:47:07.388274+00:00",
         "disable_login": false
+    },
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "blocked",
+        "pwhash": "scrypt:32768:8:1$VQHoLWtxTv7S1Aba$175cc800881084ca4df8eb1f410543ef26de7f878573f19fbe511ecb38f8cd5306e0b552df8b6ec3f6000fb584bfe2f057e8f6815cd3d1908c4ace845712d1db",
+        "admin": false,
+        "force_pw_change": false,
+        "pw_change_by": null,
+        "disable_login": true
+    },
+    {
+        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
+        "iocccpasswd_format_version": "1.1 2024-10-18",
+        "username": "55b6462f-339a-4859-a0bd-87bf13963e20",
+        "pwhash": "scrypt:32768:8:1$ewT64vkRnSo4K9Ub$84ab75881622ed2e0d54d9aff3c02681052019e065a6486f822e3f2316a57e31834c8372fd56999992c1c20011901e08247163ac155b9eaf4d4c463f8a8b376c",
+        "admin": false,
+        "force_pw_change": true,
+        "pw_change_by": "2025-01-02 18:56:00.183108+00:00",
+        "disable_login": false
     }
 ]
