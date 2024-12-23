@@ -1,20 +1,9 @@
 #!/usr/bin/env python3
 #
+# __init__.py - IOCCC submit tool module __init__
+
 """
-The IOCCC submit tool
-
-This code is used to upload submissions to an open IOCCC (International
-Obfuscated C Code Contest) to the submit.ioccc.org server.
-
-This code is based on code originally written by Eliot Lear (@elear) in late 2021.
-The [IOCCC judges](https://www.ioccc.org/judges.html) heavily modified
-Eliot's code, so any fault you find should be blamed on them 😉 (that is, the
-IOCCC Judges :-) ).
-
-NOTE: This flask-login was loosly modeled after:
-
-    https://github.com/costa-rica/webApp01-Flask-Login/tree/github-main
-    https://nrodrig1.medium.com/flask-login-no-flask-sqlalchemy-d62310bb43e3
+__init__.py - IOCCC submit tool module __init__
 """
 
 
@@ -30,11 +19,11 @@ from .ioccc_common import \
     DEFAULT_GRACE_PERIOD, \
     DEFAULT_JSON_STATE_TEMPLATE, \
     EMPTY_JSON_SLOT_TEMPLATE, \
-    HOST_NAME, \
     INIT_PW_FILE, \
     INIT_PW_FILE_RELATIVE_PATH, \
     INIT_STATE_FILE, \
     INIT_STATE_FILE_RELATIVE_PATH, \
+    IP_ADDRESS, \
     LOCK_TIMEOUT, \
     MAX_PASSWORD_LENGTH, \
     MAX_SUBMIT_SLOT, \
@@ -43,16 +32,17 @@ from .ioccc_common import \
     NO_COMMENT_VALUE, \
     PASSWORD_VERSION_VALUE, \
     POSIX_SAFE_RE, \
-    PWNED_PW_TREE, \
     PW_FILE, \
     PW_FILE_RELATIVE_PATH, \
     PW_LOCK, \
     PW_LOCK_RELATIVE_PATH, \
+    PWNED_PW_TREE, \
     PW_WORDS, \
     PW_WORDS_RELATIVE_PATH, \
     SECRET_FILE, \
     SECRET_FILE_RELATIVE_PATH, \
     SHA1_HEXLEN, \
+    SHA256_HEXLEN, \
     SLOT_VERSION_VALUE, \
     STARTUP_CWD, \
     STATE_FILE, \

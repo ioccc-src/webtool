@@ -53,42 +53,41 @@ it should be okay (**NOTE**: do **NOT** run the command as root!).
 before your prompt (the `PS1` variable).
 
 
-# iocccsubmit/ioccc.py - the submit tool
+# bin/ioccc_submit.py - the submit tool
 
 **NOTE**: You must [setup python the environment](#setup) **BEFORE** running any of the command(s) below:
 
 To run the **IOCCC submit tool** server interactively on the command line:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
+./bin/ioccc_submit.py
 ```
 
-**NOTE**: If the `./iocccsubmit/ioccc.py` is not executable, try: `python3 ./iocccsubmit/ioccc.py`.
+**NOTE**: If the `./bin/ioccc_submit.py` is not executable, try: `python3 ./bin/ioccc_submit.py`.
 
 The initial output will look something like (timestamps, text colour, and PIN will vary):
 
 ```sh
-$ ./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
- * Serving Flask app 'ioccc'
+$ ./bin/ioccc_submit.py
+ * Serving Flask app 'iocccsubmit.ioccc'
  * Debug mode: on
-2024-12-20 22:41:54.863: werkzeug: INFO: WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2024-12-22 20:17:29.306: werkzeug: INFO: WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on http://127.0.0.1:8191
-2024-12-20 22:41:54.864: werkzeug: INFO: Press CTRL+C to quit
-2024-12-20 22:41:54.864: werkzeug: INFO:  * Restarting with stat
-2024-12-20 22:41:55.054: werkzeug: WARNING:  * Debugger is active!
-2024-12-20 22:41:55.060: werkzeug: INFO:  * Debugger PIN: 108-721-038
+2024-12-22 20:17:29.306: werkzeug: INFO: Press CTRL+C to quit
+2024-12-22 20:17:29.306: werkzeug: INFO:  * Restarting with stat
+2024-12-22 20:17:29.482: werkzeug: WARNING:  * Debugger is active!
+2024-12-22 20:17:29.489: werkzeug: INFO:  * Debugger PIN: 344-196-068
 ```
 
 .. where the last blank line is not a command line but rather the server running.
 
-**NOTE**: it does not at this time work putting it in the background (i.e.
-`./iocccsubmit/ioccc.py &`).
+**NOTE**: Do **NOT** put the `bin/ioccc_submit.py` application into background, that
 
 **NOTE**: in macOS you might see an alert asking you if you wish to allow the
 program to bind and listen to the addresses and port. If you wish to proceed you
 will need to allow it.
 
-While `iocccsubmit/ioccc.py` is running, open a browser at (this works under macOS):
+While `bin/ioccc_submit.py` is running, open a browser at (this works under macOS):
 
 ```
 open http://127.0.0.1:8191
@@ -135,45 +134,59 @@ rm -rf __pycache__ venv
 ```
 
 
-## iocccsubmit/ioccc.py - usage message
+## bin/ioccc_submit.py - usage message
 
-The usage message of the `./iocccsubmit/ioccc.py` is as follows:
+The usage message of the `./bin/ioccc_submit.py` is as follows:
 
 ```
-usage: ioccc.py [-h] [-i ip] [-l logtype] [-L dbglvl] [-p port] [-t appdir]
+usage: ioccc_submit.py [-h] [-i ip] [-l logtype] [-L dbglvl] [-p port] [-t appdir]
 
 IOCCC submit server tool
 
 options:
   -h, --help           show this help message and exit
   -i, --ip ip          IP address to connect (def: 127.0.0.1)
-  -l, --log logtype    log via: stdout stderr syslog none (def: syslog)
+  -l, --log logtype    log via: stdout stderr syslog none (def: stderr)
   -L, --level dbglvl   set log level: dbg debug info warn warning error crit critical (def: info)
   -p, --port port      open port (def: 8191)
-  -t, --topdir appdir  application directory path: tree under appdir must be setup correctly
+  -t, --topdir appdir  path of a correctly application tree
 
-ioccc.py version: 2.1.1 2024-12-20
+ioccc_submit.py version: 2.2.0 2024-12-22
 ```
 
-For command line interactive debugging try:
+For command line interactive debugging with only high level warnings
+and errors sent to stdout, try:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L info -i 127.0.0.1 -p 8191
+./bin/ioccc_submit.py -l stdout -L warning
 ```
 
-For more verbose interactive debugging:
+For more verbose interactive debugging to stderr, try:
 
 ```sh
-./iocccsubmit/ioccc.py -l stdout -L debug -i 127.0.0.1 -p 8191
+./bin/ioccc_submit.py -l stderr -L debug
 ```
 
-**NOTE**: An unknown `-l logtype` results in the default `-l syslog` being used.
+**NOTE**: An unknown `-l logtype` results in the default `-l stdout` when
+run as a command, or to `-l syslog` when imported / run as application
+under wsgi.
 
 **NOTE**: An unknown `-L dbglvl` results in the default `-L info` being used.
 
 **NOTE**: When logging with syslog, the _local5_ facility is used.
 
-**NOTE**: Use of `-t appdir` will likely fail unless you have the directory tree under `appdir` setup properly.
+**NOTE**: Unless your syslog service it configured to send _local5_
+facility to some place useful, `-l syslog` won't do anything useful.
+
+**NOTE**: On some systems, the syslog service is handled `syslogd(8)`
+and on others by `rsyslog(8)`.  See `syslog.conf(5)` or `rsyslog.conf(5)`
+details on how to configure syslog.
+
+**WARNING**: On some systems, the lack of a proper syslog service may
+cause `bin/ioccc_submit.py` to crash due to bogons in the `SysLogHandler`
+python implementation.
+
+**WARNING**: Use of `-t appdir` will likely fail unless you have the directory tree under `appdir` setup properly.
 
 
 # bin/pychk.sh - use of pylint
@@ -204,7 +217,8 @@ The usage message of the `./bin/ioccc_passwd.py` is as follows:
 
 ```
 usage: ioccc_passwd.py [-h] [-t appdir] [-a USER] [-u USER] [-d USER] [-p PW]
-                       [-c] [-C] [-g SECS] [-n] [-A] [-U]
+                       [-c] [-C] [-g SECS] [-n] [-A] [-U] [-l logtype]
+                       [-L dbglvl]
 
 Manage IOCCC submit server password file and state file
 
@@ -221,8 +235,11 @@ options:
   -n, --nologin        disable login (def: login not explicitly disabled)
   -A, --admin          user is an admin (def: not an admin)
   -U, --UUID           generate a new UUID username and password
+  -l, --log logtype    log via: stdout stderr syslog none (def: syslog)
+  -L, --level dbglvl   set log level: dbg debug info warn warning error crit
+                       critical (def: info)
 
-ioccc_passwd.py version: 2.1.0 2024-12-20
+ioccc_passwd.py version: 2.2.0 2024-12-22
 ```
 
 
@@ -234,7 +251,7 @@ ioccc_passwd.py version: 2.1.0 2024-12-20
 An example in how to add a new user:
 
 ```sh
-./bin/ioccc_passwd.py -a username
+./bin/ioccc_passwd.py -a username -l stderr
 ```
 
 The command will output the password in plain-text.
@@ -249,7 +266,7 @@ One may add `-p password` to set the password, otherwise a random password is ge
 For example, to add a user called `username`:
 
 ```sh
-./bin/ioccc_passwd.py -d username
+./bin/ioccc_passwd.py -d username -l stderr
 ```
 
 
@@ -261,7 +278,7 @@ To generate a username with a random UUID, a temporary random password,
 and a requirement to change that temporary password within the grace period:
 
 ```sh
-./bin/ioccc_passwd.py -U -c
+./bin/ioccc_passwd.py -U -c -l stderr
 ```
 
 The tool will output the username and temporary random that has just been
@@ -282,7 +299,8 @@ for submission uploads.
 The usage message of the `./bin/ioccc_date.py` is as follows:
 
 ```
-usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime]
+usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime] [-l logtype]
+                     [-L dbglvl]
 
 Manage IOCCC submit server password file and state file
 
@@ -293,8 +311,11 @@ options:
                         HH:MM:SS.micros+hh:mm format
   -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
                         HH:MM:SS.micros+hh:mm format
+  -l, --log logtype     log via: stdout stderr syslog none (def: syslog)
+  -L, --level dbglvl    set log level: dbg debug info warn warning error crit
+                        critical (def: info)
 
-ioccc_date.py version: 2.0.0 2024-12-16
+ioccc_date.py version: 2.2.0 2024-12-22
 ```
 
 **NOTE**: When neither `-s DateTime` nor `-S DateTime` is given, then the current
@@ -309,7 +330,7 @@ Example of setting an open and close date:
 
 
 ```sh
-./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00"
+./bin/ioccc_date.py -s "2024-05-25 21:27:28.901234+00:00" -S "2024-10-28 00:47:00.000000-08:00" -l stderr
 ```
 
 
@@ -321,26 +342,29 @@ Example of setting an open and close date:
 To set / change the status comment of a user's slot:
 
 ```sh
-./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status'
+./bin/set_slot_status.py 12345678-1234-4321-abcd-1234567890ab 0 'new slot status' -l stderr
 ```
 
 The usage message of the `./bin/ioccc_date.py` is as follows:
 
 ```
-usage: set_slot_status.py [-h] [-t appdir] username slot_num status
+usage: ioccc_date.py [-h] [-t appdir] [-s DateTime] [-S DateTime] [-l logtype]
+                     [-L dbglvl]
 
 Manage IOCCC submit server password file and state file
 
-positional arguments:
-  username             IOCCC submit server username
-  slot_num             slot number from 0 to 9
-  status               slot status string
-
 options:
-  -h, --help           show this help message and exit
-  -t, --topdir appdir  app directory path
+  -h, --help            show this help message and exit
+  -t, --topdir appdir   app directory path
+  -s, --start DateTime  set IOCCC start date in YYYY-MM-DD
+                        HH:MM:SS.micros+hh:mm format
+  -S, --stop DateTime   set IOCCC stop date in YYYY-MM-DD
+                        HH:MM:SS.micros+hh:mm format
+  -l, --log logtype     log via: stdout stderr syslog none (def: syslog)
+  -L, --level dbglvl    set log level: dbg debug info warn warning error crit
+                        critical (def: info)
 
-set_slot_status.py version: 2.0.0 2024-12-16
+ioccc_date.py version: 2.2.0 2024-12-22
 ```
 
 

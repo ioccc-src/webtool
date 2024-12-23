@@ -55,7 +55,7 @@ V=@:
 
 # package version
 #
-VERSION= 0.9.4
+VERSION= 0.9.5
 
 # Python package name
 #
@@ -134,7 +134,7 @@ SELINUX_UNSET= bin/selinux.unset.sh
 # NOTE: bin/pychk.sh is only needed for testing and thus is not needed under ${DESTDIR}.
 #
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
-	 ${SELINUX_SET} ${SELINUX_UNSET}
+	 bin/ioccc_submit.py ${SELINUX_SET} ${SELINUX_UNSET}
 
 # tool to generate the secret Flask key
 #

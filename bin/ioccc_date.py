@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 #
+# ioccc_date.py - Manage the IOCCC start and/or end dates
+
 """
-Functions to set the open and close data of the IOCCC.
+ioccc_date.py - Manage the IOCCC start and/or end dates
 """
+
 
 # system imports
 #
@@ -16,8 +19,10 @@ import os
 #
 from iocccsubmit import \
         change_startup_appdir, \
+        error, \
         read_state, \
         return_last_errmsg, \
+        setup_logger, \
         update_state
 
 
@@ -25,7 +30,7 @@ from iocccsubmit import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION = "2.0.0 2024-12-16"
+VERSION = "2.2.0 2024-12-22"
 
 
 def main():
@@ -56,23 +61,42 @@ def main():
                         help="set IOCCC stop date in YYYY-MM-DD HH:MM:SS.micros+hh:mm format",
                         metavar='DateTime',
                         nargs=1)
+    parser.add_argument('-l', '--log',
+                        help="log via: stdout stderr syslog none (def: syslog)",
+                        default="syslog",
+                        action="store",
+                        metavar='logtype',
+                        type=str)
+    parser.add_argument('-L', '--level',
+                        help="set log level: dbg debug info warn warning error crit critical (def: info)",
+                        default="info",
+                        action="store",
+                        metavar='dbglvl',
+                        type=str)
     args = parser.parse_args()
+
+    # setup logging according to -l logtype -L dbglvl
+    #
+    setup_logger(args.log, args.level)
 
     # -t topdir - set the path to the top level app direcory
     #
     if args.topdir:
         if not change_startup_appdir(args.topdir[0]):
-            print("ERROR: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
+            error(f'{program}: change_startup_appdir failed: <<{return_last_errmsg()}>>')
+            print("ERROR via print: change_startup_appdir error: <<" + return_last_errmsg() + ">>")
             sys.exit(3)
 
     # determine the IOCCC start and IOCCC end dates
     #
     start_datetime, stop_datetime = read_state()
     if not start_datetime:
-        print("ERROR: unable to fetch of start date: <<" + return_last_errmsg() + ">>")
+        error(f'{program}: read_state for start_datetime failed: <<{return_last_errmsg()}>>')
+        print("ERROR via print: unable to fetch of start date: <<" + return_last_errmsg() + ">>")
         sys.exit(4)
     if not stop_datetime:
-        print("ERROR: unable to fetch of stop date: <<" + return_last_errmsg() + ">>")
+        error(f'{program}: read_state for stop_datetime failed: <<{return_last_errmsg()}>>')
+        print("ERROR via print: unable to fetch of stop date: <<" + return_last_errmsg() + ">>")
         sys.exit(5)
 
     # -s - set IOCCC start date
@@ -94,17 +118,20 @@ def main():
         # update the start and/or stop dates
         #
         if not update_state(str(start_datetime), str(stop_datetime)):
-            print("ERROR: failed to update start and/or stop  date(s): <<" + return_last_errmsg() + ">>")
+            error(f'{program}: update_state failed: <<{return_last_errmsg()}>>')
+            print("ERROR via print: failed to update start and/or stop date(s): <<" + return_last_errmsg() + ">>")
             sys.exit(6)
         else:
-            print("Notice: set IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
+            print("Notice via print: set IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
             sys.exit(0)
-
 
     # no option selected
     #
-    print("Notice: IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
+    print("Notice via print: IOCCC start: " + str(start_datetime) + " IOCCC stop: " + str(stop_datetime))
     sys.exit(0)
 
+
+# case: run from the command line
+#
 if __name__ == '__main__':
     main()
