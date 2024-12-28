@@ -65,7 +65,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.2.0 2024-12-22"
+VERSION_IOCCC_COMMON = "2.2.1 2024-12-27"
 
 # force password change grace time
 #
@@ -172,6 +172,18 @@ EMPTY_JSON_SLOT_TEMPLATE = '''{
     "status": "slot is empty"
 }'''
 
+
+# username rules
+#
+# NOTE: UUID usernames are 36 characters, however
+#       templates/login.html can hold 40 (maybe 41) characters in username before scrolling
+#       We put the maximum at 40 for the above reasons (excuses)
+#
+# NOTE: We put the minimum at 1 out of paranoia about empty strings.
+#
+MIN_USERNAME_LENGTH = 1
+MAX_USERNAME_LENGTH = 40
+
 # password related JSON values
 #
 PASSWORD_VERSION_VALUE = "1.1 2024-10-18"
@@ -193,8 +205,11 @@ DEFAULT_JSON_STATE_TEMPLATE = '''{
 #    https://pages.nist.gov/800-63-4/sp800-63b.html
 #    https://cybersecuritynews.com/nist-rules-password-security/
 #
+# NOTE: templates/login.html can hold 40 (maybe 41) characters in password before scrolling
+#       We put the maximum at 40 for the above reasons (excuses)
+#
 MIN_PASSWORD_LENGTH = 15
-MAX_PASSWORD_LENGTH = 64
+MAX_PASSWORD_LENGTH = 40
 
 # Full path of the startup current working directory
 #
@@ -371,15 +386,15 @@ def change_startup_appdir(topdir):
     # paranoia - if ioccc_last_errmsg is not a string, return as string version
     #
     if not isinstance(topdir, str):
-        error(f'{me}: topdir arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": topdir arg is not a string"
+        error(f'{me}: topdir arg is not a string')
         return False
 
     # topdir must be a directory
     #
     if not Path(topdir).is_dir():
-        error(f'{me}: topdir arg is not a directory')
         ioccc_last_errmsg = "ERROR: in " + me + ": topdir is not a directory: " + topdir
+        error(f'{me}: topdir arg is not a directory')
         return False
 
     # now modify paths to all other files and directories used in this file
@@ -431,18 +446,35 @@ def return_user_dir_path(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
     # paranoia - username must be a POSIX safe filename string
     #
     # This also prevents username with /, and prevents it from being empty string,
     # thus one cannot create a username with system cracking "funny business".
     #
-    if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string"
-        return None
     if not re.match(POSIX_SAFE_RE, username):
-        error(f'{me}: username arg not POSIX safe')
         ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
         return None
 
     # return user directory path
@@ -451,6 +483,8 @@ def return_user_dir_path(username):
     return user_dir
 
 
+# pylint: disable=too-many-return-statements
+#
 def return_slot_dir_path(username, slot_num):
     """
     Return the slot directory path under a given user directory
@@ -473,6 +507,44 @@ def return_slot_dir_path(username, slot_num):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return None
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        ioccc_last_errmsg = f'{me}: slot_num arg is not an int'
+        info(f'{me}: slot_num arg is not an int')
+        return None
+
     # paranoia - must make a user_dir value
     #
     user_dir = return_user_dir_path(username)
@@ -483,17 +555,21 @@ def return_slot_dir_path(username, slot_num):
     # paranoia - must be a valid slot number
     #
     if (slot_num < 0 or slot_num > MAX_SUBMIT_SLOT):
-        error(f'{me}: invalid slot number for username: {username} slot_num: {slot_num}')
         ioccc_last_errmsg = "ERROR: in " + me + ": invalid slot number: " + str(slot_num) + \
                         " for username: <<" + username + ">>"
+        error(f'{me}: invalid slot number for username: {username} slot_num: {slot_num}')
         return None
 
     # return slot directory path under a given user directory
     #
     slot_dir = user_dir + "/" + str(slot_num)
     return slot_dir
+#
+# pylint: enable=too-many-return-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def return_slot_json_filename(username, slot_num):
     """
     Return the JSON filename for given slot directory of a given user directory
@@ -514,6 +590,39 @@ def return_slot_json_filename(username, slot_num):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        info(f'{me}: username arg not POSIX safe')
+        return None
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        info(f'{me}: slot_num arg is not an int')
+        return None
+
     # determine slot directory name
     #
     user_dir = return_user_dir_path(username)
@@ -529,6 +638,8 @@ def return_slot_json_filename(username, slot_num):
     #
     slot_json_file = slot_dir + "/slot.json"
     return slot_json_file
+#
+# pylint: enable=too-many-return-statements
 
 
 def ioccc_file_lock(file_lock):
@@ -569,9 +680,9 @@ def ioccc_file_lock(file_lock):
         Path(file_lock).touch(mode=0o664, exist_ok=True)
 
     except OSError as errcode:
-        error(f'{me}: touch file_lock: {file_lock} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed touch (mode=0o664, exist_ok=True): " + file_lock + \
                       " exception: " + str(errcode)
+        error(f'{me}: touch file_lock: {file_lock} failed: <<{str(errcode)}>>')
         return None
 
     # Force any stale lock to become unlocked
@@ -582,8 +693,9 @@ def ioccc_file_lock(file_lock):
         #
         if not ioccc_last_lock_path:
             ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
-        warning(f'{me}: forcing stale unlock: ioccc_last_lock_path: {ioccc_last_lock_path}')
+            # fall thru
         ioccc_last_errmsg = "Warning: in " + me + ": forcing stale unlock: " + ioccc_last_lock_path
+        warning(f'{me}: forcing stale unlock: ioccc_last_lock_path: {ioccc_last_lock_path}')
 
         # Force previous stale lock to become unlocked
         #
@@ -593,14 +705,16 @@ def ioccc_file_lock(file_lock):
         except OSError as errcode:
             # We give up as we cannot force the unlock
             #
-            error(f'{me}: stale unlock ioccc_last_lock_path failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "Warning: in " + me + ": failed to force stale unlock: " + ioccc_last_lock_path + \
                           " exception: " + str(errcode)
+            warning(f'{me}: stale unlock ioccc_last_lock_path failed: <<{str(errcode)}>>')
+            # fall thru
 
         # clear the past lock
         #
         ioccc_last_lock_fd = None
         ioccc_last_lock_path = None
+        # fall thru
 
     # Lock the file
     #
@@ -616,15 +730,15 @@ def ioccc_file_lock(file_lock):
 
         # too too long to get the lock
         #
-        error(f'{me}: lock timeout file_lock: {file_lock}')
         ioccc_last_errmsg = "Warning: in " + me + ": timeout on lock for: " + ioccc_last_lock_path
+        error(f'{me}: lock timeout file_lock: {file_lock}')
         return None
 
     except OSError as errcode:
-        error(f'{me}: lock of file_lock {file_lock} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + \
                             ": failed to FileLock(file_lock, timeout=LOCK_TIMEOUT, is_singleton=True): " + \
                             file_lock + " exception: " + str(errcode)
+        error(f'{me}: lock of file_lock {file_lock} failed: <<{str(errcode)}>>')
         return None
 
     # return the lock success
@@ -666,8 +780,8 @@ def ioccc_file_unlock():
     if not ioccc_last_lock_path:
         ioccc_last_lock_path = "((no-ioccc_last_lock_path))"
     if not ioccc_last_lock_fd:
-        warning(f'{me}: no lock for ioccc_last_lock_path: {ioccc_last_lock_path}')
         ioccc_last_errmsg = "ERROR: in " + me + ": no lock for: " + ioccc_last_lock_path
+        warning(f'{me}: no lock for ioccc_last_lock_path: {ioccc_last_lock_path}')
 
     # Unlock the file
     #
@@ -679,9 +793,10 @@ def ioccc_file_unlock():
         except OSError as errcode:
             # We give up as we cannot force the unlock
             #
-            warning(f'{me}: failed to unlock ioccc_last_lock_path: {ioccc_last_lock_path}')
             ioccc_last_errmsg = "Warning: in " + me + ": failed to unlock: " + ioccc_last_lock_path + \
                           " exception: " + str(errcode)
+            warning(f'{me}: failed to unlock ioccc_last_lock_path: {ioccc_last_lock_path}')
+            # fall thru
 
     # Clear any previous lock
     #
@@ -726,9 +841,9 @@ def load_pwfile():
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as errcode:
-            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + " #0: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(errcode)
+            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_file_unlock()
             return None
 
@@ -747,16 +862,16 @@ def load_pwfile():
 
                 # we have no JSON to return
                 #
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return None
 
     except OSError as errcode:
-        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " errcode: " + str(errcode)
+        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
 
         # we have no JSON to return
         #
@@ -816,9 +931,9 @@ def replace_pwfile(pw_file_json):
                 j_pw.close()
 
             except OSError as errcode:
-                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return False
 
@@ -826,8 +941,8 @@ def replace_pwfile(pw_file_json):
 
         # unlock the password file
         #
-        error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file"
+        error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_file_unlock()
         return False
 
@@ -864,100 +979,132 @@ def validate_user_dict(user_dict):
     # sanity check argument
     #
     if not isinstance(user_dict, dict):
-        error(f'{me}: user_dict arg is not a python dictionary')
         ioccc_last_errmsg = "ERROR: in " + me + ": user_dict arg is not a python dictionary"
+        error(f'{me}: user_dict arg is not a python dictionary')
         return False
 
     # obtain the username
     #
     if not isinstance(user_dict['username'], str):
-        error(f'{me}: username is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": username is not a string: <<" + str(user_dict['username']) + ">>"
+        error(f'{me}: username is not a string')
         return False
     username = user_dict['username']
+
+    # paranoia - username value is not a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username value is not a string'
+        info(f'{me}: username value is not a string')
+        return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username value not POSIX safe"
+        info(f'{me}: username value not POSIX safe')
+        return False
 
     # sanity check user no_comment
     #
     if not user_dict['no_comment']:
-        error(f'{me}: missing no_comment for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": missing no_comment for username : <<" + \
                             username + ">>"
+        error(f'{me}: missing no_comment for username: {username}')
         return False
     if not isinstance(user_dict['no_comment'], str):
-        error(f'{me}: no_comment not a string for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": no_comment is not a string for username : <<" + \
                             username + ">>"
+        error(f'{me}: no_comment not a string for username: {username}')
+        return False
     if user_dict["no_comment"] != NO_COMMENT_VALUE:
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
+                            username + ">>"
         error(f'{me}: invalid JSON no_comment for username: {username} '
               f'user_dict["no_comment"]: {user_dict["no_comment"]} != '
               f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
-                            username + ">>"
         return False
 
     # sanity check user iocccpasswd_format_version
     #
     if not user_dict['iocccpasswd_format_version']:
-        error(f'{me}: missing iocccpasswd_format_version for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": missing iocccpasswd_format_version for username : <<" + \
                             username + ">>"
+        error(f'{me}: missing iocccpasswd_format_version for username: {username}')
         return False
     if not isinstance(user_dict['iocccpasswd_format_version'], str):
-        error(f'{me}: iocccpasswd_format_version not a string for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": iocccpasswd_format_version is not a string for username : <<" + \
                             username + ">>"
+        error(f'{me}: iocccpasswd_format_version not a string for username: {username}')
+        return False
     if user_dict["iocccpasswd_format_version"] != PASSWORD_VERSION_VALUE:
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + \
+                            username + ">>"
         error(f'{me}: invalid iocccpasswd_format_version for username: {username} '
               f'user_dict["iocccpasswd_format_version"]: {user_dict["iocccpasswd_format_version"]} != '
               f'PASSWORD_VERSION_VALUE: {PASSWORD_VERSION_VALUE}')
-        error(f'{me}: iocccpasswd_format_version for username: {username}')
-        ioccc_last_errmsg = "ERROR: in " + me + ": invalid iocccpasswd_format_version for username : <<" + \
-                            username + ">>"
         return False
 
     # sanity check pwhash for user
     #
     if not user_dict['pwhash']:
-        error(f'{me}: missing pwhash for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": missing pwhash for username : <<" + \
                             username + ">>"
+        error(f'{me}: missing pwhash for username: {username}')
         return False
     if not isinstance(user_dict['pwhash'], str):
-        error(f'{me}: pwhash not a string for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": pwhash is not a string for username : <<" + \
                             username + ">>"
+        error(f'{me}: pwhash not a string for username: {username}')
         return False
 
     # sanity check admin for user
     #
     if not isinstance(user_dict['admin'], bool):
-        error(f'{me}: admin not a boolean for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": admin is not a boolean for username : <<" + \
                             username + ">>"
+        error(f'{me}: admin not a boolean for username: {username}')
         return False
 
     # sanity check force_pw_change for user
     #
     if not isinstance(user_dict['force_pw_change'], bool):
-        error(f'{me}: force_pw_change not a boolean for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": force_pw_change is not a boolean for username : <<" + \
                             username + ">>"
+        error(f'{me}: force_pw_change not a boolean for username: {username}')
         return False
 
     # sanity check pw_change_by for user
     #
     if user_dict['pw_change_by'] and not isinstance(user_dict['pw_change_by'], str):
-        error(f'{me}: pw_change_by not null nor string for for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": pw_change_by is not null nor string for username : <<" + \
                             username + ">>"
+        error(f'{me}: pw_change_by not null nor string for for username: {username}')
         return False
 
     # sanity check disable_login for user
     #
     if not isinstance(user_dict['disable_login'], bool):
-        error(f'{me}: disable_login not a boolean for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": disable_login is not a boolean for username : <<" + \
                             username + ">>"
+        error(f'{me}: disable_login not a boolean for username: {username}')
         return False
 
     # user information passed the sanity checks
@@ -969,6 +1116,8 @@ def validate_user_dict(user_dict):
 # pylint: enable=too-many-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def lookup_username(username):
     """
     Return JSON information for username from password file as a python dictionary
@@ -990,15 +1139,44 @@ def lookup_username(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username must be a POSIX safe filename string
+    # paranoia - username arg must be a string
+    #
+    # NOTE: From the iocccsubmit/ioccc.py web application, a non-string
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page via bogus POST HTTP action.
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        info(f'{me}: username arg is not a string')
         return None
+
+    # paranoia - username cannot be too short
+    #
+    # NOTE: From the iocccsubmit/ioccc.py web application, a too short / empty
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page.
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    # NOTE: From the iocccsubmit/ioccc.py web application, a too long
+    #       username most likely comes from something like a system cracker
+    #       playing with the login page.
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
     if not re.match(POSIX_SAFE_RE, username):
-        error(f'{me}: username arg not POSIX safe')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
         return None
 
     # load JSON from the password file as a python dictionary
@@ -1016,8 +1194,8 @@ def lookup_username(username):
             user_dict = i
             break
     if not user_dict:
-        debug(f'{me}: failed to find in password file for username: {username}')
         ioccc_last_errmsg = "ERROR: in " + me + ": unknown username: <<" + username + ">>"
+        debug(f'{me}: failed to find in password file for username: {username}')
         return None
 
     # sanity check the user information for user
@@ -1029,6 +1207,8 @@ def lookup_username(username):
     # return user information for user in the form of a python dictionary
     #
     return user_dict
+#
+# pylint: enable=too-many-return-statements
 
 
 # pylint: disable=too-many-statements
@@ -1064,57 +1244,75 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username must be a POSIX safe filename string
+    # paranoia - username arg must be a string
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + \
-                        ": username arg is not a string: <<" + str(username) + ">>"
-        return False
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
     if not re.match(POSIX_SAFE_RE, username):
-        error(f'{me}: username arg not POSIX safe')
-        ioccc_last_errmsg = "ERROR: in " + me + \
-                        ": username is not POSIX safe: <<" + username + ">>"
-        return False
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return None
 
     # paranoia - pwhash must be a string
     #
     if not isinstance(pwhash, str):
-        error(f'{me}: pwhash arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pwhash arg is not a string for username : <<" + username + ">>"
+        error(f'{me}: pwhash arg is not a string')
         return False
 
     # paranoia - admin must be a boolean
     #
     if not isinstance(admin, bool):
-        error(f'{me}: admin arg is not a boolean')
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": admin arg is not a boolean for username : <<" + username + ">>"
+        error(f'{me}: admin arg is not a boolean')
         return False
 
     # paranoia - force_pw_change must be a boolean
     #
     if not isinstance(force_pw_change, bool):
-        error(f'{me}: force_pw_change arg is not a boolean')
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": force_pw_change arg is not a boolean for username : <<" + username + ">>"
+        error(f'{me}: force_pw_change arg is not a boolean')
         return False
 
     # paranoia - pw_change_by must None or must be be string
     #
     if not isinstance(pw_change_by, str) and pw_change_by is not None:
-        error(f'{me}: pw_change_by arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": pw_change_by arg is not a string nor None for username : <<" + username + ">>"
+        error(f'{me}: pw_change_by arg is not a string')
         return False
 
     # paranoia - disable_login must be a boolean
     #
     if not isinstance(disable_login, bool):
-        error(f'{me}: disable_login arg is not a boolean')
         ioccc_last_errmsg = "ERROR: in " + me + \
                         ": disable_login arg is not a boolean for username : <<" + username + ">>"
+        error(f'{me}: disable_login arg is not a boolean')
         return False
 
     # Lock the password file
@@ -1130,9 +1328,9 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as errcode:
-            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + " #1: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(errcode)
+            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_file_unlock()
             return False
 
@@ -1151,19 +1349,19 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
                 # we have no JSON to return
                 #
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
-                return None
+                return False
 
     except OSError as errcode:
 
         # unlock the password file
         #
-        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(errcode)
+        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_file_unlock()
         return False
 
@@ -1215,16 +1413,16 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
                 j_pw.close()
 
             except OSError as errcode:
-                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return False
 
     except OSError as errcode:
-        error(f'{me}: open for writing {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(errcode)
+        error(f'{me}: open for writing {PW_FILE} failed: <<{str(errcode)}>>')
 
         # unlock the password file
         #
@@ -1246,6 +1444,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
 #
 def delete_username(username):
     """
@@ -1268,15 +1467,35 @@ def delete_username(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username must be a POSIX safe filename string
+    # paranoia - username arg must be a string
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
         return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
     if not re.match(POSIX_SAFE_RE, username):
-        error(f'{me}: username arg not POSIX safe')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
         return None
 
     # Lock the password file
@@ -1292,9 +1511,9 @@ def delete_username(username):
         try:
             shutil.copy2(INIT_PW_FILE, PW_FILE, follow_symlinks=True)
         except OSError as errcode:
-            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + " #2: cannot cp -p " + INIT_PW_FILE + \
                             " " + PW_FILE + " exception: " + str(errcode)
+            error(f'{me}: cp -p {INIT_PW_FILE} {PW_FILE} failed: <<{str(errcode)}>>')
             ioccc_file_unlock()
             return None
 
@@ -1313,9 +1532,9 @@ def delete_username(username):
 
                 # we have no JSON to return
                 #
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return None
 
@@ -1323,9 +1542,9 @@ def delete_username(username):
 
         # unlock the password file
         #
-        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot read password file" + \
                         " exception: " + str(errcode)
+        error(f'{me}: open for reading {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_file_unlock()
         return None
 
@@ -1362,9 +1581,9 @@ def delete_username(username):
                 j_pw.close()
 
             except OSError as errcode:
-                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + PW_FILE + \
                                     " exception: " + str(errcode)
+                error(f'{me}: close for writing {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return None
 
@@ -1372,9 +1591,9 @@ def delete_username(username):
 
         # unlock the password file
         #
-        error(f'{me}: open for writing {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to write password file" + \
                         " exception: " + str(errcode)
+        error(f'{me}: open for writing {PW_FILE} failed: <<{str(errcode)}>>')
         ioccc_file_unlock()
         return None
 
@@ -1385,6 +1604,7 @@ def delete_username(username):
 #
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
 
 
 def generate_password():
@@ -1416,9 +1636,9 @@ def generate_password():
                     ioccc_pw_words = [word.strip() for word in f]
 
                 except OSError as errcode:
-                    error(f'{me}: reading {PW_WORDS} failed: <<{str(errcode)}>>')
                     ioccc_last_errmsg = "ERROR: in " + me + ": failed to read: " + PW_WORDS + \
                                         " exception: " + str(errcode)
+                    error(f'{me}: reading {PW_WORDS} failed: <<{str(errcode)}>>')
 
                     # generate a random password string based on UUID, a "++" and a f9.4 number
                     #
@@ -1428,9 +1648,9 @@ def generate_password():
                     return password
 
         except OSError as errcode:
-            error(f'{me}: open for reading {PW_WORDS} failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + ": failed to open: " + PW_WORDS + \
                                 " exception: " + str(errcode)
+            error(f'{me}: open for reading {PW_WORDS} failed: <<{str(errcode)}>>')
 
             # generate a random password string based on UUID, a "**" and a f9.4 number
             #
@@ -1475,8 +1695,8 @@ def hash_password(password):
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        error(f'{me}: password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        error(f'{me}: password arg is not a string')
         return None
 
     return generate_password_hash(password)
@@ -1506,15 +1726,15 @@ def verify_hashed_password(password, pwhash):
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        error(f'{me}: password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        error(f'{me}: password arg is not a string')
         return False
 
     # firewall - pwhash must be a string
     #
     if not isinstance(pwhash, str):
-        error(f'{me}: pwhash arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": pwhash arg is not a string"
+        error(f'{me}: pwhash arg is not a string')
         return False
 
     # return if the pwhash matches the password
@@ -1522,6 +1742,8 @@ def verify_hashed_password(password, pwhash):
     return check_password_hash(pwhash, password)
 
 
+# pylint: disable=too-many-return-statements
+#
 def verify_user_password(username, password):
     """
     Verify a password for a given user
@@ -1545,18 +1767,42 @@ def verify_user_password(username, password):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # firewall - password must be a string
+    # paranoia - username arg must be a string
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string"
-        return False
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return None
 
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        error(f'{me}: password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        error(f'{me}: password arg is not a string')
         return False
 
     # fail if user login is disabled or missing from the password file
@@ -1581,6 +1827,8 @@ def verify_user_password(username, password):
     # return the result of the hashed password check for this user
     #
     return verify_hashed_password(password, user_dict['pwhash'])
+#
+# pylint: enable=too-many-return-statements
 
 
 # pylint: disable=too-many-return-statements
@@ -1669,22 +1917,22 @@ def is_pw_pwned(password):
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        error(f'{me}: password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        error(f'{me}: password arg is not a string')
         return True
 
     # compute the SHA-1 of the password in UPPER CASE hex
     #
     m = hashlib.sha1()
     if not m:
-        error(f'{me}: unable to form a context for SHA-1 hashing')
         ioccc_last_errmsg = "ERROR: in " + me + ": unable to form a context for SHA-1 hashing"
+        error(f'{me}: unable to form a context for SHA-1 hashing')
         return True
     m.update(bytes(password, 'utf-8'))
     sha1_hex = m.hexdigest().upper()
     if not sha1_hex or len(sha1_hex) != SHA1_HEXLEN:
-        error(f'{me}: invalid SHA-1 hash return')
         ioccc_last_errmsg = "ERROR: in " + me + ": SHA-1 hash return was invalid"
+        error(f'{me}: invalid SHA-1 hash return')
         return True
 
     # determine the Pwned password tree file we need to read
@@ -1716,9 +1964,9 @@ def is_pw_pwned(password):
                     return True
 
     except OSError as errcode:
-        error(f'{me}: failed open for reading: {pwned_file}')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed using: " + pwned_file + \
                             " exception: " + str(errcode)
+        error(f'{me}: failed open for reading: {pwned_file}')
         return True
 
     # We presume that the password is not Pwned
@@ -1758,31 +2006,31 @@ def is_proper_password(password):
     # firewall - password must be a string
     #
     if not isinstance(password, str):
-        error(f'{me}: password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": password arg is not a string"
+        error(f'{me}: password arg is not a string')
         return False
 
     # password must be at at least MIN_PASSWORD_LENGTH long
     #
     if len(password) < MIN_PASSWORD_LENGTH:
-        debug(f'{me}: password is too short')
         ioccc_last_errmsg = "ERROR: password must be at least " + str(MIN_PASSWORD_LENGTH) + \
                       " characters long"
+        debug(f'{me}: password is too short')
         return False
 
     # password must be a sane length
     #
     if len(password) > MAX_PASSWORD_LENGTH:
-        debug(f'{me}: password is too long')
         ioccc_last_errmsg = "ERROR: password must not be longer than " + str(MAX_PASSWORD_LENGTH) + \
                       " characters"
+        debug(f'{me}: password is too long')
         return False
 
     # password must not have been Pwned
     #
     if is_pw_pwned(password):
-        debug(f'{me}: is_pw_pwned returned true for a password')
         ioccc_last_errmsg = "ERROR: new password has been Pwned (compromised), please select a different new password"
+        debug(f'{me}: is_pw_pwned returned true for a password')
         return False
 
     # until we have password rules, allow any string
@@ -1822,25 +2070,49 @@ def update_password(username, old_password, new_password):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # firewall - password must be a string
+    # paranoia - username arg must be a string
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string"
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
         return False
 
     # firewall - old_password must be a string
     #
     if not isinstance(old_password, str):
-        error(f'{me}: old_password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": old_password arg is not a string"
+        error(f'{me}: old_password arg is not a string')
         return False
 
     # firewall - new_password must be a string
     #
     if not isinstance(new_password, str):
-        error(f'{me}: new_password arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": new_password arg is not a string"
+        error(f'{me}: new_password arg is not a string')
         return False
 
     # new_password must be a proper password
@@ -1874,8 +2146,8 @@ def update_password(username, old_password, new_password):
 
         # old_password is not correct
         #
-        info(f'{me}: old_password is not correct for username: {username}')
         ioccc_last_errmsg = "ERROR: invalid old password"
+        info(f'{me}: old_password is not correct for username: {username}')
         return False
 
     # update user entry in the password database
@@ -1899,6 +2171,8 @@ def update_password(username, old_password, new_password):
 # pylint: enable=too-many-return-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def user_allowed_to_login(user_dict):
     """
     Determine if the user has been disabled based on the username
@@ -1927,15 +2201,49 @@ def user_allowed_to_login(user_dict):
         error(f'{me}: validate_user_dict failed')
         return False
 
-    # deny login if disable_login is true
+    # obtain username form user_doct
     #
     username = user_dict['username']
+
+    # paranoia - username value is not a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username value is not a string'
+        info(f'{me}: username arg is not a string')
+        return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username value is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username value is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username value not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return False
+
+    # deny login if disable_login is true
+    #
     if user_dict['disable_login']:
 
         # login disabled
         #
-        info(f'{me}: login not allowed for username: {username}')
         ioccc_last_errmsg = "ERROR: user login has been disabled"
+        info(f'{me}: login not allowed for username: {username}')
         return False
 
     # deny login is the force_pw_change and we are beyond the pw_change_by time limit
@@ -1947,10 +2255,10 @@ def user_allowed_to_login(user_dict):
         try:
             pw_change_by = datetime.strptime(user_dict["pw_change_by"], DATETIME_FORMAT)
         except ValueError as errcode:
-            error(f'{me}: datetime.strptime of pw_change_by: {user_dict["pw_change_by"]} '
-                  f'failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + ": not in datetime format: <<" + \
                       user_dict['pw_change_by'] + ">> exception: <<" + str(errcode) + ">>"
+            error(f'{me}: datetime.strptime of pw_change_by: {user_dict["pw_change_by"]} '
+                  f'failed: <<{str(errcode)}>>')
             return False
 
         # determine the datetime of now
@@ -1960,8 +2268,8 @@ def user_allowed_to_login(user_dict):
         # failed to change the password in time
         #
         if now > pw_change_by:
-            info(f'{me}: password not changed in time for username: {username}')
             ioccc_last_errmsg = "ERROR: user failed to change the password in time"
+            info(f'{me}: password not changed in time for username: {username}')
             return False
 
     # user login attempt is allowed
@@ -1995,6 +2303,8 @@ def must_change_password(user_dict):
         return False
 
     return user_dict['force_pw_change']
+#
+# pylint: enable=too-many-return-statements
 
 
 def username_login_allowed(username):
@@ -2019,15 +2329,35 @@ def username_login_allowed(username):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
-    # paranoia - username must be a POSIX safe filename string
+    # paranoia - username arg must be a string
     #
     if not isinstance(username, str):
-        error(f'{me}: username arg is not a string')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username arg is not a string: <<" + str(username) + ">>"
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
         return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
     if not re.match(POSIX_SAFE_RE, username):
-        error(f'{me}: username arg not POSIX safe')
-        ioccc_last_errmsg = "ERROR: in " + me + ": username is not POSIX safe: <<" + username + ">>"
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
         return False
 
     # fail if user login is disabled or missing from the password file
@@ -2075,6 +2405,43 @@ def lock_slot(username, slot_num):
     debug(f'{me}: start')
     umask(0o022)
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return None
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        info(f'{me}: slot_num arg is not an int')
+        return None
+
     # validate username and slot
     #
     if not lookup_username(username):
@@ -2095,8 +2462,8 @@ def lock_slot(username, slot_num):
     try:
         makedirs(user_dir, mode=0o2770, exist_ok=True)
     except OSError as errcode:
-        error(f'{me}: mkdir for username: {username} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to create for username: <<" + username + ">>"
+        error(f'{me}: mkdir for username: {username} failed: <<{str(errcode)}>>')
         return None
 
     # be sure the slot directory exits
@@ -2105,10 +2472,10 @@ def lock_slot(username, slot_num):
         makedirs(slot_dir, mode=0o2770, exist_ok=True)
 
     except OSError as errcode:
-        error(f'{me}: slot directory mkdir for username: {username} slot_num: {slot_num} '
-              f'failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to create slot: " + slot_num_str + \
                         "for username: <<" + username + ">>" + " exception: " + str(errcode)
+        error(f'{me}: slot directory mkdir for username: {username} slot_num: {slot_num} '
+              f'failed: <<{str(errcode)}>>')
         return None
 
     # determine the lock filename
@@ -2122,8 +2489,8 @@ def lock_slot(username, slot_num):
     # case: filed to lock
     #
     if not slot_lock_fd:
-        error(f'{me}: failed to lock file for slot_file_lock: {slot_file_lock}')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to lock: " + slot_file_lock
+        error(f'{me}: failed to lock file for slot_file_lock: {slot_file_lock}')
         return None
 
     # return the slot lock success or None
@@ -2193,16 +2560,16 @@ def write_slot_json(slot_json_file, slot_json):
                 slot_file_fp.close()
 
             except OSError as errcode:
-                error(f'{me}: close writing for slot_json_file: {slot_json_file} '
-                      f'failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_json_file + \
                                     " exception: " + str(errcode)
+                error(f'{me}: close writing for slot_json_file: {slot_json_file} '
+                      f'failed: <<{str(errcode)}>>')
                 return False
 
     except OSError as errcode:
-        error(f'{me}: open for slot_json_file: {slot_json_file} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: failed to write out slot file: " + slot_json_file + \
                             " exception: " + str(errcode)
+        error(f'{me}: open for slot_json_file: {slot_json_file} failed: <<{str(errcode)}>>')
         return False
 
     return True
@@ -2238,6 +2605,37 @@ def initialize_user_tree(username):
     global ioccc_last_errmsg
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
+
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return None
 
     # setup
     #
@@ -2279,10 +2677,10 @@ def initialize_user_tree(username):
         try:
             makedirs(slot_dir, mode=0o2770, exist_ok=True)
         except OSError as errcode:
-            error(f'{me}: make directory for slot_dir: {slot_dir} '
-                  f'failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + ": cannot form slot directory: " + \
                             slot_dir + " exception: " + str(errcode)
+            error(f'{me}: make directory for slot_dir: {slot_dir} '
+                  f'failed: <<{str(errcode)}>>')
             return None
 
         # Lock the slot
@@ -2310,42 +2708,42 @@ def initialize_user_tree(username):
                 # sanity check slot no_comment
                 #
                 if not slots[slot_num]["no_comment"]:
-                    error(f'{me}: missing no_comment for username: {username} slot_num: {slot_num}')
                     ioccc_last_errmsg = "ERROR: in " + me + ": missing no_comment for username : <<" + \
                                         username + ">>" + ">> for slot: " + slot_num_str
+                    error(f'{me}: missing no_comment for username: {username} slot_num: {slot_num}')
                     return None
                 if not isinstance(slots[slot_num]["no_comment"], str):
-                    error(f'{me}: no_comment not a string for username: {username} slot_num: {slot_num}')
                     ioccc_last_errmsg = "ERROR: in " + me + ": no_comment is not a string for username : <<" + \
                                         username + ">>" + ">> for slot: " + slot_num_str
+                    error(f'{me}: no_comment not a string for username: {username} slot_num: {slot_num}')
                     return None
                 if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
+                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
+                                        username + ">> for slot: " + slot_num_str
                     error(f'{me}: invalid JSON no_comment for username: {username} slot_num: {slot_num} '
                           f'slots[slot_num]["no_comment"]: {slots[slot_num]["no_comment"]} != '
                           f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
-                                        username + ">> for slot: " + slot_num_str
                     return None
 
                 # sanity check slot slot_JSON_format_version
                 #
                 if not slots[slot_num]["slot_JSON_format_version"]:
-                    error(f'{me}: missing slot_JSON_format_version for username: {username} slot_num: {slot_num}')
                     ioccc_last_errmsg = "ERROR: in " + me + ": missing slot_JSON_format_version for username : <<" + \
                                         username + ">>" + ">> for slot: " + slot_num_str
+                    error(f'{me}: missing slot_JSON_format_version for username: {username} slot_num: {slot_num}')
                     return None
                 if not isinstance(slots[slot_num]["slot_JSON_format_version"], str):
-                    error(f'{me}: slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                     ioccc_last_errmsg = "ERROR: in " + me + \
                                         ": slot_JSON_format_version is not a string for username : <<" + \
                                         username + ">>" + ">> for slot: " + slot_num_str
+                    error(f'{me}: slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                     return None
                 if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
+                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version"
                     error(f'{me}: invalid slot_JSON_format_version for username: {username} slot_num: {slot_num} '
                           'slots[slot_num]["slot_JSON_format_version}]: '
                           f'{slots[slot_num]["slot_JSON_format_version"]} != '
                           f'SLOT_VERSION_VALUE: {SLOT_VERSION_VALUE}')
-                    ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version"
                     unlock_slot()
                     return None
 
@@ -2366,42 +2764,42 @@ def initialize_user_tree(username):
             # paranoia for slot no_comment
             #
             if not slots[slot_num]["no_comment"]:
-                error(f'{me}: missing new no_comment for username: {username} slot_num: {slot_num}')
                 ioccc_last_errmsg = "ERROR: in " + me + ": missing no_comment for username : <<" + \
                                     username + ">>" + ">> for slot: " + slot_num_str
+                error(f'{me}: missing new no_comment for username: {username} slot_num: {slot_num}')
                 return None
             if not isinstance(slots[slot_num]["no_comment"], str):
-                error(f'{me}: new no_comment not a string for username: {username} slot_num: {slot_num}')
                 ioccc_last_errmsg = "ERROR: in " + me + ": no_comment is not a string for username : <<" + \
                                     username + ">>" + ">> for slot: " + slot_num_str
+                error(f'{me}: new no_comment not a string for username: {username} slot_num: {slot_num}')
                 return None
             if slots[slot_num]["no_comment"] != NO_COMMENT_VALUE:
+                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
+                                    username + ">> for slot: " + slot_num_str
                 error(f'{me}: invalid new JSON no_comment for username: {username} slot_num: {slot_num} '
                       f'slots[slot_num]["no_comment"]: {slots[slot_num]["no_comment"]} != '
                       f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment username : <<" + \
-                                    username + ">> for slot: " + slot_num_str
                 return None
 
             # paranoia for slot slot_JSON_format_version
             #
             if not slots[slot_num]["slot_JSON_format_version"]:
-                error(f'{me}: missing new slot_JSON_format_version for username: {username} slot_num: {slot_num}')
                 ioccc_last_errmsg = "ERROR: in " + me + ": missing slot_JSON_format_version for username : <<" + \
                                     username + ">>" + ">> for slot: " + slot_num_str
+                error(f'{me}: missing new slot_JSON_format_version for username: {username} slot_num: {slot_num}')
                 return None
             if not isinstance(slots[slot_num]["slot_JSON_format_version"], str):
-                error(f'{me}: new slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                 ioccc_last_errmsg = "ERROR: in " + me + \
                                     ": slot_JSON_format_version is not a string for username : <<" + \
                                     username + ">>" + ">> for slot: " + slot_num_str
+                error(f'{me}: new slot_JSON_format_version not a string for username: {username} slot_num: {slot_num}')
                 return None
             if slots[slot_num]["slot_JSON_format_version"] != SLOT_VERSION_VALUE:
+                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version"
                 error(f'{me}: invalid new slot_JSON_format_version for username: {username} slot_num: {slot_num} '
                       'slots[slot_num]["slot_JSON_format_version}]: '
                       f'{slots[slot_num]["slot_JSON_format_version"]} != '
                       f'SLOT_VERSION_VALUE: {SLOT_VERSION_VALUE}')
-                ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON slot_JSON_format_version"
                 unlock_slot()
                 return None
 
@@ -2422,16 +2820,16 @@ def initialize_user_tree(username):
                         slot_file_fp.close()
 
                     except OSError as errcode:
-                        error(f'{me}: close writing for slot_json_file: {slot_json_file} '
-                              f'failed: <<{str(errcode)}>>')
                         ioccc_last_errmsg = "ERROR: in " + me + ": failed to close: " + slot_json_file + \
                                             " exception: " + str(errcode)
+                        error(f'{me}: close writing for slot_json_file: {slot_json_file} '
+                              f'failed: <<{str(errcode)}>>')
                         return None
 
             except OSError as errcode:
-                error(f'{me}: open for writing slot_json_file: {slot_json_file} failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": unable to write JSON slot file: " + \
                                 slot_json_file + " exception: " + str(errcode)
+                error(f'{me}: open for writing slot_json_file: {slot_json_file} failed: <<{str(errcode)}>>')
                 unlock_slot()
                 return None
 
@@ -2468,6 +2866,39 @@ def get_json_slot(username, slot_num):
     #
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
+
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        info(f'{me}: username arg not POSIX safe')
+        return None
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        info(f'{me}: slot_num arg is not an int')
+        return None
 
     # validate username
     #
@@ -2521,6 +2952,8 @@ def get_json_slot(username, slot_num):
 # pylint: enable=too-many-return-statements
 
 
+# pylint: disable=too-many-return-statements
+#
 def get_all_json_slots(username):
     """
     read the user data for all slots for a given user.
@@ -2542,6 +2975,33 @@ def get_all_json_slots(username):
     #
     umask(0o022)
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        info(f'{me}: username arg is not a string')
+        return None
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return None
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        info(f'{me}: username arg not POSIX safe')
+        return None
+
     # validate username
     #
     if not lookup_username(username):
@@ -2562,11 +3022,14 @@ def get_all_json_slots(username):
     # return slot information as a python dictionary
     #
     return slots
+#
+# pylint: enable=too-many-return-statements
 
 
 # pylint: disable=too-many-return-statements
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-branches
 #
 def update_slot(username, slot_num, slot_file):
     """
@@ -2589,6 +3052,44 @@ def update_slot(username, slot_num, slot_file):
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
 
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        ioccc_last_errmsg = f'{me}: username arg is not a string'
+        info(f'{me}: username arg is not a string')
+        return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        ioccc_last_errmsg = f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}'
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        ioccc_last_errmsg = "ERROR: in " + me + ": username arg not POSIX safe"
+        info(f'{me}: username arg not POSIX safe')
+        return False
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        ioccc_last_errmsg = f'{me}: slot_num arg is not an int'
+        info(f'{me}: slot_num arg is not an int')
+        return None
+
     # initialize user if needed
     #
     slots = initialize_user_tree(username)
@@ -2610,10 +3111,10 @@ def update_slot(username, slot_num, slot_file):
                 return False
 
     except OSError as errcode:
-        error(f'{me}: open for username: {username} slot_num: {slot_num} slot_file: {slot_file} '
-              f'failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": failed to open for username: <<" + username + ">> slot: " + \
                         slot_num_str + " file: " + slot_file + " exception: " + str(errcode)
+        error(f'{me}: open for username: {username} slot_num: {slot_num} slot_file: {slot_file} '
+              f'failed: <<{str(errcode)}>>')
         return False
 
     # lock the slot because we are about to change it
@@ -2657,11 +3158,11 @@ def update_slot(username, slot_num, slot_file):
             try:
                 os.remove(old_file)
             except OSError as errcode:
-                error(f'{me}: os.remove({old_file} for username: {username} slot_num: {slot_num} '
-                      f'failed: <<{str(errcode)}>>')
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to remove old file: " + \
                                     old_file + " from slot: " + slot_num_str + " file: " + \
                                     slot['filename'] + " exception: " + str(errcode)
+                error(f'{me}: os.remove({old_file} for username: {username} slot_num: {slot_num} '
+                      f'failed: <<{str(errcode)}>>')
                 unlock_slot()
                 return False
 
@@ -2695,6 +3196,7 @@ def update_slot(username, slot_num, slot_file):
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-statements
+# pylint: enable=too-many-branches
 
 
 # pylint: disable=too-many-return-statements
@@ -2717,6 +3219,39 @@ def update_slot_status(username, slot_num, status):
     #
     me = inspect.currentframe().f_code.co_name
     debug(f'{me}: start')
+
+    # paranoia - username arg must be a string
+    #
+    if not isinstance(username, str):
+        info(f'{me}: username arg is not a string')
+        return False
+
+    # paranoia - username cannot be too short
+    #
+    if len(username) < MIN_USERNAME_LENGTH:
+        info(f'{me}: username arg is too short: {len(username)} < {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username cannot be too long
+    #
+    if len(username) > MAX_USERNAME_LENGTH:
+        info(f'{me}: username arg is too long: {len(username)} > {MIN_USERNAME_LENGTH}')
+        return False
+
+    # paranoia - username must be a POSIX safe filename string
+    #
+    # This also prevents username with /, and prevents it from being empty string,
+    # thus one cannot create a username with system cracking "funny business".
+    #
+    if not re.match(POSIX_SAFE_RE, username):
+        info(f'{me}: username arg not POSIX safe')
+        return False
+
+    # paranoia - slot_num arg must be an integer
+    #
+    if not isinstance(slot_num, int):
+        info(f'{me}: slot_num arg is not an int')
+        return None
 
     # must be a valid user
     #
@@ -2798,10 +3333,10 @@ def read_json_file(json_file):
             return json.load(j_fp)
 
     except OSError as errcode:
-        error(f'{me}: read JSON for json_file: {json_file} '
-              f'failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": cannot open JSON in: " + \
                         json_file + " exception: " + str(errcode)
+        error(f'{me}: read JSON for json_file: {json_file} '
+              f'failed: <<{str(errcode)}>>')
         return []
 
 
@@ -2837,7 +3372,7 @@ def read_state():
     state_lock_fd = ioccc_file_lock(STATE_FILE_LOCK)
     if not state_lock_fd:
         error(f'{me}: failed to lock file for STATE_FILE_LOCK: {STATE_FILE_LOCK}')
-        return None
+        return None, None
 
     # If there is no state file, or if the state file is empty, copy it from the initial state file
     #
@@ -2846,11 +3381,11 @@ def read_state():
             shutil.copy2(INIT_STATE_FILE, STATE_FILE, follow_symlinks=True)
 
         except OSError as errcode:
-            error(f'{me}: cp -p {INIT_STATE_FILE} {STATE_FILE} failed: <<{str(errcode)}>>')
             ioccc_last_errmsg = "ERROR: in " + me + ": cannot cp -p " + INIT_STATE_FILE + \
                                 " " + STATE_FILE + " exception: " + str(errcode)
+            error(f'{me}: cp -p {INIT_STATE_FILE} {STATE_FILE} failed: <<{str(errcode)}>>')
             ioccc_file_unlock()
-            return None
+            return None, None
 
     # read the state
     #
@@ -2869,76 +3404,76 @@ def read_state():
     # sanity check state file no_comment
     #
     if not state["no_comment"]:
-        error(f'{me}: missing no_comment for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": missing no_comment in state file"
-        return None
+        error(f'{me}: missing no_comment for STATE_FILE: {STATE_FILE}')
+        return None, None
     if not isinstance(state["no_comment"], str):
-        error(f'{me}: no_comment not a string for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": no_comment is not a string in state file"
-        return None
+        error(f'{me}: no_comment not a string for STATE_FILE: {STATE_FILE}')
+        return None, None
     if state["no_comment"] != NO_COMMENT_VALUE:
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment in state file"
         error(f'{me}: invalid JSON no_comment for STATE_FILE: {STATE_FILE} '
               f'state["no_comment"]: {state["no_comment"]} != '
               f'NO_COMMENT_VALUE: {NO_COMMENT_VALUE}')
-        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON no_comment in state file"
-        return None
+        return None, None
 
     # sanity check state file state_JSON_format_version
     #
     if not state["state_JSON_format_version"]:
-        error(f'{me}: missing state_JSON_format_version for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": missing state_JSON_format_version in state file"
-        return None
+        error(f'{me}: missing state_JSON_format_version for STATE_FILE: {STATE_FILE}')
+        return None, None
     if not isinstance(state["state_JSON_format_version"], str):
-        error(f'{me}: state_JSON_format_version not a string for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + \
                             ": state_JSON_format_version is not a string in state file"
-        return None
+        error(f'{me}: state_JSON_format_version not a string for STATE_FILE: {STATE_FILE}')
+        return None, None
     if state["state_JSON_format_version"] != STATE_VERSION_VALUE:
+        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON state_JSON_format_version in state file"
         error(f'{me}: invalid state_JSON_format_version for STATE_FILE: {STATE_FILE} '
               'state["state_JSON_format_version}]: '
               f'{state["state_JSON_format_version"]} != '
               f'STATE_VERSION_VALUE: {STATE_VERSION_VALUE}')
-        ioccc_last_errmsg = "ERROR: in " + me + ": invalid JSON state_JSON_format_version in state file"
         unlock_slot()
-        return None
+        return None, None
 
     # convert open date string into a datetime value
     #
     if not state['open_date']:
-        error(f'{me}: missing open_date for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file missing open_date"
+        error(f'{me}: missing open_date for STATE_FILE: {STATE_FILE}')
         return None, None
     if not isinstance(state['open_date'], str):
-        error(f'{me}: open_date is not a string for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file open_date is not a string"
+        error(f'{me}: open_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
         open_datetime = datetime.strptime(state['open_date'], DATETIME_FORMAT)
     except ValueError as errcode:
-        error(f'{me}: datetime.strptime of open_date for STATE_FILE: {STATE_FILE} '
-              f'open_date: {state["open_date"]} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file open_date is not in proper datetime format: <<" + \
                       state['open_date'] + ">> exception: <<" + str(errcode) + ">>"
+        error(f'{me}: datetime.strptime of open_date for STATE_FILE: {STATE_FILE} '
+              f'open_date: {state["open_date"]} failed: <<{str(errcode)}>>')
         return None, None
 
     # convert close date string into a datetime value
     #
     if not state['close_date']:
-        error(f'{me}: missing close_date for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file missing close_date"
+        error(f'{me}: missing close_date for STATE_FILE: {STATE_FILE}')
         return None, None
     if not isinstance(state['close_date'], str):
-        error(f'{me}: close_date is not a string for STATE_FILE: {STATE_FILE}')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file close_date is not a string"
+        error(f'{me}: close_date is not a string for STATE_FILE: {STATE_FILE}')
         return None, None
     try:
         close_datetime = datetime.strptime(state['close_date'], DATETIME_FORMAT)
     except ValueError as errcode:
-        error(f'{me}: datetime.strptime of close_date for STATE_FILE: {STATE_FILE} '
-              f'close_date: {state["close_date"]} failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file close_date is not in proper datetime format: <<" + \
                       state['close_date'] + ">> exception: <<" + str(errcode) + ">>"
+        error(f'{me}: datetime.strptime of close_date for STATE_FILE: {STATE_FILE} '
+              f'close_date: {state["close_date"]} failed: <<{str(errcode)}>>')
         return None, None
 
     # return open and close dates
@@ -2974,33 +3509,33 @@ def update_state(open_date, close_date):
     # firewall - open_date must be a string in DATETIME_FORMAT format
     #
     if not isinstance(open_date, str):
-        error(f'{me}: open_date arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": open_date is not a string"
+        error(f'{me}: open_date arg is not a string')
         return False
     try:
         # pylint: disable=unused-variable
         open_datetime = datetime.strptime(open_date, DATETIME_FORMAT)
     except ValueError as errcode:
-        error(f'{me}: datetime.strptime of open_date arg: {open_date} '
-              f'failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": open_date arg not in proper datetime format: <<" + \
                       open_date + ">> exception: <<" + str(errcode) + ">>"
+        error(f'{me}: datetime.strptime of open_date arg: {open_date} '
+              f'failed: <<{str(errcode)}>>')
         return False
 
     # firewall - close_date must be a string in DATETIME_FORMAT format
     #
     if not isinstance(close_date, str):
-        error(f'{me}: close_date arg is not a string')
         ioccc_last_errmsg = "ERROR: in " + me + ": close_date is not a string"
+        error(f'{me}: close_date arg is not a string')
         return False
     try:
         # pylint: disable=unused-variable
         close_datetime = datetime.strptime(close_date, DATETIME_FORMAT)
     except ValueError as errcode:
-        error(f'{me}: datetime.strptime of close_date arg: {close_date} '
-              f'failed: <<{str(errcode)}>>')
         ioccc_last_errmsg = "ERROR: in " + me + ": state file close_date is not in proper datetime format: <<" + \
                       close_date + ">> exception: <<" + str(errcode) + ">>"
+        error(f'{me}: datetime.strptime of close_date arg: {close_date} '
+              f'failed: <<{str(errcode)}>>')
         return False
 
     # Lock the state file
@@ -3123,18 +3658,21 @@ def return_secret():
     if not secret_key:
         warning(f'{me}: generating secret_key on the fly: failed to obtain it from SECRET_FILE: {SECRET_FILE}')
         secret_key = str(uuid.uuid4()) + "//" + str(randrange(1000)) + "." + str(randrange(1000))
+        # fall thru
 
     # paranoia - not a string
     #
     elif not isinstance(secret_key, str):
         warning(f'{me}: generating secret_key on the fly: non-string found in from SECRET_FILE: {SECRET_FILE}')
         secret_key = str(uuid.uuid4()) + "/*" + str(randrange(1000)) + "." + str(randrange(1000))
+        # fall thru
 
     # paranoia - too short
     #
     elif len(secret_key) < MIN_SECRET_LEN:
         warning(f'{me}: generating secret_key on the fly: string too short in SECRET_FILE: {SECRET_FILE}')
         secret_key = str(uuid.uuid4()) + "*/" + str(randrange(1000)) + "." + str(randrange(1000))
+        # fall thru
 
     # return secret key
     #
@@ -3240,8 +3778,8 @@ def setup_logger(logtype, dbglvl) -> None:
         # set logging format
         #
         formatter = logging.Formatter(
-                '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
-              datefmt='%Y-%m-%d %H:%M:%S')
+                        '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
         # setup stdout logging handler
         #
@@ -3269,8 +3807,8 @@ def setup_logger(logtype, dbglvl) -> None:
         # set logging format
         #
         formatter = logging.Formatter(
-                '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
-              datefmt='%Y-%m-%d %H:%M:%S')
+                        '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
         # setup stderr logging handler
         #
@@ -3297,7 +3835,9 @@ def setup_logger(logtype, dbglvl) -> None:
 
         # set logging format
         #
-        formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
+        formatter = logging.Formatter(
+                        '%(asctime)s.%(msecs)03d: %(name)s: %(levelname)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
         # determine the logging address
         #

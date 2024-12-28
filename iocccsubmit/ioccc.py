@@ -73,7 +73,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.2.0 2024-12-22"
+VERSION_IOCCC = "2.2.1 2024-12-27"
 
 
 # Configure the application
@@ -119,8 +119,6 @@ class User(flask_login.UserMixin):
         self.user_dict = lookup_username(username)
         if self.user_dict:
             self.id = username
-        else:
-            info(f'User.__init__: invalid or unknown username: {username}')
 
     def is_active(self):
         """True, as all users are active."""
