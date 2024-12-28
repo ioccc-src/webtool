@@ -39,6 +39,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from random import randrange
 from logging.handlers import SysLogHandler
+from flask import request
 
 
 # For user locking
@@ -65,7 +66,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.2.1 2024-12-27"
+VERSION_IOCCC_COMMON = "2.2.2 2024-12-28"
 
 # force password change grace time
 #
@@ -343,6 +344,67 @@ def return_last_errmsg():
     # return string
     #
     return ioccc_last_errmsg
+
+
+def return_client_ip() -> str:
+    """
+    Return the client IP address or ((UNKNOWN))
+    """
+
+    # setup
+    #
+    me = inspect.currentframe().f_code.co_name
+    ip = "((UNKNOWN))"
+
+    # paranoia - handle if we do not have a request
+    #
+    if not request:
+        debug(f'{me}: we do not have a request')
+
+    # paranoia - handle if we do not have request headers
+    #
+    elif not request.headers:
+        debug(f'{me}: we have no request.headers')
+
+    # case: IP address from request headers
+    #
+    elif 'X-Forwarded-For' in request.headers:
+        debug(f'{me}: we have X-Forwarded-For for IP address')
+        ip = request.headers['X-Forwarded-For'].split(',')[0]
+
+    elif 'HTTP_X_FORWARDED_FOR' in request.headers:
+        debug(f'{me}: we have HTTP_X_FORWARDED_FOR for IP address')
+        ip = request.headers['HTTP_X_FORWARDED_FOR'].split(',')[0]
+
+    elif 'REMOTE_ADDR' in request.headers:
+        debug(f'{me}: we have REMOTE_ADDR for IP address')
+        ip = request.headers['REMOTE_ADDR'].split(',')[0]
+
+    # case: IP address from request
+    #
+    else:
+        debug(f'{me}: hoping request.remote_addr will provide IP address')
+        ip = request.remote_addr
+
+    # paranoia - if we don't have an ip address string
+    #
+    if not isinstance(ip, str):
+        debug(f'{me}: ip value is not a string')
+
+    # paranoia - if we ip address string is empty
+    #
+    elif len(ip) <= 0:
+        debug(f'{me}: ip value is an empty string')
+
+    # all is OK - we hope
+    #
+    else:
+        debug(f'{me}: client IP address: {ip}')
+        # fall thru
+
+    # return ip address or "((UNKNOWN))"
+    #
+    return ip
 
 
 def change_startup_appdir(topdir):
@@ -864,7 +926,7 @@ def load_pwfile():
                 #
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
+                error(f'{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return None
 
@@ -1351,7 +1413,7 @@ def update_username(username, pwhash, admin, force_pw_change, pw_change_by, disa
                 #
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
+                error(f'{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return False
 
@@ -1534,7 +1596,7 @@ def delete_username(username):
                 #
                 ioccc_last_errmsg = "ERROR: in " + me + ": failed to read " + PW_FILE + \
                                     " exception: " + str(errcode)
-                error('{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
+                error(f'{me}: read {PW_FILE} failed: <<{str(errcode)}>>')
                 ioccc_file_unlock()
                 return None
 
@@ -1642,7 +1704,7 @@ def generate_password():
 
                     # generate a random password string based on UUID, a "++" and a f9.4 number
                     #
-                    info('f{me}: generating a random password string')
+                    info(f'{me}: generating a random password string')
                     password = str(uuid.uuid4()) + "++" + str(randrange(1000)) + "." + str(randrange(1000))
                     ioccc_pw_words = None   # clear any word dictionary we might have read
                     return password
@@ -1654,7 +1716,7 @@ def generate_password():
 
             # generate a random password string based on UUID, a "**" and a f9.4 number
             #
-            info('f{me}: random password string will be generated')
+            info(f'{me}: random password string will be generated')
             password = str(uuid.uuid4()) + "**" + str(randrange(1000)) + "." + str(randrange(1000))
             ioccc_pw_words = None   # clear any word dictionary we might have opened
             return password

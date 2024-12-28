@@ -78,6 +78,7 @@ from .ioccc_common import \
     read_json_file, \
     read_state, \
     replace_pwfile, \
+    return_client_ip, \
     return_last_errmsg, \
     return_secret, \
     return_slot_dir_path, \
