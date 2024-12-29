@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# pychk.sh - check the pylint status of python code under bin
+# root_install - perform actions that root needs setup and install
 #
 # usage:
 #
-#   bin/pychk.sh
+#   sudo root_install.sh
 #
 # Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
 #
@@ -85,152 +85,138 @@ shopt -u extglob        # enable extended globbing patterns
 shopt -s globstar       # enable ** to match all files and zero or more directories and subdirectories
 
 
-# setup variables referenced in the usage message
+# setup variables
 #
-export VERSION="2.2.0 2024-12-22"
+export VERSION="2.0.1 2024-12-20"
 NAME=$(basename "$0")
 export NAME
-export TOPDIR="."
+export SUBMIT_TOOL_DIR="/home/ioccc/submit-tool"
 
 
-# usage
+# must be root
 #
-export USAGE="usage: $0 [-t appdir]
-
-	-h		    print help message and exit
-
-	-t appdir	app directory path (def: $TOPDIR)
-
-Exit codes:
-     0         all OK
-     2         -h and help string printed or -V and version string printed
-     3         command line error
-     4         bash version is too old
-     6         invalid topdir
- >= 10         internal error
-
-$NAME version: $VERSION"
+MY_UID=$(id -u)
+export MY_UID
+if [[ $MY_UID -ne 0 ]]; then
+    echo "$0: ERROR: must be root to run this code" 1>&2
+    exit 1
+fi
 
 
-# parse command line
+# submit-tool directory must exist
 #
-while getopts :ht: flag; do
-  case "$flag" in
-    h) echo "$USAGE" 1>&2
-        exit 2
-        ;;
-    t) TOPDIR="$OPTARG"
-        ;;
-    \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-    :) echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-    *) echo "$0: ERROR: unexpected value from getopts: $flag" 1>&2
-        echo 1>&2
-        echo "$USAGE" 1>&2
-        exit 3
-        ;;
-  esac
-done
+if [[ ! -d $SUBMIT_TOOL_DIR ]]; then
+    echo "$0: ERROR: not a directory: $SUBMIT_TOOL_DIR" 1>&2
+    exit 2
+fi
 
 
-# remove the options
+# move to the top of the submit-tool tree
 #
-shift $(( OPTIND - 1 ));
-#
-if [[ $# -ne 0 ]]; then
-    echo "$0: ERROR: expected 0 args, found: $#" 1>&2
-    echo 1>&2
-    echo "$USAGE" 1>&2
+export CD_FAILED=""
+cd "$SUBMIT_TOOL_DIR" || CD_FAILED="true"
+if [[ -n $CD_FAILED ]]; then
+    echo "$0: ERROR: cd $SUBMIT_TOOL_DIR failed" 1>&2
     exit 3
 fi
 
 
-# cd to topdir
+# be sure etc exists and not saved.etc
 #
-if [[ -z $TOPDIR ]]; then
-    echo "$0: ERROR: topdir is empty: $TOPDIR" 1>&2
-    exit 6
-fi
-if [[ ! -e $TOPDIR ]]; then
-    echo "$0: ERROR: topdir does not exist: $TOPDIR" 1>&2
-    exit 6
-fi
-if [[ ! -d $TOPDIR ]]; then
-    echo "$0: ERROR: cannot cd to a non-directory: $TOPDIR" 1>&2
-    exit 6
-fi
-export CD_FAILED
-cd "$TOPDIR" || CD_FAILED="true"
-if [[ -n $CD_FAILED ]]; then
-    echo "$0: ERROR: cd $TOPDIR failed" 1>&2
-    exit 6
-fi
-
-
-# pylint iocccsubmit module files
-#
-for i in iocccsubmit/ioccc_common.py iocccsubmit/ioccc.py iocccsubmit/__init__.py ; do
-
-    # announce
-    #
-    echo "=-=-= $TOPDIR/$i =-=-="
-
-    # pylint file
-    #
-    python3 -m pylint "$i"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
-	exit 1
+if [[ ! -d etc ]]; then
+    if [[ -d saved.etc ]]; then
+	mv -v saved.etc etc
+	status="$?"
+	if [[ $status -ne 0 ]]; then
+	    echo "$0: ERROR: mv -v saved.etc etc failed, error: $status" 1>&2
+	    exit 4
+	fi
+    else
+	echo "$0: ERROR: both $SUBMIT_TOOL_DIR/etc and $SUBMIT_TOOL_DIR/saved.etc are not a directory" 1>&2
+	exit 5
     fi
+fi
+if [[ ! -d etc ]]; then
+    echo "$0: ERROR: not a directory: $SUBMIT_TOOL_DIR/etc" 1>&2
+    exit 6
+fi
+if [[ -d saved.etc ]]; then
+    echo "$0: ERROR: is a directory: $SUBMIT_TOOL_DIR/saved.etc" 1>&2
+    exit 7
+fi
 
-done
 
-# pylint critical bin files
+# install as root
 #
-for i in bin/ioccc_submit.py bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py ; do
+make root_install
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: make root_install failed, error: $status" 1>&2
+    exit 8
+fi
 
-    # announce
-    #
-    echo "=-=-= $TOPDIR/$i =-=-="
 
-    # pylint file
-    #
-    python3 -m pylint "$i"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
-	exit 2
-    fi
-done
-
-# pylint critical wsgi files
+# move etc out of the way, just to be safe
 #
-# SC2043 (warning): This loop will only ever run once. Bad quoting or missing glob/expansion?
-# https://www.shellcheck.net/wiki/SC2043
-# shellcheck disable=SC2043
-for i in wsgi/ioccc.wsgi ; do
+# We do not want etc to exist after installing it because we might forget to use
+# the "-t /var/ioccc" in tools.
+#
+if [[ -d saved.etc ]]; then
+    echo "$0: ERROR: is a directory: $SUBMIT_TOOL_DIR/saved.etc" 1>&2
+    exit 9
+fi
+if [[ ! -d etc ]]; then
+    echo "$0: ERROR: not a directory: $SUBMIT_TOOL_DIR/etc" 1>&2
+    exit 10
+fi
+mv -v etc saved.etc
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: mv -v etc saved.etc failed, error: $status" 1>&2
+    exit 11
+fi
+if [[ -d etc ]]; then
+    echo "$0: ERROR: is a directory: $SUBMIT_TOOL_DIR/etc" 1>&2
+    exit 12
+fi
+if [[ ! -d saved.etc ]]; then
+    echo "$0: ERROR: not a directory: $SUBMIT_TOOL_DIR/saved.etc" 1>&2
+    exit 13
+fi
 
-    # announce
-    #
-    echo "=-=-= $TOPDIR/$i =-=-="
 
-    # pylint file
-    #
-    python3 -m pylint "$i"
-    status="$?"
-    if [[ $status -ne 0 ]]; then
-	echo "$0: ERROR: python3 -m pylint $i failed, error: $status" 1>&2
-	exit 3
-    fi
-done
+# restart apache
+#
+apachectl configtest
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: apachectl configtest failed, error: $status" 1>&2
+    exit 14
+fi
+fkill -f httpd
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: fkill -f httpd failed, error: $status" 1>&2
+    exit 15
+fi
+systemctl restart httpd
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: systemctl restart httpd failed, error: $status" 1>&2
+    exit 16
+fi
+systemctl status httpd
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: systemctl status httpd failed, error: $status" 1>&2
+    exit 17
+fi
+ps -fp $(pgrep -d, -x httpd)
+status="$?"
+if [[ $status -ne 0 ]]; then
+    echo "$0: ERROR: ps -fp \$(pgrep -d, -x httpd) failed, error: $status" 1>&2
+    exit 18
+fi
 
 
 # All Done!!! All Done!!! -- Jessica Noll, Age 2

@@ -66,7 +66,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.2.2 2024-12-28"
+VERSION_IOCCC_COMMON = "2.2.3 2024-12-28"
 
 # force password change grace time
 #
@@ -3713,18 +3713,13 @@ def return_secret():
         #            different instances of this app will have different secrets.
         #
         warning(f'{me}: open SECRET_FILE: {SECRET_FILE} failed: <<{str(errcode)}>>')
-        # fall thru
-
-    # paranoia - no secret_key
-    #
-    if not secret_key:
         warning(f'{me}: generating secret_key on the fly: failed to obtain it from SECRET_FILE: {SECRET_FILE}')
         secret_key = str(uuid.uuid4()) + "//" + str(randrange(1000)) + "." + str(randrange(1000))
         # fall thru
 
     # paranoia - not a string
     #
-    elif not isinstance(secret_key, str):
+    if not isinstance(secret_key, str):
         warning(f'{me}: generating secret_key on the fly: non-string found in from SECRET_FILE: {SECRET_FILE}')
         secret_key = str(uuid.uuid4()) + "/*" + str(randrange(1000)) + "." + str(randrange(1000))
         # fall thru
