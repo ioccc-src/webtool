@@ -30,6 +30,7 @@
 # utilities #
 #############
 
+AWK= awk
 CHMOD= chmod
 CHOWN= chown
 CMP= cmp
@@ -64,6 +65,18 @@ PKG_NAME= iocccsubmit
 # Python package source
 #
 PKG_SRC= ${PKG_NAME}/__init__.py ${PKG_NAME}/ioccc.py ${PKG_NAME}/ioccc_common.py
+
+# polite English language words
+#
+# NOTE: See the comment in iocccsubmit/ioccc_common.py within the generate_password() function
+# 	about how the polite English language words file is used, and in particular how
+# 	the values of ${MIN_POLITE_WORD_LENGTH} and ${MAX_POLITE_WORD_LENGTH} were selected.
+#
+# These values are used by the make rebuild_pw_words rule below.
+#
+POLITE_ENGLISH_WORDS= /usr/local/src/lib/polite.english.words/polite.english.words.txt
+MIN_POLITE_WORD_LENGTH= 4
+MAX_POLITE_WORD_LENGTH= 10
 
 # etc read-only directory source owned by root
 #
@@ -181,7 +194,7 @@ all: ${TARGETS}
 #################################################
 
 .PHONY: all configure clean clobber nuke install \
-	root_install root_setup revenv wheel venv_install reflaskkey
+	root_install root_setup revenv wheel venv_install reflaskkey rebuild_pw_words
 
 ###############
 # build rules #
@@ -275,6 +288,24 @@ reflaskkey:
 	${V} echo DEBUG =-= $@ start =-=
 	${GENFLASHKEY} -F ${FLASK_KEY}
 	${V} echo DEBUG =-= $@ end =-=
+
+# rebuild etc/pw.words from POLITE_ENGLISH_WORDS
+#
+rebuild_pw_words: ${POLITE_ENGLISH_WORDS}
+	${RM} -f etc/pw.words
+	${AWK} '{ if (length($$0) >= ${MIN_POLITE_WORD_LENGTH} && \
+          length($$0) <= ${MAX_POLITE_WORD_LENGTH}) print $$0; }' \
+	  "${POLITE_ENGLISH_WORDS}" > etc/pw.words
+
+# The polite English language words file
+#
+${POLITE_ENGLISH_WORDS}:
+	if [[ ! -f ${POLITE_ENGLISH_WORDS} ]]; then \
+	    echo "ERROR: polite English language words file not found: ${POLITE_ENGLISH_WORDS}" 1>&2; \
+	    echo "Notice: try: git clone https://github.com/lcn2/polite.english.words.git" 1>&2; \
+	    echo "Notice: then do: cd polite.english.words.git && sudo make clobber all install"; 1>&2; \
+	    exit 1; \
+	fi
 
 
 ###################################

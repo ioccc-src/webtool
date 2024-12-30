@@ -1721,15 +1721,88 @@ def generate_password():
             ioccc_pw_words = None   # clear any word dictionary we might have opened
             return password
 
-    # generate a 2-word password with random separators and an f9.4 number
+    # generate a 2+word password with random separators and an f9.4 number
     #
-    # Our dictionary has about 104944 (log2 ~ 16.68) words in it.
-    # Our selected punctuation list as 30 (log2 ~ 4.91) characters.
-    # We append a f9.4 (4 digits + . + 4 digits) number (log2 ~ 19.93).
+    # FYI: The source for etc/pw.words is the polite English language words list from:
     #
-    # Typical entropy is about 63.10 bits:
+    #   https://github.com/lcn2/polite.english.words
     #
-    #   log2(104944)*2 + log2(30)*2 + log2(1000) + log2(1000)
+    # when it installed as:
+    #
+    #   /usr/local/share/polite.words/polite.english.words.txt
+    #
+    # As of 2024 Dec 30 commit 979589999962b1029d25f6b9601702a6eb9f868d
+    # the polite English language words file had the following word count
+    # and word length in characters as follows:
+    #
+    #            52 1
+    #           757 2
+    #          2781 3
+    #          8372 4
+    #         18338 5
+    #         34252 6
+    #         47491 7
+    #         57802 8
+    #         59528 9
+    #         51313 10
+    #         41992 11
+    #         32187 12
+    #         22849 13
+    #         15284 14
+    #          9514 15
+    #          5543 16
+    #          3151 17
+    #          1534 18
+    #           790 19
+    #           368 20
+    #           170 21
+    #            79 22
+    #            32 23
+    #            13 24
+    #             8 25
+    #             3 27
+    #             2 28
+    #             2 29
+    #             1 31
+    #
+    # Using make rebuild_pw_words we build etc/pw.words from the polite English language words list
+    # to form the etc/pw.words file this function reads and uses.
+    #
+    # The make rebuild_pw_words rule is used to select all English language words that are
+    # at least MIN_POLITE_WORD_LENGTH (def: 4) and at most MAX_POLITE_WORD_LENGTH (def: 10) long,
+    # where those two values come from the Makefile  As of 2024 Dec 30, this is what is used to
+    # generate the etc/pw.words file.
+    #
+    # The minimum password length we generate is:
+    #
+    #   4 + 1 + 4 + 1 + 9 = 19
+    #
+    # The maximum password length we generate is:
+    #
+    #   10 + 1 + 10 + 1 + 9 = 31
+    #
+    # The average word in etc/pw.words. given the above is 7.847 characters.
+    # This gives us an average password length of:
+    #
+    #  7.847 + 1 + 7.847 + 9 = 25.694
+    #
+    # The etc/pw.words file has about 277096 words in it (log2 ~ 18.080).
+    #
+    # We use punctuation symbols from list of 30 characters (log2 ~ 4.907).
+    #
+    # We append a f9.4 (4 decimal digits + . + 4 decimal digits) number (log2 ~ 19.932).
+    #
+    # The number of different password we can generate, given the above, is:
+    #
+    #   277096 * 30 * 277096 * 30 * 1000^2 = 69103973894400000000
+    #
+    # We form a password using 2 polite English language words, 2 punctuation symbols, and
+    # a f9.4 number, so we will have the following password entropy:
+    #
+    #   log2(277096)*2 + log2(30)*2 + log2(1000)*2 = 65.905 bits of entropy
+    #
+    # That gives us enough surprise for an initial password that users of the submit server will
+    # be required to change when they first login.
     #
     password = secrets.choice(ioccc_pw_words) + random.choice(punct) + secrets.choice(ioccc_pw_words)
     password = password + random.choice(punct) + str(randrange(1000)) + "." + str(randrange(1000))
