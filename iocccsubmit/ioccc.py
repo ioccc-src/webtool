@@ -74,7 +74,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.2.2 2024-12-28"
+VERSION_IOCCC = "2.2.3 2024-12-30"
 
 
 # Configure the application
@@ -229,7 +229,7 @@ def login():
 
         # render based on if the contest is open or not
         #
-        close_datetime = contest_is_open()
+        close_datetime = contest_is_open(user.user_dict)
         if close_datetime:
 
             # case: contest open - both login and user setup are successful
@@ -334,7 +334,7 @@ def submit():
 
     # verify that the contest is still open
     #
-    close_datetime = contest_is_open()
+    close_datetime = contest_is_open(current_user.user_dict)
     if not close_datetime:
         info(f'{me}: {return_client_ip()}: '
              f'IOCCC is not open')
@@ -510,7 +510,7 @@ def upload():
 
     # verify that the contest is still open
     #
-    close_datetime = contest_is_open()
+    close_datetime = contest_is_open(current_user.user_dict)
     if not close_datetime:
         info(f'{me}: {return_client_ip()}: '
              f'username: {username} IOCCC is not open')

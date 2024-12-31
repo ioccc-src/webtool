@@ -66,7 +66,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC_COMMON = "2.2.3 2024-12-28"
+VERSION_IOCCC_COMMON = "2.2.4 2024-12-30"
 
 # force password change grace time
 #
@@ -3724,14 +3724,21 @@ def update_state(open_date, close_date):
     return write_sucessful
 
 
-def contest_is_open():
+def contest_is_open(user_dict):
     """
     Determine if the IOCCC is open.
+
+    Given:
+        user_dict    user information for username as a python dictionary
 
     Return:
         != None     Contest is open,
                     return close_datetime in datetime in DATETIME_FORMAT format
         None        Contest is closed
+
+    NOTE: If the user is an admin, and we have a close date, then we will
+          always assume the contest is open for that user.  This is to allow
+          admins to test the server before the contest opens for others.
     """
 
     # setup
@@ -3745,6 +3752,18 @@ def contest_is_open():
     open_datetime, close_datetime = read_state()
     if not open_datetime or not close_datetime:
         return None
+
+    # sanity check the user information
+    #
+    if not validate_user_dict(user_dict):
+        error(f'{me}: validate_user_dict failed')
+        return None
+
+    # For admin users, the contest is always open,
+    # even if we are outside the contest open-close internal.
+    #
+    if user_dict['admin']:
+        return close_datetime
 
     # determine if the contest is open now
     #
