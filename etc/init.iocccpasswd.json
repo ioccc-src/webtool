@@ -42,16 +42,6 @@
     {
         "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
         "iocccpasswd_format_version": "1.1 2024-10-18",
-        "username": "87654321-1234-4321-fedc-ba9876543210",
-        "pwhash": "scrypt:32768:8:1$DPeMDzgPPsVviMrM$cbe9f49f43bd4483df24d6b7eb528141f69d13b711809bb1ae5062b8f84b6325bdd0c2d38a16a241682f4d368354e3b23ccd34ea8243bc1182ca03f62bddabc6",
-        "admin": false,
-        "force_pw_change": true,
-        "pw_change_by": "2025-03-25 06:47:07.388274+00:00",
-        "disable_login": true
-    },
-    {
-        "no_comment": "mandatory comment: because comments were removed from the original JSON spec",
-        "iocccpasswd_format_version": "1.1 2024-10-18",
         "username": "blocked",
         "pwhash": "scrypt:32768:8:1$VQHoLWtxTv7S1Aba$175cc800881084ca4df8eb1f410543ef26de7f878573f19fbe511ecb38f8cd5306e0b552df8b6ec3f6000fb584bfe2f057e8f6815cd3d1908c4ace845712d1db",
         "admin": false,
