@@ -26,11 +26,18 @@ import inspect
 import re
 
 
+# import from modules
+#
+from pathlib import Path
+
+
 # 3rd party imports
 #
 from flask import Flask, render_template, request, redirect, url_for, flash
 import flask_login
 from flask_login import current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
 # import the ioccc common utility code
@@ -74,7 +81,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.2.3 2024-12-30"
+VERSION_IOCCC = "2.3 2025-01-04"
 
 
 # Configure the application
@@ -92,7 +99,8 @@ application.config['FLASK_ENV'] = "production"
 application.config['TEMPLATES_AUTO_RELOAD'] = False
 application.secret_key = return_secret()
 
-# set application file paths
+
+# Set application file paths
 #
 with application.test_request_context('/'):
     url_for('static', filename='style.css')
@@ -104,6 +112,56 @@ with application.test_request_context('/'):
 #
 login_manager = flask_login.LoginManager()
 login_manager.init_app(application)
+
+# determine our storage URI for the Flask limiter
+#
+# case: We have memcached installed - use memcached port
+#
+if Path("/etc/sysconfig/memcached").is_file():
+    STORAGE_URI = "memcached://127.0.0.1:11211"
+
+# else: use just local memory
+#
+else:
+    STORAGE_URI="memory://"
+
+
+# Setup for default the Flask limiter
+#
+limiter = Limiter(
+    get_remote_address,
+    default_limits = ["5 per minute", "25 per hour", "125 per day"],
+    app = application,
+    storage_uri = STORAGE_URI,
+)
+
+
+# IP address based limits
+#
+ip_based_limit = limiter.limit(
+    limit_value = "5 per minute; 25 per hour; 125 per day",
+    key_func = get_remote_address,
+    per_method = True,
+    error_message = "Too much too often!!  You have exceeded a reasonable rate limit.\n" +
+                    "\n" +
+                    "You will stay in the \"penalty box\" for a period of time until you slow down.",
+    override_defaults = True,
+    scope = "IPv4",
+)
+
+
+# Username based limits
+#
+user_based_limit = limiter.shared_limit(
+    limit_value = "10 per minute; 50 per hour; 250 per day",
+    key_func = lambda : current_user.id,
+    per_method = True,
+    error_message = "Too much and too often!!  You have exceeded a reasonable rate limit.\n" +
+                    "\n" +
+                    "You will stay in the \"penalty box\" for a period of time until you slow down.",
+    override_defaults = True,
+    scope = "username",
+)
 
 
 # Trivial user class
@@ -152,6 +210,7 @@ def user_loader(user_id):
 # pylint: disable=too-many-return-statements
 #
 @application.route('/', methods = ['GET', 'POST'])
+@ip_based_limit
 def login():
     """
     Process login request
@@ -264,6 +323,7 @@ def login():
 #
 @application.route('/submit', methods = ['GET', 'POST'])
 @flask_login.login_required
+@user_based_limit
 def submit():
     """
     Access the IOCCC Submission Page - Upload a file to a user's slot
@@ -454,6 +514,7 @@ def submit():
 #
 @application.route('/update', methods=["POST"])
 @flask_login.login_required
+@user_based_limit
 def upload():
     """
     Upload slot file
@@ -629,6 +690,7 @@ def upload():
 
 
 @application.route('/logout')
+@ip_based_limit
 def logout():
     """
     Logout.
@@ -659,6 +721,7 @@ def logout():
 # pylint: disable=too-many-statements
 #
 @application.route('/passwd', methods = ['GET', 'POST'])
+@user_based_limit
 def passwd():
     """
     Change user password
