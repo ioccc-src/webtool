@@ -144,7 +144,7 @@ ip_based_limit = limiter.limit(
     per_method = True,
     error_message = "Too much too often!!  You have exceeded a reasonable rate limit.\n" +
                     "\n" +
-                    "You will stay in the \"penalty box\" for a period of time until you slow down.",
+                    "You must stay in the \"penalty box\" for a period of time until you slow down.",
     override_defaults = True,
     scope = "IPv4",
 )
@@ -158,7 +158,7 @@ user_based_limit = limiter.shared_limit(
     per_method = True,
     error_message = "Too much and too often!!  You have exceeded a reasonable rate limit.\n" +
                     "\n" +
-                    "You will stay in the \"penalty box\" for a period of time until you slow down.",
+                    "You have been put in the \"penalty box\" for a period of time until you slow down.",
     override_defaults = True,
     scope = "username",
 )
