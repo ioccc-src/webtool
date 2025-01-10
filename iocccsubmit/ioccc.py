@@ -4,6 +4,7 @@
 #
 # pylint: disable=invalid-overridden-method
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-lines
 
 """
 ioccc.py - Core functions that of the IOCCC submit tool web application
@@ -24,7 +25,7 @@ NOTE: This flask-login was inspired by the following:
 #
 import inspect
 import re
-
+import subprocess
 
 # import from modules
 #
@@ -33,7 +34,7 @@ from pathlib import Path
 
 # 3rd party imports
 #
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, render_template_string
 import flask_login
 from flask_login import current_user
 from flask_limiter import Limiter
@@ -81,7 +82,7 @@ from iocccsubmit.ioccc_common import \
 #
 # NOTE: Use string of the form: "x.y[.z] YYYY-MM-DD"
 #
-VERSION_IOCCC = "2.3 2025-01-04"
+VERSION_IOCCC = "2.3.1 2025-01-10"
 
 
 # Configure the application
@@ -118,19 +119,30 @@ login_manager.init_app(application)
 # case: We have memcached installed - use memcached port
 #
 if Path("/etc/sysconfig/memcached").is_file():
-    STORAGE_URI = "memcached://127.0.0.1:11211"
+
+    # Check if memcached is running properly
+    #
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', '--quiet', 'memcached'],
+            check=True
+        )
+        STORAGE_URI = "memcached://127.0.0.1:11211"
+    except subprocess.CalledProcessError:
+        warning("Memcached configuration file exists, but memcached is not running. Falling back to memory storage.")
+        STORAGE_URI = "memory://"
 
 # else: use just local memory
 #
 else:
-    STORAGE_URI="memory://"
+    STORAGE_URI = "memory://"
 
 
 # Setup for default the Flask limiter
 #
 limiter = Limiter(
     get_remote_address,
-    default_limits = ["5 per minute", "25 per hour", "125 per day"],
+    default_limits = ["8 per minute"],
     app = application,
     storage_uri = STORAGE_URI,
 )
@@ -139,12 +151,12 @@ limiter = Limiter(
 # IP address based limits
 #
 ip_based_limit = limiter.limit(
-    limit_value = "5 per minute; 25 per hour; 125 per day",
+    limit_value = "8 per minute",
     key_func = get_remote_address,
     per_method = True,
     error_message = "Too much too often!!  You have exceeded a reasonable rate limit.\n" +
                     "\n" +
-                    "You must stay in the \"penalty box\" for a period of time until you slow down.",
+                    "You have been put into the \"penalty box\" for a period of time until you slow down.",
     override_defaults = True,
     scope = "IPv4",
 )
@@ -153,19 +165,20 @@ ip_based_limit = limiter.limit(
 # Username based limits
 #
 user_based_limit = limiter.shared_limit(
-    limit_value = "10 per minute; 50 per hour; 250 per day",
+    limit_value = "8 per minute",
     key_func = lambda : current_user.id,
     per_method = True,
-    error_message = "Too much and too often!!  You have exceeded a reasonable rate limit.\n" +
+    error_message = "You're going too Fast!!  You have exceeded a reasonable rate limit.\n" +
                     "\n" +
-                    "You have been put in the \"penalty box\" for a period of time until you slow down.",
+                    "You have been put into the \"penalty box\" for a period of time until you slow down.",
     override_defaults = True,
-    scope = "username",
+    scope = "user",
 )
 
 
 # Trivial user class
 #
+@limiter.exempt
 class User(flask_login.UserMixin):
     """
     Trivial user class
@@ -197,6 +210,7 @@ class User(flask_login.UserMixin):
 
 
 @login_manager.user_loader
+@limiter.exempt
 def user_loader(user_id):
     """
     load the user
@@ -873,3 +887,70 @@ def passwd():
 # pylint: enable=too-many-branches
 # pylint: enable=too-many-return-statements
 # pylint: enable=too-many-statements
+
+
+# pylint: disable=unused-argument
+#
+# Handle standard rate limit errors.
+#
+@application.errorhandler(429)
+def ratelimit_error_handler(e):
+    """
+    Handle normal rate limit errors with a nice friendly error message.
+    """
+    return render_template_string(
+        """
+        <html>
+            <head>
+                <title>Slow Down, Friend!</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        background-color: #f0f8ff;
+                        color: #333;
+                        margin-top: 50px;
+                    }
+                    .container {
+                        margin: 0 auto;
+                        padding: 20px;
+                        max-width: 600px;
+                        border: 2px solid #ddd;
+                        border-radius: 10px;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    }
+                    h1 {
+                        color: #2a7ae2;
+                    }
+                    p {
+                        font-size: 1.2rem;
+                        margin-top: 10px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Wait a minute!</h1>
+                    <h2>Take a Deep Breath!</h2>
+                    <p>You've been making requests a bit too quickly.</p>
+                    <p>Please slow down, relax, pet the cat, drink a calming cup of tea,<br>
+                       and try again later.</p>
+                </div>
+            </body>
+        </html>
+        """
+    ), 429
+#
+# pylint: enable=unused-argument
+
+
+# catch all other URLs
+#
+# We reject with an HTTP error, the attempt as if they were a system cracker.
+#
+@application.route('/', defaults={'path': ''})
+@application.route('/<path:_path>')
+@limiter.exempt
+def system_cracker(_path):
+    """Block unauthorized access attempts."""
+    return "Go away, system cracker!", 418
