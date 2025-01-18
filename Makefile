@@ -147,7 +147,8 @@ SELINUX_UNSET= bin/selinux.unset.sh
 # NOTE: bin/pychk.sh is only needed for testing and thus is not needed under ${DESTDIR}.
 #
 BIN_SRC= bin/genflaskkey.sh bin/ioccc_date.py bin/ioccc_passwd.py bin/set_slot_status.py \
-	 bin/ioccc_submit.py bin/root_install.sh ${SELINUX_SET} ${SELINUX_UNSET}
+	 bin/ioccc_submit.py bin/root_install.sh bin/ls_loaded_slotdir.sh \
+	 ${SELINUX_SET} ${SELINUX_UNSET}
 
 # tool to generate the secret Flask key
 #

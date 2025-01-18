@@ -120,8 +120,9 @@ shift $(( OPTIND - 1 ));
 if [[ $V_FLAG -ge 5 ]]; then
     echo "$0: debug[5]: file argument count: $#" 1>&2
 fi
-if [[ $# -ge 0 ]]; then
+if [[ $# -ge 1 ]]; then
     echo "$0: ERROR: expected 0 args, found: $#" 1>&2
+    exit 3
 fi
 
 
