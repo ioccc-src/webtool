@@ -13,7 +13,7 @@
 #	     production since each instance of the application has a
 #	     different SECRET_KEY value.
 #
-# Copyright (c) 2024-2025 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -40,18 +40,11 @@
 
 # setup
 #
-export VERSION="2.0.1 2025-01-17"
+export VERSION="1.0.0 2025-01-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
-OPENSSL_TOOL=$(type -P openssl)
-PWGEN_TOOL=$(type -P pwgen)
-UUIDGEN_TOOL=$(type -P uuidgen)
-BASE64_TOOL=$(type -P base64)
-export PWGEN_TOOL OPENSSL_TOOL UUIDGEN_TOOL BASE64_TOOL
-export GEN_TYPE=""
-export FORCE_WRITE=""
 export TOPDIR="/var/ioccc"
 if [[ ! -d $TOPDIR ]]; then
     # not on submit server, assume testing in .
