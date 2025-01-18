@@ -13,7 +13,7 @@
 #	     production since each instance of the application has a
 #	     different SECRET_KEY value.
 #
-# Copyright (c) 2024 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2024-2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -40,12 +40,11 @@
 
 # setup
 #
-export VERSION="2.0.0 2024-12-16"
+export VERSION="2.0.1 2025-01-17"
 NAME=$(basename "$0")
 export NAME
 export V_FLAG=0
 #
-export SECRET_FILE="etc/.secret"
 OPENSSL_TOOL=$(type -P openssl)
 PWGEN_TOOL=$(type -P pwgen)
 UUIDGEN_TOOL=$(type -P uuidgen)
@@ -53,18 +52,26 @@ BASE64_TOOL=$(type -P base64)
 export PWGEN_TOOL OPENSSL_TOOL UUIDGEN_TOOL BASE64_TOOL
 export GEN_TYPE=""
 export FORCE_WRITE=""
+export TOPDIR="/var/ioccc"
+if [[ ! -d $TOPDIR ]]; then
+    # not on submit server, assume testing in .
+    TOPDIR="."
+fi
+export SECRET_FILE="$TOPDIR/etc/.secret"
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-F] [-t type] [outfile]
+export USAGE="usage: $0 [-h] [-v level] [-V] [-t topdir] [-F] [-T type] [outfile]
 
 	-h		print help message and exit
 	-v level	set verbosity level (def level: 0)
 	-V		print version string and exit
 
+	-t topdir	app directory path (def: $TOPDIR)
+
 	-F		force outfile to be written (def: do not write if it exists)
-	-t type		type of generator (def: search for a tool in the following order)
+	-T type		type of generator (def: search for a tool in the following order)
 
 			openssl - use openssl tool: (found at: $PWGEN_TOOL)
 			pwgen - use pwgen tool: (found at: $PWGEN_TOOL)
@@ -86,7 +93,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VFt: flag; do
+while getopts :hv:Vt:FT: flag; do
   case "$flag" in
     h) echo "$USAGE" 1>&2
 	exit 2
@@ -96,9 +103,11 @@ while getopts :hv:VFt: flag; do
     V) echo "$VERSION"
 	exit 2
 	;;
+    t) TOPDIR="$OPTARG"
+	;;
     F) FORCE_WRITE="true"
 	;;
-    t) case "$OPTARG" in
+    T) case "$OPTARG" in
 	openssl) GEN_TYPE="$OPTARG" ;;
 	pwgen) GEN_TYPE="$OPTARG" ;;
 	uuidgen) GEN_TYPE="$OPTARG" ;;
@@ -142,7 +151,7 @@ fi
 case "$#" in
 0) ;;
 1) SECRET_FILE="$1" ;;
-*) echo "$0: ERROR: expected 0 args, found: $#" 1>&2
+*) echo "$0: ERROR: expected 0 or 1 args, found: $#" 1>&2
    echo "$USAGE" 1>&2
    exit 3
    ;;
